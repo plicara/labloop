@@ -92,6 +92,12 @@ Four details that matter:
   uncommitted work would be destroyed.
 - **A metric from a changed harness is not a result.** See below.
 
+It also stops when it stops learning. Ten trials in a row that produce no metric
+at all — a mistyped `propose` command, an agent that never applies its edit —
+end the run rather than spend the rest of an overnight budget failing
+identically. Occasional failures don't count; only an unbroken run of them does.
+Change it with `--give-up-after N`, or `0` to run regardless.
+
 ## Check your metric holds still
 
 Keep-or-revert assumes that a change in the metric means a change in the code.
@@ -163,7 +169,7 @@ labloop run \
 
 ```
 [+] trial   0             1     0.0s  (baseline)
-[H] trial   1            --     0.0s  (proposal modified the harness)
+[H] trial   1            --     0.0s  (proposal modified the harness: eval.py)
 [+] trial   2        0.3333     0.0s  7c599cd
 ```
 

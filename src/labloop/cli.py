@@ -8,7 +8,7 @@ import sys
 from . import __version__
 from .integrity import HarnessMismatchError, NoProtectedFilesError
 from .ledger import Ledger
-from .loop import Loop
+from .loop import Loop, StalledError
 from .types import Experiment, Goal, Outcome, Trial
 from .workspace import DirtyTreeError
 
@@ -102,6 +102,13 @@ def _build_parser() -> argparse.ArgumentParser:
     run.add_argument("--propose", required=True, help="command that changes the code")
     run.add_argument("--trials", type=int, default=1)
     run.add_argument(
+        "--give-up-after",
+        type=int,
+        default=10,
+        metavar="N",
+        help="stop after N trials in a row produce no metric (0 to run regardless)",
+    )
+    run.add_argument(
         "--confirm",
         action="store_true",
         help="re-run before keeping a change, and keep it only if it wins twice",
@@ -143,6 +150,7 @@ def main(argv: list[str] | None = None) -> int:
         brief=getattr(args, "brief", True),
         confirm=getattr(args, "confirm", False),
         min_delta=args.min_delta,
+        give_up_after=getattr(args, "give_up_after", 0),
     )
     loop = Loop(experiment, workdir=args.workdir, ledger=args.ledger, reporter=_report)
 
@@ -153,7 +161,12 @@ def main(argv: list[str] | None = None) -> int:
             loop.baseline()
         else:
             loop.run(trials=args.trials)
-    except (DirtyTreeError, HarnessMismatchError, NoProtectedFilesError) as exc:
+    except (
+        DirtyTreeError,
+        HarnessMismatchError,
+        NoProtectedFilesError,
+        StalledError,
+    ) as exc:
         print(f"labloop: {exc}", file=sys.stderr)
         return 2
     except KeyboardInterrupt:

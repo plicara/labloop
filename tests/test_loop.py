@@ -17,6 +17,7 @@ from labloop import (
     Ledger,
     Loop,
     Outcome,
+    StalledError,
 )
 
 
@@ -223,6 +224,68 @@ def test_failed_proposal_short_circuits_the_run(tmp_path):
     assert trial.outcome is Outcome.FAILED
     assert trial.note == "propose command failed"
     assert not ws.commits
+
+
+# --- giving up on a broken setup -------------------------------------------
+
+
+def test_a_proposal_that_never_works_stops_the_run(tmp_path):
+    # A mistyped propose command used to fail identically for every trial in
+    # an overnight budget while looking busy.
+    loop, _ = make_loop(tmp_path, run="echo val=1.0", propose="exit 3")
+    loop.experiment.give_up_after = 3
+
+    with pytest.raises(StalledError, match="3 trials in a row"):
+        loop.run(trials=100)
+
+    trials = Ledger(tmp_path / "l.jsonl").trials()
+    assert len(trials) == 3, "it stops at the threshold, not after the whole budget"
+    assert all(t.outcome is Outcome.FAILED for t in trials)
+
+
+def test_giving_up_can_be_switched_off(tmp_path):
+    loop, _ = make_loop(tmp_path, run="echo val=1.0", propose="exit 3")
+    loop.experiment.give_up_after = 0
+    loop.run(trials=4)
+    assert len(Ledger(tmp_path / "l.jsonl").trials()) == 4
+
+
+def test_a_measured_trial_resets_the_count(tmp_path):
+    # Occasional failures are ordinary — an agent that hits a rate limit now
+    # and then must not end the run. Only an unbroken run of them counts.
+    flaky = tmp_path / "flaky.sh"
+    flaky.write_text(
+        "#!/bin/sh\n"
+        "n=$(cat n 2>/dev/null || echo 0); echo $((n+1)) > n\n"
+        "[ $((n % 3)) -eq 2 ] && exit 1\n"
+        "exit 0\n"
+    )
+    flaky.chmod(0o755)
+
+    loop, _ = make_loop(tmp_path, run="echo val=1.0", propose=str(flaky))
+    loop.experiment.give_up_after = 2
+    loop.run(trials=9)
+
+    outcomes = [t.outcome for t in Ledger(tmp_path / "l.jsonl").trials()]
+    assert len(outcomes) == 9, "intermittent failures must not stop the run"
+    assert Outcome.FAILED in outcomes
+
+
+def test_the_stall_message_says_what_went_wrong(tmp_path):
+    loop, _ = make_loop(tmp_path, run="echo nothing", propose="true")
+    loop.experiment.give_up_after = 2
+
+    with pytest.raises(StalledError) as exc:
+        loop.run(trials=50)
+
+    message = str(exc.value)
+    assert "no_metric" in message
+    assert "nothing is lost" in message, "the ledger still holds every trial"
+
+
+def test_a_negative_give_up_after_is_rejected():
+    with pytest.raises(ValueError, match="give_up_after"):
+        Experiment(run="x", metric="m", give_up_after=-1)
 
 
 def test_an_interrupted_trial_still_reaches_the_ledger(tmp_path):

@@ -20,7 +20,7 @@ most of the signal.
 
 from .integrity import HarnessMismatchError, NoProtectedFilesError, harness_digest
 from .ledger import Ledger
-from .loop import Loop
+from .loop import Loop, StalledError
 from .metrics import MetricNotFound, extract_metric
 from .runner import Completed, run_command
 from .types import Experiment, Goal, Outcome, Trial
@@ -40,6 +40,7 @@ __all__ = [
     "MetricNotFound",
     "NoProtectedFilesError",
     "Outcome",
+    "StalledError",
     "Trial",
     "Workspace",
     "__version__",

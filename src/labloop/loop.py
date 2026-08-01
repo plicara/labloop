@@ -24,9 +24,13 @@ from .runner import run_command
 from .types import Experiment, Goal, Outcome, Trial
 from .workspace import GitWorkspace, Workspace
 
-__all__ = ["Loop"]
+__all__ = ["Loop", "StalledError"]
 
 Reporter = Callable[[Trial], None]
+
+
+class StalledError(RuntimeError):
+    """Trial after trial produced no measurement, so the run was stopped."""
 
 
 class Loop:
@@ -136,6 +140,7 @@ class Loop:
 
         incumbent = self._incumbent()
         results: list[Trial] = []
+        stalled = 0
 
         for _ in range(trials):
             try:
@@ -159,6 +164,20 @@ class Loop:
             results.append(trial)
             if trial.outcome is Outcome.KEPT and trial.metric is not None:
                 incumbent = trial.metric
+
+            # A trial with no metric taught the loop nothing. One is ordinary;
+            # a run of them means the setup is broken, and a mistyped proposal
+            # command will otherwise fail identically for every trial in an
+            # overnight budget while looking busy.
+            stalled = 0 if trial.metric is not None else stalled + 1
+            if self.experiment.give_up_after and stalled >= self.experiment.give_up_after:
+                raise StalledError(
+                    f"stopping: {stalled} trials in a row produced no {self.experiment.metric}. "
+                    f"The last one was {trial.outcome.value}"
+                    f"{f' ({trial.note})' if trial.note else ''}. "
+                    "Every trial is in the ledger, so nothing is lost — fix the setup and "
+                    "run again, or pass --give-up-after 0 if this is expected."
+                )
         return results
 
     def _one_trial(self, incumbent: float | None) -> Trial:

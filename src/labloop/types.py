@@ -101,6 +101,10 @@ class Experiment:
     `min_delta` is how much better a metric has to be to count. Set it to the
     spread `labloop noise` reports; the two settings work on different halves
     of the problem, and cost little together.
+
+    `give_up_after` stops the run once that many trials in a row have produced
+    no measurement at all — a mistyped proposal command will otherwise fail
+    identically for as many trials as you gave it. 0 runs regardless.
     """
 
     run: str
@@ -113,12 +117,15 @@ class Experiment:
     brief: bool = True
     confirm: bool = False
     min_delta: float = 0.0
+    give_up_after: int = 10
 
     def __post_init__(self) -> None:
         if self.budget_seconds <= 0:
             raise ValueError("budget_seconds must be positive")
         if self.min_delta < 0:
             raise ValueError("min_delta must not be negative")
+        if self.give_up_after < 0:
+            raise ValueError("give_up_after must not be negative")
         if not self.run.strip():
             raise ValueError("run command must not be empty")
         if isinstance(self.goal, str):
