@@ -218,6 +218,38 @@ def test_a_no_op_proposal_does_not_spend_the_budget_on_the_experiment(tmp_path):
     assert trial.duration_seconds < 2.0, "the run command should never have started"
 
 
+def test_a_proposal_killed_at_the_budget_is_a_timeout_not_a_crash(tmp_path):
+    # Agents think for a while. Reported as "failed", you go looking for a
+    # crash in something that was only slow.
+    loop, ws = make_loop(tmp_path, run="echo val=1.0", propose="sleep 10", budget=0.5)
+    (trial,) = loop.run(trials=1)
+
+    assert trial.outcome is Outcome.TIMED_OUT
+    assert "budget" in trial.note
+    assert ws.reverts == 1
+
+
+def test_the_proposal_can_have_its_own_budget(tmp_path):
+    # An agent that thinks for longer than the experiment runs is ordinary,
+    # and one number for both would kill it.
+    loop, _ = make_loop(tmp_path, run="echo val=1.0", propose="sleep 1", budget=0.3)
+    loop.experiment.propose_budget = 30.0
+    (trial,) = loop.run(trials=1)
+    assert trial.outcome is Outcome.KEPT
+
+
+def test_the_proposal_budget_defaults_to_the_run_budget():
+    exp = Experiment(run="x", metric="m", budget_seconds=45.0)
+    assert exp.propose_timeout == 45.0
+    exp.propose_budget = 120.0
+    assert exp.propose_timeout == 120.0
+
+
+def test_a_non_positive_proposal_budget_is_rejected():
+    with pytest.raises(ValueError, match="propose_budget"):
+        Experiment(run="x", metric="m", propose_budget=0)
+
+
 def test_failed_proposal_short_circuits_the_run(tmp_path):
     loop, ws = make_loop(tmp_path, run="echo val=0.001", propose="exit 3")
     (trial,) = loop.run(trials=1)

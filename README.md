@@ -73,7 +73,7 @@ incumbent. Anything else is discarded:
 | `kept` | Metric improved. Committed. |
 | `reverted` | Metric was worse, or tied. |
 | `failed` | The command exited non-zero. |
-| `timed_out` | Exceeded the budget. Process group killed. |
+| `timed_out` | Exceeded its budget. Process group killed. |
 | `no_metric` | Ran clean but printed no metric. |
 | `not_finite` | The metric was `nan` or `inf`. Nothing compares to it. |
 | `no_change` | The proposal edited nothing, so there was nothing to measure. |
@@ -91,6 +91,12 @@ Four details that matter:
 - **The loop refuses to start on a dirty tree.** It reverts by discarding, so
   uncommitted work would be destroyed.
 - **A metric from a changed harness is not a result.** See below.
+
+`--budget` is how long the experiment may run. An agent that thinks for longer
+than the experiment takes is ordinary, so give the proposal its own with
+`--propose-budget SECONDS` rather than raising both. Either one that overruns
+is killed with its whole process group and recorded as `timed_out`, so a
+training script's workers can't survive to contend with the next trial.
 
 It also stops when it stops learning. Ten trials in a row that produce no metric
 at all — a mistyped `propose` command, an agent that never applies its edit —

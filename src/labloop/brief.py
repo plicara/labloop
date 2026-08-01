@@ -124,6 +124,10 @@ def _why(trial: Trial, experiment: Experiment) -> str:
         )
 
     if trial.outcome is Outcome.TIMED_OUT:
+        # The note distinguishes a proposal that ran long from an experiment
+        # that did; only the latter is about the code under study.
+        if trial.note:
+            return f"reverted: {trial.note}"
         return f"reverted: exceeded the {experiment.budget_seconds:g}s budget and was killed"
 
     if trial.outcome is Outcome.NO_METRIC:

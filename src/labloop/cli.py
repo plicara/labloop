@@ -80,7 +80,9 @@ def _build_parser() -> argparse.ArgumentParser:
             default=0.0,
             help="how much better the metric must be to count; use the spread from `labloop noise`",
         )
-        p.add_argument("--budget", type=float, default=300.0, help="seconds per command")
+        p.add_argument(
+            "--budget", type=float, default=300.0, help="seconds the run command may take"
+        )
         p.add_argument("--workdir", default=".")
         p.add_argument("--ledger", default="labloop.jsonl")
         p.add_argument(
@@ -101,6 +103,13 @@ def _build_parser() -> argparse.ArgumentParser:
     add_common(run)
     run.add_argument("--propose", required=True, help="command that changes the code")
     run.add_argument("--trials", type=int, default=1)
+    run.add_argument(
+        "--propose-budget",
+        type=float,
+        default=None,
+        metavar="SECONDS",
+        help="seconds the propose command may take (default: same as --budget)",
+    )
     run.add_argument(
         "--give-up-after",
         type=int,
@@ -151,6 +160,7 @@ def main(argv: list[str] | None = None) -> int:
         confirm=getattr(args, "confirm", False),
         min_delta=args.min_delta,
         give_up_after=getattr(args, "give_up_after", 0),
+        propose_budget=getattr(args, "propose_budget", None),
     )
     loop = Loop(experiment, workdir=args.workdir, ledger=args.ledger, reporter=_report)
 

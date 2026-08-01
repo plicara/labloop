@@ -207,7 +207,7 @@ class Loop:
             proposal = run_command(
                 self.experiment.propose or "",
                 cwd=self.workdir,
-                timeout=self.experiment.budget_seconds,
+                timeout=self.experiment.propose_timeout,
                 env=env,
             )
         spent = proposal.duration_seconds
@@ -222,10 +222,18 @@ class Loop:
             )
 
         if not proposal.ok:
+            # A proposal killed at the budget did not fail, it ran out of
+            # time. Told it "failed", you go looking for a crash in an agent
+            # that was only thinking.
+            timed_out = proposal.timed_out
             return reject(
-                Outcome.FAILED,
+                Outcome.TIMED_OUT if timed_out else Outcome.FAILED,
                 spent,
-                note="propose command failed",
+                note=(
+                    f"proposal exceeded its {self.experiment.propose_timeout:g}s budget"
+                    if timed_out
+                    else "propose command failed"
+                ),
                 stdout_tail=proposal.tail,
             )
 

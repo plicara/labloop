@@ -118,6 +118,17 @@ class Experiment:
     confirm: bool = False
     min_delta: float = 0.0
     give_up_after: int = 10
+    propose_budget: float | None = None
+
+    @property
+    def propose_timeout(self) -> float:
+        """How long the proposal may take, falling back to the run's budget.
+
+        An agent thinking and a training run training are different jobs with
+        different natural lengths, and one number for both means tightening
+        the experiment's budget silently starts killing the agent.
+        """
+        return self.budget_seconds if self.propose_budget is None else self.propose_budget
 
     def __post_init__(self) -> None:
         if self.budget_seconds <= 0:
@@ -126,6 +137,8 @@ class Experiment:
             raise ValueError("min_delta must not be negative")
         if self.give_up_after < 0:
             raise ValueError("give_up_after must not be negative")
+        if self.propose_budget is not None and self.propose_budget <= 0:
+            raise ValueError("propose_budget must be positive")
         if not self.run.strip():
             raise ValueError("run command must not be empty")
         if isinstance(self.goal, str):
