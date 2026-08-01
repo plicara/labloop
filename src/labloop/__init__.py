@@ -23,7 +23,7 @@ from .ledger import Ledger
 from .loop import Loop, StalledError
 from .metrics import MetricNotFound, extract_metric
 from .runner import Completed, run_command
-from .types import Experiment, Goal, Outcome, Trial
+from .types import Experiment, Goal, Outcome, Trial, UsageError
 from .workspace import DirtyTreeError, GitWorkspace, Workspace
 
 __version__ = "0.1.0"
@@ -42,6 +42,7 @@ __all__ = [
     "Outcome",
     "StalledError",
     "Trial",
+    "UsageError",
     "Workspace",
     "__version__",
     "extract_metric",

@@ -21,7 +21,7 @@ from .integrity import (
 from .ledger import Ledger
 from .metrics import MetricNotFound, extract_metric
 from .runner import run_command
-from .types import Experiment, Goal, Outcome, Trial
+from .types import Experiment, Goal, Outcome, Trial, UsageError
 from .workspace import GitWorkspace, Workspace
 
 __all__ = ["Loop", "StalledError"]
@@ -109,7 +109,7 @@ class Loop:
         trials, and treating them as an incumbent would bias it.
         """
         if repeats < 2:
-            raise ValueError("measuring spread needs at least 2 runs")
+            raise UsageError("measuring spread needs at least 2 runs")
 
         values: list[float] = []
         for _ in range(repeats):
@@ -131,7 +131,7 @@ class Loop:
     def run(self, trials: int = 1) -> list[Trial]:
         """Run `trials` proposal-and-judge cycles."""
         if self.experiment.propose is None:
-            raise ValueError(
+            raise UsageError(
                 "experiment has no `propose` command; use baseline() to measure "
                 "the tree as-is, or set propose to an agent invocation"
             )

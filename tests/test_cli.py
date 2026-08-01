@@ -234,6 +234,43 @@ def test_a_long_diagnosis_keeps_both_ends(project, capsys):
     assert "…" in line and len(line) < 200
 
 
+@pytest.mark.parametrize(
+    ("argv", "expected"),
+    [
+        (["--workdir", "/no/such/dir"], "not a directory"),
+        (["--budget", "0"], "must be positive"),
+        (["--min-delta", "-1"], "must not be negative"),
+        (["--protect", "/etc/hostname"], "must be relative"),
+        (["--protect", "../outside.txt"], "points outside"),
+        (["--protect", "typo.py"], "matched no files"),
+    ],
+)
+def test_bad_input_is_a_message_not_a_traceback(project, capsys, argv, expected):
+    # A user's first typo should not look like the tool breaking.
+    code = main(["baseline", "--run", "python train.py", "--metric", "val_loss", *argv])
+    assert code == 2
+    assert expected in capsys.readouterr().err
+
+
+def test_a_bug_is_not_disguised_as_bad_input(project, monkeypatch):
+    # UsageError is caught so bad input reads as bad input. A ValueError from
+    # anywhere else is a defect and has to keep surfacing as one.
+    import labloop.cli as cli_module
+
+    def boom(*args, **kwargs):
+        raise ValueError("something internal went wrong")
+
+    monkeypatch.setattr(cli_module.Loop, "baseline", boom)
+    with pytest.raises(ValueError, match="something internal"):
+        main(["baseline", "--run", "python train.py", "--metric", "val_loss"])
+
+
+def test_a_non_positive_trial_count_is_refused(project):
+    with pytest.raises(SystemExit) as exit_info:
+        main(["run", "--run", "x", "--metric", "m", "--propose", "true", "--trials", "0"])
+    assert exit_info.value.code == 2
+
+
 def test_version_is_reported(capsys):
     with pytest.raises(SystemExit) as exit_info:
         main(["--version"])

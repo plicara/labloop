@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 
 from . import __version__
 from .integrity import HarnessMismatchError, NoProtectedFilesError
 from .ledger import Ledger
 from .loop import Loop, StalledError
-from .types import Experiment, Goal, Outcome, Trial
+from .types import Experiment, Goal, Outcome, Trial, UsageError
 from .workspace import DirtyTreeError
 
 _MARKS = {
@@ -62,6 +63,13 @@ def _report(trial: Trial) -> None:
         print(f"      {reason}", flush=True)
 
 
+def _positive(value: str) -> int:
+    number = int(value)
+    if number < 1:
+        raise argparse.ArgumentTypeError(f"must be 1 or more, got {number}")
+    return number
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="labloop",
@@ -102,7 +110,7 @@ def _build_parser() -> argparse.ArgumentParser:
     run = sub.add_parser("run", help="run proposal-and-judge cycles")
     add_common(run)
     run.add_argument("--propose", required=True, help="command that changes the code")
-    run.add_argument("--trials", type=int, default=1)
+    run.add_argument("--trials", type=_positive, default=1)
     run.add_argument(
         "--propose-budget",
         type=float,
@@ -133,7 +141,9 @@ def _build_parser() -> argparse.ArgumentParser:
         "noise", help="run the experiment repeatedly, unchanged, to measure its spread"
     )
     add_common(noise)
-    noise.add_argument("--repeat", type=int, default=5, help="how many runs (default 5)")
+    noise.add_argument(
+        "--repeat", type=_positive, default=5, help="how many runs (default 5)"
+    )
 
     log = sub.add_parser("log", help="summarize the ledger")
     log.add_argument("--ledger", default="labloop.jsonl")
@@ -148,6 +158,34 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "log":
         return _log(args)
+
+    try:
+        return _experiment_command(args)
+    except (
+        DirtyTreeError,
+        HarnessMismatchError,
+        NoProtectedFilesError,
+        StalledError,
+        UsageError,
+    ) as exc:
+        # Bad input, not a bug. A traceback here reads as the tool breaking
+        # when the user has only mistyped something.
+        print(f"labloop: {exc}", file=sys.stderr)
+        return 2
+    except KeyboardInterrupt:
+        print(
+            "\nlabloop: interrupted. The working tree may hold a change that was "
+            "never judged — discard it with `git reset --hard && git clean -fd` "
+            "before starting again.",
+            file=sys.stderr,
+        )
+        return 130
+
+
+def _experiment_command(args) -> int:
+    workdir = Path(args.workdir)
+    if not workdir.is_dir():
+        raise UsageError(f"--workdir {args.workdir!r} is not a directory")
 
     experiment = Experiment(
         run=args.run,
@@ -164,29 +202,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     loop = Loop(experiment, workdir=args.workdir, ledger=args.ledger, reporter=_report)
 
-    try:
-        if args.command == "noise":
-            return _noise(loop, args.repeat)
-        if args.command == "baseline":
-            loop.baseline()
-        else:
-            loop.run(trials=args.trials)
-    except (
-        DirtyTreeError,
-        HarnessMismatchError,
-        NoProtectedFilesError,
-        StalledError,
-    ) as exc:
-        print(f"labloop: {exc}", file=sys.stderr)
-        return 2
-    except KeyboardInterrupt:
-        print(
-            "\nlabloop: interrupted. The working tree may hold a change that was "
-            "never judged — discard it with `git reset --hard && git clean -fd` "
-            "before starting again.",
-            file=sys.stderr,
-        )
-        return 130
+    if args.command == "noise":
+        return _noise(loop, args.repeat)
+    if args.command == "baseline":
+        loop.baseline()
+    else:
+        loop.run(trials=args.trials)
 
     best = loop.ledger.best(experiment.goal)
     if best and best.metric is not None:

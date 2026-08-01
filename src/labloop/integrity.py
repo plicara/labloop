@@ -24,6 +24,8 @@ import hashlib
 from collections.abc import Sequence
 from pathlib import Path
 
+from .types import UsageError
+
 __all__ = [
     "HarnessMismatchError",
     "NoProtectedFilesError",
@@ -41,7 +43,7 @@ class HarnessMismatchError(RuntimeError):
     """The incumbent in the ledger was measured by a different harness."""
 
 
-class NoProtectedFilesError(ValueError):
+class NoProtectedFilesError(UsageError):
     """The protected patterns matched nothing."""
 
 
@@ -132,6 +134,18 @@ def _matching(root: Path, patterns: Sequence[str]) -> set[str]:
     """
     names: set[str] = set()
     for pattern in patterns:
+        # Checked rather than left to glob, which raises NotImplementedError
+        # for an absolute pattern — true, and no help at all to someone who
+        # typed a path. `..` is rejected because a match outside the root has
+        # no name relative to it.
+        if Path(pattern).is_absolute() or pattern.startswith("~"):
+            raise UsageError(
+                f"protected pattern {pattern!r} must be relative to the workspace root"
+            )
+        if ".." in Path(pattern).parts:
+            raise UsageError(
+                f"protected pattern {pattern!r} points outside the workspace root"
+            )
         for path in root.glob(pattern):
             if path.is_symlink():
                 continue

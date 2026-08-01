@@ -7,6 +7,16 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 
+class UsageError(ValueError):
+    """What was asked for cannot work, and the fix is in the request.
+
+    Separate from ValueError so the command line can report bad input as bad
+    input while a ValueError raised anywhere else still surfaces as the bug it
+    is. It subclasses ValueError so callers of the Python API can keep
+    catching that.
+    """
+
+
 class Goal(enum.Enum):
     """Whether a lower or higher metric is better."""
 
@@ -128,15 +138,15 @@ class Experiment:
 
     def __post_init__(self) -> None:
         if self.budget_seconds <= 0:
-            raise ValueError("budget_seconds must be positive")
+            raise UsageError("budget_seconds must be positive")
         if self.min_delta < 0:
-            raise ValueError("min_delta must not be negative")
+            raise UsageError("min_delta must not be negative")
         if self.give_up_after < 0:
-            raise ValueError("give_up_after must not be negative")
+            raise UsageError("give_up_after must not be negative")
         if self.propose_budget is not None and self.propose_budget <= 0:
-            raise ValueError("propose_budget must be positive")
+            raise UsageError("propose_budget must be positive")
         if not self.run.strip():
-            raise ValueError("run command must not be empty")
+            raise UsageError("run command must not be empty")
         if isinstance(self.goal, str):
             self.goal = Goal(self.goal)
         if isinstance(self.protect, str):
