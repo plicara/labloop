@@ -152,6 +152,20 @@ def test_incumbent_carries_across_separate_runs(tmp_path):
     assert trial.outcome is Outcome.REVERTED
 
 
+def test_a_ledger_written_before_harness_digests_existed_still_loads(tmp_path):
+    # Exactly what 0.1.0 wrote. The ledger is append-only and long-lived, so
+    # fields added later must not strand the trials already in it.
+    path = tmp_path / "old.jsonl"
+    path.write_text(
+        '{"commit": null, "duration_seconds": 1.0, "incumbent": null, "index": 0, '
+        '"metric": 2.0, "note": "baseline", "outcome": "kept", "stdout_tail": ""}\n'
+    )
+    (trial,) = Ledger(path).trials()
+    assert trial.metric == 2.0
+    assert trial.harness is None
+    assert Ledger(path).best(Goal.MINIMIZE).metric == 2.0
+
+
 def test_ledger_best_and_summary(tmp_path):
     loop, _ = make_loop(tmp_path, run="echo val=3.0")
     loop.baseline()
