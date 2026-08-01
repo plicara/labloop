@@ -16,9 +16,12 @@ pip install labloop
 
 ## Use
 
-Establish a baseline, then let an agent iterate against it:
+Check the experiment gives the same answer twice, take a baseline, then let an
+agent iterate against it:
 
 ```bash
+labloop noise --run "python train.py" --metric val_loss
+
 labloop baseline --run "python train.py" --metric val_loss
 
 labloop run \
@@ -42,6 +45,10 @@ best val_loss: 2.201 (trial 4)
 `+` kept, `-` reverted, `T` timed out, `!` crashed, `?` no metric found,
 `~` the metric was `nan` or `inf`, `=` the proposal changed nothing,
 `H` the proposal changed the harness, `^` interrupted.
+
+The first step is not ceremony. Keep-or-revert is only as good as the metric
+holding still, and [most of what can go wrong](#check-your-metric-holds-still)
+starts there.
 
 Or from Python:
 
@@ -103,6 +110,16 @@ at all â€” a mistyped `propose` command, an agent that never applies its edit â€
 end the run rather than spend the rest of an overnight budget failing
 identically. Occasional failures don't count; only an unbroken run of them does.
 Change it with `--give-up-after N`, or `0` to run regardless.
+
+## Reading the metric
+
+Two formats, no configuration. The last occurrence wins, so printing every
+epoch is fine.
+
+```
+val_loss = 1.234        # key=value or key: value
+{"step": 40, "val_loss": 1.234}    # a JSON object on its own line
+```
 
 ## Check your metric holds still
 
@@ -205,16 +222,6 @@ look.
 writes a cache or a log inside a protected path, that path stops being stable
 and the loop will refuse to compare against its own earlier trials. Caches are
 artifacts; keep them somewhere you are not protecting.
-
-## Reading the metric
-
-Two formats, no configuration. The last occurrence wins, so printing every
-epoch is fine.
-
-```
-val_loss = 1.234        # key=value or key: value
-{"step": 40, "val_loss": 1.234}    # a JSON object on its own line
-```
 
 ## What the proposer is told
 
