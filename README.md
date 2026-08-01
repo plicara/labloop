@@ -40,7 +40,8 @@ best val_loss: 2.201 (trial 4)
 ```
 
 `+` kept, `-` reverted, `T` timed out, `!` crashed, `?` no metric found,
-`H` the proposal changed the harness.
+`~` the metric was `nan` or `inf`, `=` the proposal changed nothing,
+`H` the proposal changed the harness, `^` interrupted.
 
 Or from Python:
 
@@ -74,14 +75,19 @@ incumbent. Anything else is discarded:
 | `failed` | The command exited non-zero. |
 | `timed_out` | Exceeded the budget. Process group killed. |
 | `no_metric` | Ran clean but printed no metric. |
+| `not_finite` | The metric was `nan` or `inf`. Nothing compares to it. |
+| `no_change` | The proposal edited nothing, so there was nothing to measure. |
 | `harness_changed` | The proposal edited the thing doing the measuring. |
+| `interrupted` | Stopped by hand partway through. |
 
 Four details that matter:
 
 - **A tie is not an improvement.** Equal scores revert, so the loop never
   accumulates neutral churn.
 - **A missing metric is not a bad score.** A broken experiment and a poor
-  result are different events and are recorded differently.
+  result are different events and are recorded differently. So are a crash, a
+  diverged run that printed `nan`, and a proposal that edited nothing — each
+  sends you somewhere different, so each gets its own outcome.
 - **The loop refuses to start on a dirty tree.** It reverts by discarding, so
   uncommitted work would be destroyed.
 - **A metric from a changed harness is not a result.** See below.

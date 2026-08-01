@@ -15,11 +15,27 @@ from .workspace import DirtyTreeError
 _MARKS = {
     Outcome.KEPT: "+",
     Outcome.REVERTED: "-",
+    Outcome.NO_CHANGE: "=",
     Outcome.FAILED: "!",
     Outcome.TIMED_OUT: "T",
     Outcome.NO_METRIC: "?",
+    Outcome.NOT_FINITE: "~",
     Outcome.HARNESS_CHANGED: "H",
+    Outcome.INTERRUPTED: "^",
 }
+
+
+# Outcomes where the output says something the outcome alone doesn't. A
+# mistyped propose command otherwise repeats "propose command failed" for
+# every trial in the run, with the actual error only in the ledger.
+_DIAGNOSE = (Outcome.FAILED, Outcome.TIMED_OUT, Outcome.NO_METRIC)
+
+
+def _last_line(text: str, limit: int = 100) -> str:
+    for line in reversed(text.strip().splitlines()):
+        if line.strip():
+            return line.strip()[:limit]
+    return ""
 
 
 def _report(trial: Trial) -> None:
@@ -33,6 +49,9 @@ def _report(trial: Trial) -> None:
     if trial.note:
         line += f"  ({trial.note})"
     print(line, flush=True)
+
+    if trial.outcome in _DIAGNOSE and (reason := _last_line(trial.stdout_tail)):
+        print(f"      {reason}", flush=True)
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -109,7 +128,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"labloop: {exc}", file=sys.stderr)
         return 2
     except KeyboardInterrupt:
-        print("\nlabloop: interrupted", file=sys.stderr)
+        print(
+            "\nlabloop: interrupted. The working tree may hold a change that was "
+            "never judged — discard it with `git checkout -- . && git clean -fd` "
+            "before starting again.",
+            file=sys.stderr,
+        )
         return 130
 
     best = loop.ledger.best(experiment.goal)

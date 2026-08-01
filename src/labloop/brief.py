@@ -88,7 +88,12 @@ def _entry(trial: Trial, experiment: Experiment) -> dict[str, Any]:
         entry["commit"] = trial.commit
     # Output only where it explains something. A trial that produced a number
     # is explained by the number.
-    if trial.outcome in (Outcome.FAILED, Outcome.TIMED_OUT, Outcome.NO_METRIC):
+    if trial.outcome in (
+        Outcome.FAILED,
+        Outcome.TIMED_OUT,
+        Outcome.NO_METRIC,
+        Outcome.NOT_FINITE,
+    ):
         entry["output_tail"] = trial.stdout_tail[-_TAIL:]
     return entry
 
@@ -125,6 +130,21 @@ def _why(trial: Trial, experiment: Experiment) -> str:
         return (
             f"reverted: ran clean but never printed {metric!r}; print it as "
             f"'{metric}=<number>' or as a JSON object on its own line"
+        )
+
+    if trial.outcome is Outcome.INTERRUPTED:
+        return "not measured: the run was stopped by hand partway through"
+
+    if trial.outcome is Outcome.NO_CHANGE:
+        return (
+            "not measured: the proposal edited nothing, so the tree is still the "
+            "incumbent's. Make a change to the code under study"
+        )
+
+    if trial.outcome is Outcome.NOT_FINITE:
+        return (
+            f"reverted: {trial.note}. The run finished, so this is a diverged "
+            "configuration rather than a broken one"
         )
 
     if trial.outcome is Outcome.HARNESS_CHANGED:

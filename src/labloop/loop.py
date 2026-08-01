@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import tempfile
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
@@ -63,8 +64,13 @@ class Loop:
             env=self.experiment.env,
         )
         metric = self._read_metric(completed.output)
-        succeeded = metric is not None and completed.ok
-        outcome = Outcome.KEPT if succeeded else self._failure(completed, metric)
+        note = "baseline"
+        if metric is None or not completed.ok:
+            outcome, metric = self._failure(completed), None
+        elif not math.isfinite(metric):
+            outcome, note, metric = Outcome.NOT_FINITE, self._not_finite(metric), None
+        else:
+            outcome = Outcome.KEPT
 
         trial = Trial(
             index=self.ledger.next_index(),
@@ -72,7 +78,7 @@ class Loop:
             metric=metric,
             incumbent=None,
             duration_seconds=completed.duration_seconds,
-            note="baseline",
+            note=note,
             stdout_tail=completed.tail,
             harness=harness,
         )
@@ -93,7 +99,24 @@ class Loop:
         results: list[Trial] = []
 
         for _ in range(trials):
-            trial = self._one_trial(incumbent)
+            try:
+                trial = self._one_trial(incumbent)
+            except KeyboardInterrupt:
+                # An overnight run stopped by hand is still a trial that
+                # happened. Recording it before re-raising keeps the ledger's
+                # promise; the tree is left as it is, because discarding a
+                # change nobody has looked at is the user's call, not ours.
+                self._record(
+                    Trial(
+                        index=self.ledger.next_index(),
+                        outcome=Outcome.INTERRUPTED,
+                        metric=None,
+                        incumbent=incumbent,
+                        duration_seconds=0.0,
+                        note="stopped by hand; the tree may hold an unjudged change",
+                    )
+                )
+                raise
             results.append(trial)
             if trial.outcome is Outcome.KEPT and trial.metric is not None:
                 incumbent = trial.metric
@@ -146,6 +169,26 @@ class Loop:
                 )
             )
 
+        if not self.workspace.is_dirty():
+            # There is nothing to judge: the tree is the incumbent's tree, so
+            # running the experiment would spend the budget re-measuring what
+            # the ledger already holds, and any difference in the number would
+            # be noise recorded as progress. Committing is not an option
+            # either — git refuses an empty commit, which used to end the run
+            # with a traceback and no record of the trial.
+            return self._record(
+                Trial(
+                    index=index,
+                    outcome=Outcome.NO_CHANGE,
+                    metric=None,
+                    incumbent=incumbent,
+                    duration_seconds=proposal.duration_seconds,
+                    note="proposal left the tree unchanged",
+                    stdout_tail=proposal.tail,
+                    harness=harness,
+                )
+            )
+
         completed = run_command(
             self.experiment.run,
             cwd=self.workdir,
@@ -160,10 +203,29 @@ class Loop:
             return self._record(
                 Trial(
                     index=index,
-                    outcome=self._failure(completed, metric),
-                    metric=metric,
+                    outcome=self._failure(completed),
+                    metric=None,
                     incumbent=incumbent,
                     duration_seconds=duration,
+                    stdout_tail=completed.tail,
+                    harness=harness,
+                )
+            )
+
+        if not math.isfinite(metric):
+            # Kept out of the ledger as a number on purpose. Nothing compares
+            # better than nan, so an incumbent holding one reverts every later
+            # trial forever, and NaN is not valid JSON for anything reading
+            # the ledger afterwards.
+            self.workspace.revert()
+            return self._record(
+                Trial(
+                    index=index,
+                    outcome=Outcome.NOT_FINITE,
+                    metric=None,
+                    incumbent=incumbent,
+                    duration_seconds=duration,
+                    note=self._not_finite(metric),
                     stdout_tail=completed.tail,
                     harness=harness,
                 )
@@ -272,6 +334,9 @@ class Loop:
             )
         return best.metric
 
+    def _not_finite(self, value: float) -> str:
+        return f"{self.experiment.metric} was {value}, which cannot be compared"
+
     def _read_metric(self, output: str) -> float | None:
         try:
             return extract_metric(output, self.experiment.metric)
@@ -279,12 +344,19 @@ class Loop:
             return None
 
     @staticmethod
-    def _failure(completed, metric: float | None) -> Outcome:
+    def _failure(completed) -> Outcome:
+        """Why a trial produced nothing usable.
+
+        Exit status is read before the metric. A crashed run that printed
+        nothing crashed — calling it "no metric" would send you to check your
+        print statement instead of the stack trace. NO_METRIC is reserved for
+        what it says: a run that finished cleanly and stayed quiet.
+        """
         if completed.timed_out:
             return Outcome.TIMED_OUT
-        if metric is None:
-            return Outcome.NO_METRIC
-        return Outcome.FAILED
+        if not completed.ok:
+            return Outcome.FAILED
+        return Outcome.NO_METRIC
 
     def _record(self, trial: Trial) -> Trial:
         self.ledger.append(trial)

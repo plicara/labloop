@@ -29,10 +29,13 @@ class Outcome(enum.Enum):
 
     KEPT = "kept"
     REVERTED = "reverted"
+    NO_CHANGE = "no_change"
     FAILED = "failed"
     TIMED_OUT = "timed_out"
     NO_METRIC = "no_metric"
+    NOT_FINITE = "not_finite"
     HARNESS_CHANGED = "harness_changed"
+    INTERRUPTED = "interrupted"
 
     @property
     def is_improvement(self) -> bool:

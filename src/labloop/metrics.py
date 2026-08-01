@@ -21,7 +21,15 @@ class MetricNotFound(LookupError):
     """The named metric did not appear in the output."""
 
 
-_NUMBER = r"[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?"
+# nan and inf are matched because experiments print them: a diverged training
+# run says `loss = nan`, and reporting that as "no metric" would send you to
+# check your print statement instead of your learning rate. Deciding what such
+# a value means is the loop's job, not the parser's. The trailing boundary
+# keeps `status = info` from reading as infinity.
+_NUMBER = (
+    r"[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?"
+    r"|[-+]?(?:nan|inf(?:inity)?)\b"
+)
 
 
 def extract_metric(output: str, key: str) -> float:
@@ -30,6 +38,9 @@ def extract_metric(output: str, key: str) -> float:
     Raises MetricNotFound if the key never appears, rather than returning a
     sentinel. A missing metric is a broken experiment, not a bad score, and
     the loop treats the two differently.
+
+    The result may be nan or inf. Those are values the experiment printed, so
+    reporting them is honest; refusing to compare them is the loop's job.
     """
     value = _from_key_value(output, key)
     if value is not None:

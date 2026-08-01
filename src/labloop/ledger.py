@@ -11,6 +11,7 @@ write costs at most one trial.
 from __future__ import annotations
 
 import json
+import math
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -46,8 +47,18 @@ class Ledger:
         return list(self)
 
     def best(self, goal: Goal) -> Trial | None:
-        """Return the kept trial with the strongest metric, if any."""
-        scored = [t for t in self if t.outcome is Outcome.KEPT and t.metric is not None]
+        """Return the kept trial with the strongest metric, if any.
+
+        Non-finite metrics are skipped. Nothing compares better than nan, so
+        an incumbent holding one would revert every later trial forever — and
+        ledgers written before the loop refused to keep such a value still
+        exist.
+        """
+        scored = [
+            t
+            for t in self
+            if t.outcome is Outcome.KEPT and t.metric is not None and math.isfinite(t.metric)
+        ]
         if not scored:
             return None
         pick = min if goal is Goal.MINIMIZE else max

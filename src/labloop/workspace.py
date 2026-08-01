@@ -51,8 +51,11 @@ class GitWorkspace:
         """
         if self.is_dirty():
             raise DirtyTreeError(
-                "working tree has uncommitted changes; commit or stash them first "
-                "(the loop reverts by discarding, and would destroy them)"
+                "working tree has uncommitted changes, and the loop reverts by "
+                "discarding, so it would destroy them. If they are your work, "
+                "commit or stash them. If they are an unjudged change left by an "
+                "interrupted run, discard them with `git checkout -- . && git clean -fd` "
+                "— committing one would put a change nothing measured into the history."
             )
 
     def revert(self) -> None:

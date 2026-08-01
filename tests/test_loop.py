@@ -21,12 +21,15 @@ from labloop import (
 
 
 class FakeWorkspace:
-    def __init__(self) -> None:
+    def __init__(self, dirty: bool = True) -> None:
+        # Dirty by default, standing in for a proposal that edited something.
+        # Most tests care about the judging, not the editing.
+        self._dirty = dirty
         self.reverts = 0
         self.commits: list[str] = []
 
     def is_dirty(self) -> bool:
-        return False
+        return self._dirty
 
     def revert(self) -> None:
         self.reverts += 1
@@ -43,8 +46,9 @@ def make_loop(
     goal=Goal.MINIMIZE,
     budget=30.0,
     protect=(),
+    dirty=True,
 ):
-    ws = FakeWorkspace()
+    ws = FakeWorkspace(dirty=dirty)
     exp = Experiment(
         run=run,
         metric="val",
@@ -112,6 +116,69 @@ def test_crash_is_reverted_not_scored(tmp_path):
     assert not ws.commits, "a crashing trial must never be committed"
 
 
+def test_a_crash_that_printed_nothing_is_a_crash_not_a_missing_metric(tmp_path):
+    # The obvious real case: the run dies before it can print anything. Read
+    # in the wrong order this reports `no_metric`, sending you to check your
+    # print statement rather than the stack trace.
+    loop, ws = make_loop(tmp_path, run="echo 'Traceback...' >&2; exit 1")
+    (trial,) = loop.run(trials=1)
+    assert trial.outcome is Outcome.FAILED
+    assert ws.reverts == 1
+
+
+def test_a_diverged_run_is_not_reported_as_a_missing_metric(tmp_path):
+    loop, ws = make_loop(tmp_path, run="echo val=nan")
+    (trial,) = loop.run(trials=1)
+    assert trial.outcome is Outcome.NOT_FINITE
+    assert "nan" in trial.note
+    assert ws.reverts == 1
+    assert not ws.commits
+
+
+def test_a_non_finite_metric_never_becomes_the_incumbent(tmp_path):
+    # Nothing compares better than nan, so keeping one would revert every
+    # later trial forever and the loop would silently stop making progress.
+    loop, _ = make_loop(tmp_path, run="echo val=nan")
+    loop.baseline()
+
+    fresh, ws = make_loop(tmp_path, run="echo val=0.5")
+    (trial,) = fresh.run(trials=1)
+    assert trial.outcome is Outcome.KEPT
+    assert trial.incumbent is None, "a nan baseline leaves nothing to beat"
+    assert ws.commits
+
+
+def test_infinity_is_refused_the_same_way(tmp_path):
+    loop, ws = make_loop(tmp_path, run="echo val=inf")
+    (trial,) = loop.run(trials=1)
+    assert trial.outcome is Outcome.NOT_FINITE
+    assert not ws.commits
+
+
+def test_the_ledger_never_stores_a_metric_json_cannot_express(tmp_path):
+    # NaN is not valid JSON. Writing it would break every other tool reading
+    # the ledger, which is meant to be a queryable artifact.
+    loop, _ = make_loop(tmp_path, run="echo val=nan")
+    loop.baseline()
+    raw = (tmp_path / "l.jsonl").read_text()
+    assert "NaN" not in raw and "Infinity" not in raw
+    assert json.loads(raw.strip())["metric"] is None
+
+
+def test_a_ledger_already_holding_a_nan_still_recovers(tmp_path):
+    # Written by a version that kept them. The loop must not stay stuck.
+    path = tmp_path / "l.jsonl"
+    path.write_text(
+        '{"commit": null, "duration_seconds": 1.0, "harness": null, "incumbent": null, '
+        '"index": 0, "metric": NaN, "note": "baseline", "outcome": "kept", "stdout_tail": ""}\n'
+    )
+    assert Ledger(path).best(Goal.MINIMIZE) is None
+
+    loop, ws = make_loop(tmp_path, run="echo val=0.5")
+    (trial,) = loop.run(trials=1)
+    assert trial.outcome is Outcome.KEPT and ws.commits
+
+
 def test_missing_metric_is_distinguished_from_a_bad_score(tmp_path):
     loop, ws = make_loop(tmp_path, run="echo nothing useful")
     (trial,) = loop.run(trials=1)
@@ -127,12 +194,57 @@ def test_timeout_is_recorded_and_reverted(tmp_path):
     assert ws.reverts == 1
 
 
+def test_a_proposal_that_edited_nothing_is_recorded_not_committed(tmp_path):
+    # An agent that thinks it is done, or silently fails to apply its edit.
+    # git refuses an empty commit, which used to end the run with a traceback
+    # and no record of the trial at all.
+    loop, ws = make_loop(tmp_path, run="echo val=0.5", dirty=False)
+    (trial,) = loop.run(trials=1)
+
+    assert trial.outcome is Outcome.NO_CHANGE
+    assert not ws.commits
+    assert ws.reverts == 0, "there is nothing to revert"
+    assert Ledger(tmp_path / "l.jsonl").trials(), "the trial still reaches the ledger"
+
+
+def test_a_no_op_proposal_does_not_spend_the_budget_on_the_experiment(tmp_path):
+    # The tree is the incumbent's tree; re-measuring it would only record
+    # noise as progress.
+    loop, _ = make_loop(tmp_path, run="sleep 10 && echo val=0.1", budget=2.0, dirty=False)
+    (trial,) = loop.run(trials=1)
+
+    assert trial.outcome is Outcome.NO_CHANGE
+    assert trial.duration_seconds < 2.0, "the run command should never have started"
+
+
 def test_failed_proposal_short_circuits_the_run(tmp_path):
     loop, ws = make_loop(tmp_path, run="echo val=0.001", propose="exit 3")
     (trial,) = loop.run(trials=1)
     assert trial.outcome is Outcome.FAILED
     assert trial.note == "propose command failed"
     assert not ws.commits
+
+
+def test_an_interrupted_trial_still_reaches_the_ledger(tmp_path):
+    # Overnight runs get stopped by hand. "Every trial is recorded" has to
+    # survive that, or the record has a hole exactly where someone was
+    # watching.
+    loop, _ = make_loop(tmp_path, run="echo val=1.0")
+    loop.baseline()
+
+    loop, _ = make_loop(tmp_path, run="echo val=0.5")
+    loop.workspace.commit = _raise_interrupt
+
+    with pytest.raises(KeyboardInterrupt):
+        loop.run(trials=1)
+
+    last = Ledger(tmp_path / "l.jsonl").trials()[-1]
+    assert last.outcome is Outcome.INTERRUPTED
+    assert last.incumbent == 1.0
+
+
+def _raise_interrupt(message: str) -> str:
+    raise KeyboardInterrupt
 
 
 def test_run_without_propose_is_rejected(tmp_path):
