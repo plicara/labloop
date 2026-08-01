@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from labloop import NoProtectedFilesError, harness_digest
+from labloop.integrity import changed_files, harness_files
 
 
 def write(root, name: str, text: str = "x"):
@@ -87,6 +88,42 @@ def test_a_symlink_replacing_a_protected_file_is_detected(tmp_path):
 def test_patterns_matching_nothing_are_an_error_not_a_silent_pass(tmp_path):
     with pytest.raises(NoProtectedFilesError, match="matched no files"):
         harness_digest(tmp_path, ["evla.py"])
+
+
+def test_changed_files_names_what_moved(tmp_path):
+    write(tmp_path, "a.py", "one")
+    write(tmp_path, "b.py", "two")
+    before = harness_files(tmp_path, ["*.py"])
+
+    write(tmp_path, "b.py", "changed")
+    assert changed_files(before, harness_files(tmp_path, ["*.py"])) == "b.py"
+
+
+def test_changed_files_reports_additions_and_deletions(tmp_path):
+    write(tmp_path, "data/a.csv", "1")
+    before = harness_files(tmp_path, ["data"])
+
+    write(tmp_path, "data/.cache", "junk")
+    (tmp_path / "data/a.csv").unlink()
+    moved = changed_files(before, harness_files(tmp_path, ["data"]))
+    assert "data/.cache" in moved and "data/a.csv" in moved
+
+
+def test_changed_files_is_bounded(tmp_path):
+    for i in range(10):
+        write(tmp_path, f"f{i}.py", "same")
+    before = harness_files(tmp_path, ["*.py"])
+    for i in range(10):
+        write(tmp_path, f"f{i}.py", "different")
+
+    moved = changed_files(before, harness_files(tmp_path, ["*.py"]))
+    assert "and 7 more" in moved, "an error message should not list every file"
+
+
+def test_changed_files_says_nothing_when_nothing_moved(tmp_path):
+    write(tmp_path, "a.py", "one")
+    files = harness_files(tmp_path, ["a.py"])
+    assert changed_files(files, files) == ""
 
 
 def test_unprotected_files_do_not_move_the_digest(tmp_path):

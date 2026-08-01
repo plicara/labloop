@@ -338,6 +338,7 @@ def test_editing_the_harness_is_not_scored_as_an_improvement(tmp_path):
     (trial,) = loop.run(trials=1)
 
     assert trial.outcome is Outcome.HARNESS_CHANGED
+    assert "eval.py" in trial.note, "the note has to name the file that moved"
     assert trial.metric is None, "a metric from a moved harness is not a result"
     assert not ws.commits, "editing the evaluator must never be committed as a win"
     assert ws.reverts == 1

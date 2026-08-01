@@ -27,8 +27,10 @@ from pathlib import Path
 __all__ = [
     "HarnessMismatchError",
     "NoProtectedFilesError",
+    "changed_files",
     "file_digest",
     "harness_digest",
+    "harness_files",
 ]
 
 _CHUNK = 1 << 16
@@ -54,6 +56,26 @@ def harness_digest(root: str | Path, patterns: Sequence[str]) -> str | None:
     identical. Symlinks are excluded: following one would let a replaced file
     hash as its target, and dropping it from the set moves the digest anyway.
     """
+    files = harness_files(root, patterns)
+    if files is None:
+        return None
+
+    outer = hashlib.sha256()
+    for name, digest in sorted(files.items()):
+        outer.update(name.encode("utf-8"))
+        outer.update(b"\0")
+        outer.update(digest.encode("ascii"))
+        outer.update(b"\n")
+    return outer.hexdigest()
+
+
+def harness_files(root: str | Path, patterns: Sequence[str]) -> dict[str, str] | None:
+    """Digest each protected file separately, keyed by path.
+
+    The per-file view is what lets a failure say which file moved. "The
+    harness changed" sends you reading diffs; "data/.cache changed" tells you
+    your evaluator is writing a cache into the protected directory.
+    """
     if not patterns:
         return None
 
@@ -64,14 +86,23 @@ def harness_digest(root: str | Path, patterns: Sequence[str]) -> str | None:
             f"protected patterns {list(patterns)} matched no files under {root} — "
             "a typo here would silently disable the check"
         )
+    return {name: _digest_file(root / name).hex() for name in names}
 
-    outer = hashlib.sha256()
-    for name in sorted(names):
-        outer.update(name.encode("utf-8"))
-        outer.update(b"\0")
-        outer.update(_digest_file(root / name))
-        outer.update(b"\n")
-    return outer.hexdigest()
+
+def changed_files(
+    before: dict[str, str] | None, after: dict[str, str] | None, limit: int = 3
+) -> str:
+    """Name what moved between two per-file views, for an error message."""
+    if not before or not after:
+        return ""
+    names = sorted(
+        {n for n in before | after if before.get(n) != after.get(n)},
+        key=lambda n: (n not in after, n not in before, n),
+    )
+    if not names:
+        return ""
+    shown = ", ".join(names[:limit])
+    return shown if len(names) <= limit else f"{shown} and {len(names) - limit} more"
 
 
 def file_digest(path: str | Path) -> str | None:

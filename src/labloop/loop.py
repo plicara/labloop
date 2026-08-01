@@ -12,8 +12,10 @@ from . import brief as _brief
 from .integrity import (
     HarnessMismatchError,
     NoProtectedFilesError,
+    changed_files,
     file_digest,
     harness_digest,
+    harness_files,
 )
 from .ledger import Ledger
 from .metrics import MetricNotFound, extract_metric
@@ -160,6 +162,7 @@ class Loop:
 
     def _one_trial(self, incumbent: float | None) -> Trial:
         index = self.ledger.next_index()
+        files_before = harness_files(self.workdir, self.experiment.protect)
         harness = self._harness()
         ledger_before = file_digest(self.ledger.path)
 
@@ -174,7 +177,7 @@ class Loop:
         # Checked before the exit status, and before spending the budget on a
         # run whose number would mean nothing anyway. A proposal that moved
         # the measurement is a more serious event than one that crashed.
-        tampering = self._tampering(harness, ledger_before)
+        tampering = self._tampering(harness, ledger_before, files_before)
         if tampering:
             self.workspace.revert()
             return self._record(
@@ -374,7 +377,12 @@ class Loop:
     def _harness(self) -> str | None:
         return harness_digest(self.workdir, self.experiment.protect)
 
-    def _tampering(self, harness: str | None, ledger_before: str | None) -> str | None:
+    def _tampering(
+        self,
+        harness: str | None,
+        ledger_before: str | None,
+        files_before: dict[str, str] | None = None,
+    ) -> str | None:
         """Name what the proposal changed that it had no business changing.
 
         The ledger is checked unconditionally. It is the source of truth for
@@ -387,10 +395,15 @@ class Loop:
         if harness is None:
             return None
         try:
-            after = self._harness()
+            after = harness_files(self.workdir, self.experiment.protect)
         except NoProtectedFilesError:
             return "proposal deleted the protected files"
-        return "proposal modified the harness" if after != harness else None
+        if after == files_before:
+            return None
+        moved = changed_files(files_before, after)
+        if moved:
+            return f"proposal modified the harness: {moved}"
+        return "proposal modified the harness"
 
     def _incumbent(self) -> float | None:
         """The metric to beat, read from the ledger rather than memory.
@@ -409,8 +422,12 @@ class Loop:
         if current is not None and best.harness is not None and best.harness != current:
             raise HarnessMismatchError(
                 f"trial {best.index} was measured by a different harness "
-                f"({best.harness[:12]} vs {current[:12]}); its {self.experiment.metric} "
-                "is not comparable to what this loop would measure — start a new ledger"
+                f"({best.harness[:12]} vs {current[:12]}), so its "
+                f"{self.experiment.metric} is not comparable to what this loop would "
+                "measure. If a protected file changed on purpose, start a new ledger. "
+                "If your experiment writes a cache or log into a protected path, that "
+                "path is an artifact rather than part of the measurement — stop "
+                "protecting it, or move it out."
             )
         return best.metric
 

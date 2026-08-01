@@ -185,7 +185,14 @@ If the incumbent in your ledger was measured under a different digest, the loop
 stops rather than compare two numbers that came from different measurements.
 
 Patterns matching nothing are an error, not a silent pass — a typo there would
-quietly disable the whole check.
+quietly disable the whole check. When something does move, the trial names the
+file, so `proposal modified the harness: data/holdout.csv` tells you where to
+look.
+
+**Protect the measurement, not the directory it lives in.** If your evaluator
+writes a cache or a log inside a protected path, that path stops being stable
+and the loop will refuse to compare against its own earlier trials. Caches are
+artifacts; keep them somewhere you are not protecting.
 
 ## Reading the metric
 
