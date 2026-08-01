@@ -17,7 +17,9 @@ from labloop.cli import main
 
 
 def git(*args, cwd):
-    subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
+    return subprocess.run(
+        ["git", *args], cwd=cwd, check=True, capture_output=True, text=True
+    ).stdout
 
 
 @pytest.fixture
@@ -141,6 +143,27 @@ def test_editing_a_protected_file_is_marked_and_named(project, capsys):
     out = capsys.readouterr().out
     assert "[H]" in out and "eval.py" in out
     assert (project / "eval.py").read_text() == "threshold = 0.5\n", "and it was reverted"
+
+
+def test_a_proposal_that_adds_a_new_module_is_committed_whole(project, capsys):
+    # Agents write new files, not only edits. An untracked file has to count
+    # as a change and reach the commit.
+    main(["baseline", "--run", "python train.py", "--metric", "val_loss"])
+    code = main(
+        [
+            "run",
+            "--run",
+            "python train.py",
+            "--metric",
+            "val_loss",
+            "--propose",
+            "echo 'print(\"val_loss = 1.0\")' > train.py && echo 'helper = 1' > helper.py",
+        ]
+    )
+    assert code == 0
+    assert "[+] trial   1" in capsys.readouterr().out
+    tracked = git("ls-files", cwd=project)
+    assert "helper.py" in tracked
 
 
 def test_noise_reports_a_spread_without_writing_a_ledger(project, capsys):

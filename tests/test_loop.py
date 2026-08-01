@@ -651,6 +651,28 @@ def test_confirm_advances_the_incumbent_to_the_weaker_measurement(tmp_path):
     assert trial.metric == 0.8, "the incumbent advances to the weaker of the two"
 
 
+def test_confirm_takes_the_weaker_measurement_under_maximize_too(tmp_path):
+    # Weaker means smaller when higher is better, so the two goals need
+    # opposite reductions and a wrong one silently ratchets faster.
+    flip = tmp_path / "flip.sh"
+    flip.write_text(
+        "#!/bin/sh\nif [ -f seen ]; then echo acc=0.90; else touch seen; echo acc=0.99; fi\n"
+    )
+    flip.chmod(0o755)
+
+    loop, _ = make_loop(tmp_path, run="echo acc=0.5", goal=Goal.MAXIMIZE)
+    loop.experiment.metric = "acc"
+    loop.baseline()
+
+    loop, _ = make_loop(tmp_path, run=str(flip), goal=Goal.MAXIMIZE)
+    loop.experiment.metric = "acc"
+    loop.experiment.confirm = True
+    (trial,) = loop.run(trials=1)
+
+    assert trial.outcome is Outcome.KEPT
+    assert trial.metric == 0.90
+
+
 def test_measure_noise_runs_without_touching_the_ledger(tmp_path):
     loop, _ = make_loop(tmp_path, run="echo val=1.0")
     values = loop.measure_noise(repeats=3)

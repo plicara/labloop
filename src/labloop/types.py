@@ -41,10 +41,6 @@ class Outcome(enum.Enum):
     HARNESS_CHANGED = "harness_changed"
     INTERRUPTED = "interrupted"
 
-    @property
-    def is_improvement(self) -> bool:
-        return self is Outcome.KEPT
-
 
 @dataclass(frozen=True)
 class Trial:
