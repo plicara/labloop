@@ -2,11 +2,12 @@ name: CI
 
 on:
   push:
-    branches: [main]
   pull_request:
 
+# A branch and its pull request share a group, so opening a PR does not run
+# the same commit twice.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -47,3 +48,31 @@ jobs:
           python -m pip install --upgrade pip build twine
           python -m build
           twine check dist/*
+
+      # Installs the wheel into a clean environment and drives it end to end.
+      # `twine check` validates metadata, not that the package actually
+      # contains its modules — a packaging mistake passes it and fails on the
+      # user's first command.
+      - name: Smoke test the built wheel
+        run: |
+          python -m venv /tmp/smoke
+          /tmp/smoke/bin/pip install --quiet dist/*.whl
+          cd "$(mktemp -d)"
+          git init -q . && git config user.email ci@test && git config user.name ci
+          echo 'print("val_loss = 2.0")' > train.py
+          echo 'frozen' > eval.py
+          printf 'labloop.jsonl\n__pycache__/\n' > .gitignore
+          git add -A && git commit -qm init
+          export PYTHONDONTWRITEBYTECODE=1
+          L=/tmp/smoke/bin/labloop
+          $L --version
+          $L noise --run "python train.py" --metric val_loss --repeat 2
+          $L baseline --run "python train.py" --metric val_loss --protect eval.py
+          $L run --run "python train.py" --metric val_loss --protect eval.py \
+              --propose 'echo "print(\"val_loss = 1.0\")" > train.py' --trials 1
+          $L run --run "python train.py" --metric val_loss --protect eval.py \
+              --propose 'echo cheat > eval.py' --trials 1
+          $L log --metric val_loss
+          test "$(git log --oneline | wc -l)" = "2" || { echo "expected exactly one kept commit"; exit 1; }
+          grep -q harness_changed labloop.jsonl || { echo "harness check did not fire"; exit 1; }
+          echo "smoke test passed"
