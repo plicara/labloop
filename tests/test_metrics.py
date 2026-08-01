@@ -58,6 +58,18 @@ def test_both_output_formats_agree_about_nan():
     assert math.isnan(extract_metric('{"val_loss": NaN}', "val_loss"))
 
 
+@pytest.mark.parametrize(
+    "key",
+    ["val_loss", "val.loss", "val-loss", "val/loss", "loss(train)", "acc%", "p95_ms"],
+)
+def test_punctuation_in_a_metric_name_is_read_the_same_in_both_formats(key):
+    # A name ending in a non-word character used to be found in the JSON form
+    # and missed in the key=value form, so the same run reported a metric or
+    # no metric depending on how it printed.
+    assert extract_metric(f"{key} = 1.5", key) == 1.5
+    assert extract_metric(f'{{"{key}": 1.5}}', key) == 1.5
+
+
 def test_a_word_beginning_with_inf_is_not_a_number():
     with pytest.raises(MetricNotFound):
         extract_metric("status = info", "status")

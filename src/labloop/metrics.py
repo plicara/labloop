@@ -53,9 +53,22 @@ def extract_metric(output: str, key: str) -> float:
     raise MetricNotFound(f"metric {key!r} not found in output")
 
 
+def _word_edge(char: str) -> str:
+    r"""A `\b` only where one can match.
+
+    `\b` sits between a word character and a non-word one, so appending it to
+    a key ending in `)` or `%` demands a word character that is never there —
+    `loss(train) = 1.5` would not be found, though the JSON form finds it. The
+    boundary still guards keys that end in a word character, which is where it
+    earns its keep: `val_loss` must not match `total_val_loss_scaled`.
+    """
+    return r"\b" if char.isalnum() or char == "_" else ""
+
+
 def _from_key_value(output: str, key: str) -> float | None:
     pattern = re.compile(
-        rf"\b{re.escape(key)}\b\s*[=:]\s*({_NUMBER})",
+        rf"{_word_edge(key[:1])}{re.escape(key)}{_word_edge(key[-1:])}"
+        rf"\s*[=:]\s*({_NUMBER})",
         re.IGNORECASE,
     )
     matches = pattern.findall(output)
