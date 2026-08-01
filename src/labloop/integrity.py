@@ -28,6 +28,7 @@ __all__ = [
     "HarnessMismatchError",
     "NoProtectedFilesError",
     "changed_files",
+    "combine",
     "file_digest",
     "harness_digest",
     "harness_files",
@@ -56,7 +57,16 @@ def harness_digest(root: str | Path, patterns: Sequence[str]) -> str | None:
     identical. Symlinks are excluded: following one would let a replaced file
     hash as its target, and dropping it from the set moves the digest anyway.
     """
-    files = harness_files(root, patterns)
+    return combine(harness_files(root, patterns))
+
+
+def combine(files: dict[str, str] | None) -> str | None:
+    """Reduce a per-file view to one digest.
+
+    Kept separate so a caller that already has the per-file view — which the
+    loop does, to say which file moved — does not read every protected byte a
+    second time to get the aggregate.
+    """
     if files is None:
         return None
 

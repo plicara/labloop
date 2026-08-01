@@ -33,8 +33,16 @@ _DIAGNOSE = (Outcome.FAILED, Outcome.TIMED_OUT, Outcome.NO_METRIC)
 
 def _last_line(text: str, limit: int = 100) -> str:
     for line in reversed(text.strip().splitlines()):
-        if line.strip():
-            return line.strip()[:limit]
+        line = line.strip()
+        if not line:
+            continue
+        if len(line) <= limit:
+            return line
+        # Both ends, not the first N characters. An error names the problem at
+        # the front and the thing it happened to at the back; the long path in
+        # the middle is the part worth losing.
+        half = (limit - 1) // 2
+        return f"{line[:half]}…{line[-half:]}"
     return ""
 
 

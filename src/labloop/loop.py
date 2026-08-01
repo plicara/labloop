@@ -13,6 +13,7 @@ from .integrity import (
     HarnessMismatchError,
     NoProtectedFilesError,
     changed_files,
+    combine,
     file_digest,
     harness_digest,
     harness_files,
@@ -163,8 +164,25 @@ class Loop:
     def _one_trial(self, incumbent: float | None) -> Trial:
         index = self.ledger.next_index()
         files_before = harness_files(self.workdir, self.experiment.protect)
-        harness = self._harness()
+        harness = combine(files_before)
         ledger_before = file_digest(self.ledger.path)
+
+        def record(outcome: Outcome, duration: float, **fields: object) -> Trial:
+            """Every branch below shares these; only the verdict differs."""
+            return self._record(
+                Trial(
+                    index=index,
+                    outcome=outcome,
+                    incumbent=incumbent,
+                    duration_seconds=duration,
+                    harness=harness,
+                    **{"metric": None, **fields},  # type: ignore[arg-type]
+                )
+            )
+
+        def reject(outcome: Outcome, duration: float, **fields: object) -> Trial:
+            self.workspace.revert()
+            return record(outcome, duration, **fields)
 
         with self._proposal_env(index, incumbent) as env:
             proposal = run_command(
@@ -173,59 +191,37 @@ class Loop:
                 timeout=self.experiment.budget_seconds,
                 env=env,
             )
+        spent = proposal.duration_seconds
 
         # Checked before the exit status, and before spending the budget on a
         # run whose number would mean nothing anyway. A proposal that moved
         # the measurement is a more serious event than one that crashed.
         tampering = self._tampering(harness, ledger_before, files_before)
         if tampering:
-            self.workspace.revert()
-            return self._record(
-                Trial(
-                    index=index,
-                    outcome=Outcome.HARNESS_CHANGED,
-                    metric=None,
-                    incumbent=incumbent,
-                    duration_seconds=proposal.duration_seconds,
-                    note=tampering,
-                    stdout_tail=proposal.tail,
-                    harness=harness,
-                )
+            return reject(
+                Outcome.HARNESS_CHANGED, spent, note=tampering, stdout_tail=proposal.tail
             )
 
         if not proposal.ok:
-            self.workspace.revert()
-            return self._record(
-                Trial(
-                    index=index,
-                    outcome=Outcome.FAILED,
-                    metric=None,
-                    incumbent=incumbent,
-                    duration_seconds=proposal.duration_seconds,
-                    note="propose command failed",
-                    stdout_tail=proposal.tail,
-                    harness=harness,
-                )
+            return reject(
+                Outcome.FAILED,
+                spent,
+                note="propose command failed",
+                stdout_tail=proposal.tail,
             )
 
         if not self.workspace.is_dirty():
-            # There is nothing to judge: the tree is the incumbent's tree, so
-            # running the experiment would spend the budget re-measuring what
-            # the ledger already holds, and any difference in the number would
-            # be noise recorded as progress. Committing is not an option
-            # either — git refuses an empty commit, which used to end the run
-            # with a traceback and no record of the trial.
-            return self._record(
-                Trial(
-                    index=index,
-                    outcome=Outcome.NO_CHANGE,
-                    metric=None,
-                    incumbent=incumbent,
-                    duration_seconds=proposal.duration_seconds,
-                    note="proposal left the tree unchanged",
-                    stdout_tail=proposal.tail,
-                    harness=harness,
-                )
+            # Nothing to judge: the tree is the incumbent's tree, so running
+            # the experiment would spend the budget re-measuring what the
+            # ledger already holds, and any difference would be noise recorded
+            # as progress. Committing is not an option either — git refuses an
+            # empty commit, which used to end the run with a traceback and no
+            # record of the trial. Nothing to revert, so this one does not.
+            return record(
+                Outcome.NO_CHANGE,
+                spent,
+                note="proposal left the tree unchanged",
+                stdout_tail=proposal.tail,
             )
 
         completed = run_command(
@@ -235,56 +231,25 @@ class Loop:
             env=self.experiment.env,
         )
         metric = self._read_metric(completed.output)
-        duration = proposal.duration_seconds + completed.duration_seconds
+        spent += completed.duration_seconds
 
         if metric is None or not completed.ok:
-            self.workspace.revert()
-            return self._record(
-                Trial(
-                    index=index,
-                    outcome=self._failure(completed),
-                    metric=None,
-                    incumbent=incumbent,
-                    duration_seconds=duration,
-                    stdout_tail=completed.tail,
-                    harness=harness,
-                )
-            )
+            return reject(self._failure(completed), spent, stdout_tail=completed.tail)
 
         if not math.isfinite(metric):
-            # Kept out of the ledger as a number on purpose. Nothing compares
-            # better than nan, so an incumbent holding one reverts every later
-            # trial forever, and NaN is not valid JSON for anything reading
-            # the ledger afterwards.
-            self.workspace.revert()
-            return self._record(
-                Trial(
-                    index=index,
-                    outcome=Outcome.NOT_FINITE,
-                    metric=None,
-                    incumbent=incumbent,
-                    duration_seconds=duration,
-                    note=self._not_finite(metric),
-                    stdout_tail=completed.tail,
-                    harness=harness,
-                )
+            # Never stored as a number. Nothing compares better than nan, so an
+            # incumbent holding one reverts every later trial forever, and NaN
+            # is not valid JSON for whatever reads the ledger next.
+            return reject(
+                Outcome.NOT_FINITE,
+                spent,
+                note=self._not_finite(metric),
+                stdout_tail=completed.tail,
             )
 
-        improved = incumbent is None or self.experiment.goal.is_better(
-            metric, incumbent, self.experiment.min_delta
-        )
-        if not improved:
-            self.workspace.revert()
-            return self._record(
-                Trial(
-                    index=index,
-                    outcome=Outcome.REVERTED,
-                    metric=metric,
-                    incumbent=incumbent,
-                    duration_seconds=duration,
-                    stdout_tail=completed.tail,
-                    harness=harness,
-                )
+        if not self._beats(metric, incumbent):
+            return reject(
+                Outcome.REVERTED, spent, metric=metric, stdout_tail=completed.tail
             )
 
         if self.experiment.confirm:
@@ -295,57 +260,41 @@ class Loop:
                 env=self.experiment.env,
             )
             second = self._read_metric(again.output)
-            duration += again.duration_seconds
-            held = (
-                second is not None
-                and again.ok
-                and math.isfinite(second)
-                and (
-                    incumbent is None
-                    or self.experiment.goal.is_better(
-                        second, incumbent, self.experiment.min_delta
-                    )
+            spent += again.duration_seconds
+            usable = second is not None and again.ok and math.isfinite(second)
+
+            if not (usable and self._beats(second, incumbent)):
+                shown = f"{second:.6g}" if second is not None else "--"
+                return reject(
+                    Outcome.REVERTED,
+                    spent,
+                    metric=second if usable else None,
+                    note=f"won at {metric:.6g} but measured {shown} on a second run",
+                    stdout_tail=again.tail,
                 )
-            )
-            if not held:
-                shown = "--" if second is None else f"{second:.6g}"
-                self.workspace.revert()
-                return self._record(
-                    Trial(
-                        index=index,
-                        outcome=Outcome.REVERTED,
-                        metric=second if second is not None and math.isfinite(second) else None,
-                        incumbent=incumbent,
-                        duration_seconds=duration,
-                        note=f"won at {metric:.6g} but measured {shown} on a second run",
-                        stdout_tail=again.tail,
-                        harness=harness,
-                    )
-                )
-            # The incumbent advances to the weaker of the two measurements. A
-            # lucky draw would otherwise set a bar that only luck can clear,
-            # which is the mechanism that walks a noisy metric downwards.
-            metric = max(metric, second) if self.experiment.goal is Goal.MINIMIZE else min(
-                metric, second
-            )
+
+            # The incumbent advances to the weaker of the two. A lucky draw
+            # would otherwise set a bar that only luck can clear, which is the
+            # mechanism that walks a noisy metric downwards.
+            pick = max if self.experiment.goal is Goal.MINIMIZE else min
+            metric = pick(metric, second)
 
         message = f"labloop: {self.experiment.metric} {metric:.6g}"
         if incumbent is not None:
             message += f" (was {incumbent:.6g})"
-        commit = self.workspace.commit(message)
 
-        return self._record(
-            Trial(
-                index=index,
-                outcome=Outcome.KEPT,
-                metric=metric,
-                incumbent=incumbent,
-                duration_seconds=duration,
-                commit=commit,
-                stdout_tail=completed.tail,
-                harness=harness,
-            )
+        return record(
+            Outcome.KEPT,
+            spent,
+            metric=metric,
+            commit=self.workspace.commit(message),
+            stdout_tail=completed.tail,
         )
+
+    def _beats(self, candidate: float, incumbent: float | None) -> bool:
+        if incumbent is None:
+            return True
+        return self.experiment.goal.is_better(candidate, incumbent, self.experiment.min_delta)
 
     @contextmanager
     def _proposal_env(self, index: int, incumbent: float | None) -> Iterator[dict[str, str]]:
