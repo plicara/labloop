@@ -66,6 +66,12 @@ def _build_parser() -> argparse.ArgumentParser:
         p.add_argument("--run", required=True, help="command that runs one experiment")
         p.add_argument("--metric", required=True, help="metric key to read from output")
         p.add_argument("--goal", choices=[g.value for g in Goal], default=Goal.MINIMIZE.value)
+        p.add_argument(
+            "--min-delta",
+            type=float,
+            default=0.0,
+            help="how much better the metric must be to count; use the spread from `labloop noise`",
+        )
         p.add_argument("--budget", type=float, default=300.0, help="seconds per command")
         p.add_argument("--workdir", default=".")
         p.add_argument("--ledger", default="labloop.jsonl")
@@ -88,11 +94,22 @@ def _build_parser() -> argparse.ArgumentParser:
     run.add_argument("--propose", required=True, help="command that changes the code")
     run.add_argument("--trials", type=int, default=1)
     run.add_argument(
+        "--confirm",
+        action="store_true",
+        help="re-run before keeping a change, and keep it only if it wins twice",
+    )
+    run.add_argument(
         "--no-brief",
         dest="brief",
         action="store_false",
         help="don't hand the proposal the trial history via $LABLOOP_BRIEF",
     )
+
+    noise = sub.add_parser(
+        "noise", help="run the experiment repeatedly, unchanged, to measure its spread"
+    )
+    add_common(noise)
+    noise.add_argument("--repeat", type=int, default=5, help="how many runs (default 5)")
 
     log = sub.add_parser("log", help="summarize the ledger")
     log.add_argument("--ledger", default="labloop.jsonl")
@@ -116,10 +133,14 @@ def main(argv: list[str] | None = None) -> int:
         propose=getattr(args, "propose", None),
         protect=tuple(args.protect or ()),
         brief=getattr(args, "brief", True),
+        confirm=getattr(args, "confirm", False),
+        min_delta=args.min_delta,
     )
     loop = Loop(experiment, workdir=args.workdir, ledger=args.ledger, reporter=_report)
 
     try:
+        if args.command == "noise":
+            return _noise(loop, args.repeat)
         if args.command == "baseline":
             loop.baseline()
         else:
@@ -139,6 +160,30 @@ def main(argv: list[str] | None = None) -> int:
     best = loop.ledger.best(experiment.goal)
     if best and best.metric is not None:
         print(f"\nbest {experiment.metric}: {best.metric:.6g} (trial {best.index})")
+    return 0
+
+
+def _noise(loop: Loop, repeats: int) -> int:
+    values = loop.measure_noise(repeats)
+    for i, value in enumerate(values):
+        print(f"    run {i}  {value:.6g}", flush=True)
+
+    low, high = min(values), max(values)
+    spread = high - low
+    metric = loop.experiment.metric
+    print(f"\n{metric}: {low:.6g} to {high:.6g} over {len(values)} identical runs")
+
+    if spread == 0:
+        print("spread: none — every run agreed, so any change in the metric is the change")
+        return 0
+
+    print(f"spread: {spread:.6g}")
+    print(
+        f"\nAn improvement smaller than {spread:.6g} is within what this experiment does on "
+        f"its own, so the loop would be selecting lucky runs. Best is to remove the "
+        f"variance — fix the seed, average more, hold the data still. Failing that:\n"
+        f"\n    labloop run --min-delta {spread:.6g} --confirm ...\n"
+    )
     return 0
 
 

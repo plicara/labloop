@@ -264,6 +264,30 @@ def test_incumbent_carries_across_separate_runs(tmp_path):
     assert trial.outcome is Outcome.REVERTED
 
 
+def test_a_relative_ledger_belongs_to_the_project_not_the_shell(tmp_path, monkeypatch):
+    # Running the same project from two directories used to produce two
+    # ledgers, the second starting with no incumbent and renumbering from
+    # zero, while git history said otherwise.
+    project = tmp_path / "project"
+    project.mkdir()
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+
+    monkeypatch.chdir(elsewhere)
+    exp = Experiment(run="echo val=1.0", metric="val", propose="true")
+    Loop(exp, workdir=project, workspace=FakeWorkspace()).baseline()
+
+    assert (project / "labloop.jsonl").exists()
+    assert not (elsewhere / "labloop.jsonl").exists()
+
+
+def test_an_absolute_ledger_path_is_left_alone(tmp_path):
+    somewhere = tmp_path / "records" / "l.jsonl"
+    exp = Experiment(run="echo val=1.0", metric="val")
+    Loop(exp, workdir=tmp_path, ledger=somewhere, workspace=FakeWorkspace()).baseline()
+    assert somewhere.exists()
+
+
 def test_a_ledger_written_before_harness_digests_existed_still_loads(tmp_path):
     # Exactly what 0.1.0 wrote. The ledger is append-only and long-lived, so
     # fields added later must not strand the trials already in it.
@@ -407,6 +431,118 @@ def test_protect_accepts_a_bare_string(tmp_path):
     (tmp_path / "eval.py").write_text("frozen")
     exp = Experiment(run="echo val=1", metric="val", protect="eval.py")
     assert exp.protect == ("eval.py",)
+
+
+# --- noisy metrics ----------------------------------------------------------
+#
+# Keep-or-revert assumes a change in the metric means a change in the code. An
+# experiment that scores differently run to run breaks that: the loop commits
+# the luckier draws and reports them as progress. These cover the two settings
+# that push back, and the command that tells you whether you need them.
+
+
+def test_min_delta_requires_more_than_a_hair(tmp_path):
+    loop, ws = make_loop(tmp_path, run="echo val=1.0")
+    loop.baseline()
+
+    loop, ws = make_loop(tmp_path, run="echo val=0.99")
+    loop.experiment.min_delta = 0.05
+    (trial,) = loop.run(trials=1)
+    assert trial.outcome is Outcome.REVERTED, "0.01 better is inside the noise band"
+
+    loop, ws = make_loop(tmp_path, run="echo val=0.8")
+    loop.experiment.min_delta = 0.05
+    (trial,) = loop.run(trials=1)
+    assert trial.outcome is Outcome.KEPT
+
+
+def test_min_delta_applies_to_maximize_too(tmp_path):
+    loop, _ = make_loop(tmp_path, run="echo val=0.7", goal=Goal.MAXIMIZE)
+    loop.baseline()
+    loop, _ = make_loop(tmp_path, run="echo val=0.71", goal=Goal.MAXIMIZE)
+    loop.experiment.min_delta = 0.05
+    (trial,) = loop.run(trials=1)
+    assert trial.outcome is Outcome.REVERTED
+
+
+def test_a_negative_min_delta_is_rejected():
+    with pytest.raises(ValueError, match="min_delta"):
+        Experiment(run="x", metric="m", min_delta=-0.1)
+
+
+def test_confirm_reverts_a_win_that_does_not_repeat(tmp_path):
+    # The experiment reports 0.1 once and then 9.9 — a lucky first draw.
+    flip = tmp_path / "flip.sh"
+    flip.write_text(
+        "#!/bin/sh\nif [ -f seen ]; then echo val=9.9; else touch seen; echo val=0.1; fi\n"
+    )
+    flip.chmod(0o755)
+
+    loop, ws = make_loop(tmp_path, run="echo val=1.0")
+    loop.baseline()
+
+    loop, ws = make_loop(tmp_path, run=str(flip))
+    loop.experiment.confirm = True
+    (trial,) = loop.run(trials=1)
+
+    assert trial.outcome is Outcome.REVERTED
+    assert "second run" in trial.note
+    assert not ws.commits, "a win that does not repeat is not a win"
+
+
+def test_confirm_keeps_a_win_that_repeats_but_records_the_weaker_number(tmp_path):
+    loop, _ = make_loop(tmp_path, run="echo val=1.0")
+    loop.baseline()
+
+    loop, ws = make_loop(tmp_path, run="echo val=0.5")
+    loop.experiment.confirm = True
+    (trial,) = loop.run(trials=1)
+
+    assert trial.outcome is Outcome.KEPT
+    assert trial.metric == 0.5
+    assert ws.commits
+
+
+def test_confirm_advances_the_incumbent_to_the_weaker_measurement(tmp_path):
+    # Both runs beat the incumbent, but by different amounts. Taking the
+    # luckier one sets a bar only luck can clear, which is what walks a noisy
+    # metric downwards.
+    flip = tmp_path / "flip.sh"
+    flip.write_text(
+        "#!/bin/sh\nif [ -f seen ]; then echo val=0.8; else touch seen; echo val=0.2; fi\n"
+    )
+    flip.chmod(0o755)
+
+    loop, _ = make_loop(tmp_path, run="echo val=1.0")
+    loop.baseline()
+    loop, _ = make_loop(tmp_path, run=str(flip))
+    loop.experiment.confirm = True
+    (trial,) = loop.run(trials=1)
+
+    assert trial.outcome is Outcome.KEPT
+    assert trial.metric == 0.8, "the incumbent advances to the weaker of the two"
+
+
+def test_measure_noise_runs_without_touching_the_ledger(tmp_path):
+    loop, _ = make_loop(tmp_path, run="echo val=1.0")
+    values = loop.measure_noise(repeats=3)
+
+    assert values == [1.0, 1.0, 1.0]
+    assert not (tmp_path / "l.jsonl").exists(), (
+        "calibration runs are not trials and must not become the incumbent"
+    )
+
+
+def test_measure_noise_needs_at_least_two_runs(tmp_path):
+    loop, _ = make_loop(tmp_path, run="echo val=1.0")
+    with pytest.raises(ValueError, match="at least 2"):
+        loop.measure_noise(repeats=1)
+
+
+def test_measure_noise_refuses_a_broken_experiment(tmp_path):
+    loop, _ = make_loop(tmp_path, run="exit 1")
+    with pytest.raises(RuntimeError, match="usable val"):
+        loop.measure_noise(repeats=2)
 
 
 # --- feedback to the proposer ----------------------------------------------

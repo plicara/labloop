@@ -92,6 +92,56 @@ Four details that matter:
   uncommitted work would be destroyed.
 - **A metric from a changed harness is not a result.** See below.
 
+## Check your metric holds still
+
+Keep-or-revert assumes that a change in the metric means a change in the code.
+If your experiment scores differently run to run, that assumption is false, and
+the loop will commit the luckier draws and report them as progress.
+
+Find out before you start:
+
+```bash
+labloop noise --run "python train.py" --metric val_loss --repeat 6
+```
+
+```
+val_loss: 0.857473 to 1.11126 over 6 identical runs
+spread: 0.253788
+
+An improvement smaller than 0.253788 is within what this experiment does on its
+own, so the loop would be selecting lucky runs. Best is to remove the variance —
+fix the seed, average more, hold the data still. Failing that:
+
+    labloop run --min-delta 0.253788 --confirm ...
+```
+
+Nothing changed between those runs. Any "improvement" below the spread is the
+loop picking a good roll of the dice.
+
+**Removing the variance is the real fix.** Fix the seed, average over more
+data, hold the split still. Two settings help when you can't:
+
+- `--min-delta D` — the metric must improve by more than `D` to count. Attacks
+  how *often* a fluke is kept, and costs nothing.
+- `--confirm` — re-run before keeping, and keep only if it wins twice. The
+  incumbent then advances to the weaker of the two measurements, so a lucky
+  draw doesn't set a bar only luck can clear. Attacks how *far* the fluke
+  drifts, and costs one extra run per candidate win.
+
+Measured on a metric that is pure noise, where every kept trial is false by
+construction — 60 trials, averaged over 400 runs:
+
+| Setting | Improvement claimed | False keeps | Experiment runs |
+| --- | --- | --- | --- |
+| default | 23.5% | 4.8 | 60 |
+| `--min-delta` (1 sd) | 20.7% | 2.4 | 60 |
+| `--confirm` | 12.9% | 4.8 | 72.7 |
+| both | **9.9%** | **2.1** | 66 |
+
+They work on different halves of the problem, and are cheaper together than
+`--confirm` alone — `--min-delta` rejects most candidates before they earn a
+second run. Neither makes a noisy metric safe. They make it less wrong.
+
 ## Protecting the measurement
 
 A keep-or-revert loop rewards whatever moves the metric, and your `propose`
@@ -191,6 +241,17 @@ getting to decide what happened.
 
 Pass `--no-brief` to turn it off. The file is written outside the working tree
 either way, so it never dirties the tree or lands in a commit.
+
+## Keep artifacts out of git
+
+A kept trial is committed with `git add -A`, so anything your experiment leaves
+behind is committed too. A checkpoint written every trial is a checkpoint in
+every commit, and the commit stops meaning "the change that improved the
+metric".
+
+Put artifacts in `.gitignore` — checkpoints, logs, `__pycache__`, whatever your
+run writes. You will hit this anyway: the loop refuses to start on a dirty tree,
+and an untracked artifact makes the tree dirty.
 
 ## The ledger
 

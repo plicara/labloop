@@ -18,7 +18,7 @@ from .integrity import (
 from .ledger import Ledger
 from .metrics import MetricNotFound, extract_metric
 from .runner import run_command
-from .types import Experiment, Outcome, Trial
+from .types import Experiment, Goal, Outcome, Trial
 from .workspace import GitWorkspace, Workspace
 
 __all__ = ["Loop"]
@@ -45,7 +45,13 @@ class Loop:
     ) -> None:
         self.experiment = experiment
         self.workdir = Path(workdir)
-        self.ledger = Ledger(ledger)
+        # Relative to the project, not to wherever the command was typed. The
+        # ledger is the project's research record, and resolving it against
+        # the shell's cwd meant running the same project from two directories
+        # silently produced two ledgers — the second starting from no
+        # incumbent and renumbering from zero.
+        ledger = Path(ledger)
+        self.ledger = Ledger(ledger if ledger.is_absolute() else self.workdir / ledger)
         self.workspace = workspace or GitWorkspace(self.workdir)
         self.reporter = reporter
 
@@ -84,6 +90,36 @@ class Loop:
         )
         self._record(trial)
         return trial
+
+    def measure_noise(self, repeats: int = 5) -> list[float]:
+        """Run the experiment repeatedly without changing anything.
+
+        Keep-or-revert assumes a difference in the metric means a difference
+        in the code. If the same tree scores differently run to run, the loop
+        will happily commit the luckier draws and report them as progress —
+        the spread this returns is the size of improvement below which that is
+        all it can be doing. Nothing is written to the ledger: these are not
+        trials, and treating them as an incumbent would bias it.
+        """
+        if repeats < 2:
+            raise ValueError("measuring spread needs at least 2 runs")
+
+        values: list[float] = []
+        for _ in range(repeats):
+            completed = run_command(
+                self.experiment.run,
+                cwd=self.workdir,
+                timeout=self.experiment.budget_seconds,
+                env=self.experiment.env,
+            )
+            metric = self._read_metric(completed.output)
+            if metric is None or not completed.ok or not math.isfinite(metric):
+                raise RuntimeError(
+                    f"the run command did not produce a usable {self.experiment.metric} "
+                    f"(exit {completed.returncode}); fix that before measuring its spread"
+                )
+            values.append(metric)
+        return values
 
     def run(self, trials: int = 1) -> list[Trial]:
         """Run `trials` proposal-and-judge cycles."""
@@ -231,7 +267,9 @@ class Loop:
                 )
             )
 
-        improved = incumbent is None or self.experiment.goal.is_better(metric, incumbent)
+        improved = incumbent is None or self.experiment.goal.is_better(
+            metric, incumbent, self.experiment.min_delta
+        )
         if not improved:
             self.workspace.revert()
             return self._record(
@@ -244,6 +282,48 @@ class Loop:
                     stdout_tail=completed.tail,
                     harness=harness,
                 )
+            )
+
+        if self.experiment.confirm:
+            again = run_command(
+                self.experiment.run,
+                cwd=self.workdir,
+                timeout=self.experiment.budget_seconds,
+                env=self.experiment.env,
+            )
+            second = self._read_metric(again.output)
+            duration += again.duration_seconds
+            held = (
+                second is not None
+                and again.ok
+                and math.isfinite(second)
+                and (
+                    incumbent is None
+                    or self.experiment.goal.is_better(
+                        second, incumbent, self.experiment.min_delta
+                    )
+                )
+            )
+            if not held:
+                shown = "--" if second is None else f"{second:.6g}"
+                self.workspace.revert()
+                return self._record(
+                    Trial(
+                        index=index,
+                        outcome=Outcome.REVERTED,
+                        metric=second if second is not None and math.isfinite(second) else None,
+                        incumbent=incumbent,
+                        duration_seconds=duration,
+                        note=f"won at {metric:.6g} but measured {shown} on a second run",
+                        stdout_tail=again.tail,
+                        harness=harness,
+                    )
+                )
+            # The incumbent advances to the weaker of the two measurements. A
+            # lucky draw would otherwise set a bar that only luck can clear,
+            # which is the mechanism that walks a noisy metric downwards.
+            metric = max(metric, second) if self.experiment.goal is Goal.MINIMIZE else min(
+                metric, second
             )
 
         message = f"labloop: {self.experiment.metric} {metric:.6g}"

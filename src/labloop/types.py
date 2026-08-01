@@ -13,15 +13,19 @@ class Goal(enum.Enum):
     MINIMIZE = "minimize"
     MAXIMIZE = "maximize"
 
-    def is_better(self, candidate: float, incumbent: float) -> bool:
+    def is_better(self, candidate: float, incumbent: float, min_delta: float = 0.0) -> bool:
         """Return True if `candidate` beats `incumbent` under this goal.
 
         Ties are not improvements. A change that does not move the metric is
         reverted, so the loop never accumulates neutral churn.
+
+        `min_delta` widens that from an exact tie to a band: an experiment
+        whose metric moves on its own has to be beaten by more than it moves
+        on its own, or the loop is only selecting lucky runs.
         """
         if self is Goal.MINIMIZE:
-            return candidate < incumbent
-        return candidate > incumbent
+            return candidate < incumbent - min_delta
+        return candidate > incumbent + min_delta
 
 
 class Outcome(enum.Enum):
@@ -89,6 +93,14 @@ class Experiment:
     them is recorded as such instead of scored.
 
     `brief` controls whether each proposal is handed the trial history to read.
+
+    `confirm` re-runs the experiment before keeping a change, and keeps it only
+    if it wins twice. Worth the extra run whenever the metric moves on its own
+    between identical runs.
+
+    `min_delta` is how much better a metric has to be to count. Set it to the
+    spread `labloop noise` reports; the two settings work on different halves
+    of the problem, and cost little together.
     """
 
     run: str
@@ -99,10 +111,14 @@ class Experiment:
     env: dict[str, str] = field(default_factory=dict)
     protect: tuple[str, ...] = ()
     brief: bool = True
+    confirm: bool = False
+    min_delta: float = 0.0
 
     def __post_init__(self) -> None:
         if self.budget_seconds <= 0:
             raise ValueError("budget_seconds must be positive")
+        if self.min_delta < 0:
+            raise ValueError("min_delta must not be negative")
         if not self.run.strip():
             raise ValueError("run command must not be empty")
         if isinstance(self.goal, str):
