@@ -182,7 +182,7 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:
         print(
             "\nlabloop: interrupted. The working tree may hold a change that was "
-            "never judged — discard it with `git checkout -- . && git clean -fd` "
+            "never judged — discard it with `git reset --hard && git clean -fd` "
             "before starting again.",
             file=sys.stderr,
         )

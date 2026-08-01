@@ -275,6 +275,38 @@ def test_a_proposal_that_never_works_stops_the_run(tmp_path):
     assert all(t.outcome is Outcome.FAILED for t in trials)
 
 
+def test_a_commit_git_refuses_is_recorded_not_a_crash(tmp_path):
+    # A pre-commit hook that rejects the change. The trial measured a real
+    # improvement and then vanished with a traceback, taking the ledger entry
+    # with it.
+    loop, ws = make_loop(tmp_path, run="echo val=0.5")
+
+    def refuse(message):
+        raise RuntimeError("git commit failed: lint failed: no docstring")
+
+    ws.commit = refuse
+    (trial,) = loop.run(trials=1)
+
+    assert trial.outcome is Outcome.FAILED
+    assert trial.metric == 0.5, "the measurement was real and is kept in the record"
+    assert "could not be committed" in trial.note
+    assert "lint failed" in trial.note, "the git reason has to survive"
+    assert ws.reverts == 1, "the tree must match the ledger for the next trial"
+    assert Ledger(tmp_path / "l.jsonl").trials()
+
+
+def test_a_repo_that_never_accepts_a_commit_stops_the_run(tmp_path):
+    # These trials carry a metric, so a stall rule keyed on "no metric" would
+    # let them run all night.
+    loop, ws = make_loop(tmp_path, run="echo val=0.5")
+    ws.commit = lambda message: (_ for _ in ()).throw(RuntimeError("hook says no"))
+    loop.experiment.give_up_after = 3
+
+    with pytest.raises(StalledError, match="no verdict"):
+        loop.run(trials=50)
+    assert len(Ledger(tmp_path / "l.jsonl").trials()) == 3
+
+
 def test_giving_up_can_be_switched_off(tmp_path):
     loop, _ = make_loop(tmp_path, run="echo val=1.0", propose="exit 3")
     loop.experiment.give_up_after = 0

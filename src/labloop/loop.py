@@ -165,15 +165,18 @@ class Loop:
             if trial.outcome is Outcome.KEPT and trial.metric is not None:
                 incumbent = trial.metric
 
-            # A trial with no metric taught the loop nothing. One is ordinary;
-            # a run of them means the setup is broken, and a mistyped proposal
-            # command will otherwise fail identically for every trial in an
-            # overnight budget while looking busy.
-            stalled = 0 if trial.metric is not None else stalled + 1
+            # Keeping and reverting are the loop working; a verdict on merit
+            # was reached either way. Everything else is machinery that did
+            # not do its job, and a mistyped proposal command will otherwise
+            # fail identically for every trial in an overnight budget while
+            # looking busy. One is ordinary, so the count resets on any real
+            # verdict; only an unbroken run of them ends the run.
+            judged = trial.outcome in (Outcome.KEPT, Outcome.REVERTED)
+            stalled = 0 if judged else stalled + 1
             if self.experiment.give_up_after and stalled >= self.experiment.give_up_after:
                 raise StalledError(
-                    f"stopping: {stalled} trials in a row produced no {self.experiment.metric}. "
-                    f"The last one was {trial.outcome.value}"
+                    f"stopping: {stalled} trials in a row reached no verdict on the "
+                    f"{self.experiment.metric}. The last one was {trial.outcome.value}"
                     f"{f' ({trial.note})' if trial.note else ''}. "
                     "Every trial is in the ledger, so nothing is lost — fix the setup and "
                     "run again, or pass --give-up-after 0 if this is expected."
@@ -310,11 +313,26 @@ class Loop:
         if incumbent is not None:
             message += f" (was {incumbent:.6g})"
 
+        try:
+            commit = self.workspace.commit(message)
+        except RuntimeError as exc:
+            # A pre-commit hook that rejects the change, or any other reason
+            # git declines. The measurement was real, so it is recorded, but a
+            # change that cannot be committed cannot be the incumbent — the
+            # next trial has to start from a tree that matches the ledger.
+            return reject(
+                Outcome.FAILED,
+                spent,
+                metric=metric,
+                note=f"improved but could not be committed: {exc}",
+                stdout_tail=completed.tail,
+            )
+
         return record(
             Outcome.KEPT,
             spent,
             metric=metric,
-            commit=self.workspace.commit(message),
+            commit=commit,
             stdout_tail=completed.tail,
         )
 

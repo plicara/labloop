@@ -54,12 +54,20 @@ class GitWorkspace:
                 "working tree has uncommitted changes, and the loop reverts by "
                 "discarding, so it would destroy them. If they are your work, "
                 "commit or stash them. If they are an unjudged change left by an "
-                "interrupted run, discard them with `git checkout -- . && git clean -fd` "
+                "interrupted run, discard them with `git reset --hard && git clean -fd` "
                 "— committing one would put a change nothing measured into the history."
             )
 
     def revert(self) -> None:
-        self._git("checkout", "--", ".")
+        """Put the tree back to the last commit, staged changes included.
+
+        `git checkout -- .` only restores the working tree from the index, so
+        anything already staged survives it and the tree stays dirty forever —
+        which is what a proposal that runs `git add` leaves behind, and what a
+        commit git refused leaves behind, since the add succeeded. A hard
+        reset is the operation that actually means "discard".
+        """
+        self._git("reset", "--hard")
         self._git("clean", "-fd")
 
     def commit(self, message: str) -> str:
