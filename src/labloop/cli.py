@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import statistics
 import sys
 from pathlib import Path
 
@@ -229,11 +230,17 @@ def _noise(loop: Loop, repeats: int) -> int:
         print("spread: none — every run agreed, so any change in the metric is the change")
         return 0
 
-    print(f"spread: {spread:.6g}")
+    # Both, because they say different things. The range is what was actually
+    # observed and is what --min-delta should clear, but it widens with every
+    # extra run; the standard deviation does not, so it is the one to compare
+    # across experiments or against a later measurement.
+    deviation = statistics.stdev(values)
+    print(f"spread: {spread:.6g}   standard deviation: {deviation:.6g}")
     print(
-        f"\nAn improvement smaller than {spread:.6g} is within what this experiment does on "
-        f"its own, so the loop would be selecting lucky runs. Best is to remove the "
-        f"variance — fix the seed, average more, hold the data still. Failing that:\n"
+        f"\nAn improvement smaller than {spread:.6g} is a difference this experiment has "
+        f"already produced without any change to the code, so the loop would be "
+        f"selecting lucky runs. Best is to remove the variance — fix the seed, average "
+        f"more, hold the data still. Failing that:\n"
         f"\n    labloop run --min-delta {spread:.6g} --confirm ...\n"
     )
     return 0

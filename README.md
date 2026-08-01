@@ -135,17 +135,20 @@ labloop noise --run "python train.py" --metric val_loss --repeat 6
 
 ```
 val_loss: 0.857473 to 1.11126 over 6 identical runs
-spread: 0.253788
+spread: 0.253788   standard deviation: 0.0983
 
-An improvement smaller than 0.253788 is within what this experiment does on its
-own, so the loop would be selecting lucky runs. Best is to remove the variance —
-fix the seed, average more, hold the data still. Failing that:
+An improvement smaller than 0.253788 is a difference this experiment has already
+produced without any change to the code, so the loop would be selecting lucky
+runs. Best is to remove the variance — fix the seed, average more, hold the data
+still. Failing that:
 
     labloop run --min-delta 0.253788 --confirm ...
 ```
 
 Nothing changed between those runs. Any "improvement" below the spread is the
-loop picking a good roll of the dice.
+loop picking a good roll of the dice. The spread is what to clear, but it widens
+with every extra run; the standard deviation is the one to compare against a
+later measurement or another experiment.
 
 **Removing the variance is the real fix.** Fix the seed, average over more
 data, hold the split still. Two settings help when you can't:

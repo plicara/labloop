@@ -182,6 +182,9 @@ def test_noise_on_a_varying_metric_recommends_the_settings(project, capsys):
     main(["noise", "--run", "python train.py", "--metric", "val_loss", "--repeat", "4"])
     out = capsys.readouterr().out
     assert "--min-delta" in out and "--confirm" in out
+    assert "standard deviation" in out, (
+        "the range widens with every extra run; the deviation is what compares"
+    )
 
 
 def test_noise_on_a_broken_experiment_says_so(project, capsys):
