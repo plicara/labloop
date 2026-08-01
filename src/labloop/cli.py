@@ -68,6 +68,12 @@ def _build_parser() -> argparse.ArgumentParser:
     add_common(run)
     run.add_argument("--propose", required=True, help="command that changes the code")
     run.add_argument("--trials", type=int, default=1)
+    run.add_argument(
+        "--no-brief",
+        dest="brief",
+        action="store_false",
+        help="don't hand the proposal the trial history via $LABLOOP_BRIEF",
+    )
 
     log = sub.add_parser("log", help="summarize the ledger")
     log.add_argument("--ledger", default="labloop.jsonl")
@@ -90,6 +96,7 @@ def main(argv: list[str] | None = None) -> int:
         budget_seconds=args.budget,
         propose=getattr(args, "propose", None),
         protect=tuple(args.protect or ()),
+        brief=getattr(args, "brief", True),
     )
     loop = Loop(experiment, workdir=args.workdir, ledger=args.ledger, reporter=_report)
 

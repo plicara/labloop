@@ -84,6 +84,8 @@ class Experiment:
     script, the held-out data, whatever `run` reads to arrive at a number.
     They are digested before and after each proposal, and a trial that moved
     them is recorded as such instead of scored.
+
+    `brief` controls whether each proposal is handed the trial history to read.
     """
 
     run: str
@@ -93,6 +95,7 @@ class Experiment:
     propose: str | None = None
     env: dict[str, str] = field(default_factory=dict)
     protect: tuple[str, ...] = ()
+    brief: bool = True
 
     def __post_init__(self) -> None:
         if self.budget_seconds <= 0:

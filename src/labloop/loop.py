@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+import tempfile
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
+from . import brief as _brief
 from .integrity import (
     HarnessMismatchError,
     NoProtectedFilesError,
@@ -101,12 +104,13 @@ class Loop:
         harness = self._harness()
         ledger_before = file_digest(self.ledger.path)
 
-        proposal = run_command(
-            self.experiment.propose or "",
-            cwd=self.workdir,
-            timeout=self.experiment.budget_seconds,
-            env=self.experiment.env,
-        )
+        with self._proposal_env(index, incumbent) as env:
+            proposal = run_command(
+                self.experiment.propose or "",
+                cwd=self.workdir,
+                timeout=self.experiment.budget_seconds,
+                env=env,
+            )
 
         # Checked before the exit status, and before spending the budget on a
         # run whose number would mean nothing anyway. A proposal that moved
@@ -197,6 +201,33 @@ class Loop:
                 harness=harness,
             )
         )
+
+    @contextmanager
+    def _proposal_env(self, index: int, incumbent: float | None) -> Iterator[dict[str, str]]:
+        """Write the brief, point the proposal at it, then take it away again.
+
+        The file is written outside the working tree deliberately. Dropping it
+        in the workdir would dirty the tree the loop just insisted was clean,
+        and `git add -A` would sweep it into the next commit.
+        """
+        if not self.experiment.brief:
+            yield dict(self.experiment.env)
+            return
+
+        payload = _brief.build(self.experiment, self.ledger.trials(), index, incumbent)
+        handle = tempfile.NamedTemporaryFile(
+            "w",
+            prefix=f"labloop-brief-{index}-",
+            suffix=".json",
+            delete=False,
+            encoding="utf-8",
+        )
+        try:
+            with handle as fh:
+                fh.write(_brief.dumps(payload))
+            yield {**self.experiment.env, **_brief.environment(handle.name, payload)}
+        finally:
+            Path(handle.name).unlink(missing_ok=True)
 
     def _harness(self) -> str | None:
         return harness_digest(self.workdir, self.experiment.protect)

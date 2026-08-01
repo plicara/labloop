@@ -6,6 +6,8 @@ exercise the keep-or-revert decision without needing a git repo.
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from labloop import (
@@ -279,3 +281,78 @@ def test_protect_accepts_a_bare_string(tmp_path):
     (tmp_path / "eval.py").write_text("frozen")
     exp = Experiment(run="echo val=1", metric="val", protect="eval.py")
     assert exp.protect == ("eval.py",)
+
+
+# --- feedback to the proposer ----------------------------------------------
+
+
+def test_the_proposal_is_handed_the_ledger(tmp_path):
+    loop, _ = make_loop(tmp_path, run="echo val=5.0")
+    loop.baseline()
+
+    seen = tmp_path / "seen.json"
+    loop, _ = make_loop(
+        tmp_path,
+        run="echo val=9.0",
+        propose=f'cp "$LABLOOP_BRIEF" {seen}',
+    )
+    loop.run(trials=1)
+
+    brief = json.loads(seen.read_text())
+    assert brief["metric"] == "val"
+    assert brief["incumbent"] == 5.0
+    assert brief["trial"] == 1
+    assert [e["index"] for e in brief["history"]] == [0]
+
+
+def test_the_proposal_learns_why_the_last_trial_was_reverted(tmp_path):
+    loop, _ = make_loop(tmp_path, run="echo val=5.0")
+    loop.baseline()
+    loop, _ = make_loop(tmp_path, run="echo val=5.0")
+    loop.run(trials=1)  # ties, and is reverted
+
+    seen = tmp_path / "seen.json"
+    loop, _ = make_loop(tmp_path, run="echo val=1.0", propose=f'cp "$LABLOOP_BRIEF" {seen}')
+    loop.run(trials=1)
+
+    brief = json.loads(seen.read_text())
+    reverted = next(e for e in brief["history"] if e["outcome"] == "reverted")
+    assert "tied" in reverted["why"]
+
+
+def test_scalars_are_readable_without_parsing_json(tmp_path):
+    loop, _ = make_loop(tmp_path, run="echo val=5.0")
+    loop.baseline()
+
+    seen = tmp_path / "seen.txt"
+    loop, _ = make_loop(
+        tmp_path,
+        run="echo val=1.0",
+        propose=f'echo "$LABLOOP_METRIC $LABLOOP_GOAL $LABLOOP_INCUMBENT" > {seen}',
+    )
+    loop.run(trials=1)
+    assert seen.read_text().split() == ["val", "minimize", "5.0"]
+
+
+def test_the_brief_does_not_survive_into_the_working_tree(tmp_path):
+    before = set(tmp_path.iterdir())
+    loop, _ = make_loop(tmp_path, run="echo val=1.0", propose="true")
+    loop.run(trials=1)
+
+    new = {p.name for p in tmp_path.iterdir()} - {p.name for p in before}
+    assert new == {"l.jsonl"}, (
+        "a brief written into the workdir would dirty the tree and be committed"
+    )
+
+
+def test_the_brief_can_be_turned_off(tmp_path):
+    seen = tmp_path / "seen.txt"
+    exp = Experiment(
+        run="echo val=1.0",
+        metric="val",
+        propose=f'echo "[${{LABLOOP_BRIEF:-unset}}]" > {seen}',
+        brief=False,
+    )
+    loop = Loop(exp, workdir=tmp_path, ledger=tmp_path / "l.jsonl", workspace=FakeWorkspace())
+    loop.run(trials=1)
+    assert seen.read_text().strip() == "[unset]"

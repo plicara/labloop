@@ -141,6 +141,51 @@ val_loss = 1.234        # key=value or key: value
 {"step": 40, "val_loss": 1.234}    # a JSON object on its own line
 ```
 
+## What the proposer is told
+
+A proposal command that gets no feedback is guessing. Before each attempt
+labloop writes the trial history to a JSON file and puts its path in
+`$LABLOOP_BRIEF`:
+
+```json
+{
+  "trial": 5,
+  "metric": "val_loss",
+  "goal": "minimize",
+  "incumbent": 1.5,
+  "protected": ["eval.py"],
+  "counts": { "kept": 2, "reverted": 2, "failed": 1 },
+  "history": [
+    {
+      "index": 1, "outcome": "reverted", "metric": 2.0,
+      "why": "reverted: val_loss 2 tied the incumbent, and a tie is not an improvement"
+    },
+    {
+      "index": 3, "outcome": "reverted", "metric": 3.0,
+      "why": "reverted: val_loss 3 did not beat 1.5; lower is better"
+    }
+  ]
+}
+```
+
+The `why` is the part the proposer can't work out for itself. `reverted` is a
+label; *tied the incumbent, and a tie is not an improvement* is something to
+act on. Failures carry the tail of their output, so an agent can see the stack
+trace that killed its last three attempts.
+
+For a one-line proposal command that doesn't want to parse JSON, the same
+essentials are in `$LABLOOP_METRIC`, `$LABLOOP_GOAL`, `$LABLOOP_INCUMBENT`
+(empty when there is nothing to beat yet) and `$LABLOOP_TRIAL`.
+
+The brief is written by labloop and read by the proposal, never the reverse.
+Agents handed a memory file they can write have been seen leaving notes for
+their future selves, which turns persistent memory into a way around the
+harness rather than a record of it. The agent learns what happened without
+getting to decide what happened.
+
+Pass `--no-brief` to turn it off. The file is written outside the working tree
+either way, so it never dirties the tree or lands in a commit.
+
 ## The ledger
 
 Trials append to `labloop.jsonl` — one JSON object per line, readable while the
