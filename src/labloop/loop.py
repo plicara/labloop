@@ -5,6 +5,12 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
+from .integrity import (
+    HarnessMismatchError,
+    NoProtectedFilesError,
+    file_digest,
+    harness_digest,
+)
 from .ledger import Ledger
 from .metrics import MetricNotFound, extract_metric
 from .runner import run_command
@@ -45,6 +51,8 @@ class Loop:
         Establishes the incumbent. Recorded as KEPT because it is the state
         the working tree is actually in — there is nothing to revert to.
         """
+        # Digested before the run, so it describes the tree that was measured.
+        harness = self._harness()
         completed = run_command(
             self.experiment.run,
             cwd=self.workdir,
@@ -63,6 +71,7 @@ class Loop:
             duration_seconds=completed.duration_seconds,
             note="baseline",
             stdout_tail=completed.tail,
+            harness=harness,
         )
         self._record(trial)
         return trial
@@ -89,6 +98,8 @@ class Loop:
 
     def _one_trial(self, incumbent: float | None) -> Trial:
         index = self.ledger.next_index()
+        harness = self._harness()
+        ledger_before = file_digest(self.ledger.path)
 
         proposal = run_command(
             self.experiment.propose or "",
@@ -96,6 +107,26 @@ class Loop:
             timeout=self.experiment.budget_seconds,
             env=self.experiment.env,
         )
+
+        # Checked before the exit status, and before spending the budget on a
+        # run whose number would mean nothing anyway. A proposal that moved
+        # the measurement is a more serious event than one that crashed.
+        tampering = self._tampering(harness, ledger_before)
+        if tampering:
+            self.workspace.revert()
+            return self._record(
+                Trial(
+                    index=index,
+                    outcome=Outcome.HARNESS_CHANGED,
+                    metric=None,
+                    incumbent=incumbent,
+                    duration_seconds=proposal.duration_seconds,
+                    note=tampering,
+                    stdout_tail=proposal.tail,
+                    harness=harness,
+                )
+            )
+
         if not proposal.ok:
             self.workspace.revert()
             return self._record(
@@ -107,6 +138,7 @@ class Loop:
                     duration_seconds=proposal.duration_seconds,
                     note="propose command failed",
                     stdout_tail=proposal.tail,
+                    harness=harness,
                 )
             )
 
@@ -129,6 +161,7 @@ class Loop:
                     incumbent=incumbent,
                     duration_seconds=duration,
                     stdout_tail=completed.tail,
+                    harness=harness,
                 )
             )
 
@@ -143,6 +176,7 @@ class Loop:
                     incumbent=incumbent,
                     duration_seconds=duration,
                     stdout_tail=completed.tail,
+                    harness=harness,
                 )
             )
 
@@ -160,12 +194,52 @@ class Loop:
                 duration_seconds=duration,
                 commit=commit,
                 stdout_tail=completed.tail,
+                harness=harness,
             )
         )
 
+    def _harness(self) -> str | None:
+        return harness_digest(self.workdir, self.experiment.protect)
+
+    def _tampering(self, harness: str | None, ledger_before: str | None) -> str | None:
+        """Name what the proposal changed that it had no business changing.
+
+        The ledger is checked unconditionally. It is the source of truth for
+        the incumbent, so an agent that can rewrite it can lower the bar it is
+        being judged against — and it usually sits in the working tree, where
+        a revert may not reach it.
+        """
+        if file_digest(self.ledger.path) != ledger_before:
+            return "proposal modified the ledger"
+        if harness is None:
+            return None
+        try:
+            after = self._harness()
+        except NoProtectedFilesError:
+            return "proposal deleted the protected files"
+        return "proposal modified the harness" if after != harness else None
+
     def _incumbent(self) -> float | None:
+        """The metric to beat, read from the ledger rather than memory.
+
+        Refuses an incumbent that a different harness produced: those two
+        numbers came from different measurements, and comparing them would
+        manufacture an improvement out of nothing. Trials recorded before any
+        harness was declared carry no digest and cannot be checked either way,
+        so they are accepted — the check can only speak for what it measured.
+        """
         best = self.ledger.best(self.experiment.goal)
-        return best.metric if best else None
+        if best is None:
+            return None
+
+        current = self._harness()
+        if current is not None and best.harness is not None and best.harness != current:
+            raise HarnessMismatchError(
+                f"trial {best.index} was measured by a different harness "
+                f"({best.harness[:12]} vs {current[:12]}); its {self.experiment.metric} "
+                "is not comparable to what this loop would measure — start a new ledger"
+            )
+        return best.metric
 
     def _read_metric(self, output: str) -> float | None:
         try:

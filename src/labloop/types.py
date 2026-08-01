@@ -32,6 +32,7 @@ class Outcome(enum.Enum):
     FAILED = "failed"
     TIMED_OUT = "timed_out"
     NO_METRIC = "no_metric"
+    HARNESS_CHANGED = "harness_changed"
 
     @property
     def is_improvement(self) -> bool:
@@ -50,6 +51,12 @@ class Trial:
     commit: str | None = None
     note: str = ""
     stdout_tail: str = ""
+    harness: str | None = None
+    """Digest of the files that produced this metric, if any were declared.
+
+    Two trials carrying the same digest were measured the same way. None means
+    no claim was made, which is not the same as nothing having changed.
+    """
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
@@ -72,6 +79,11 @@ class Experiment:
     mutates the working tree before each trial — typically an agent
     invocation. With no `propose`, the loop measures the tree as it stands,
     which is how you establish a baseline.
+
+    `protect` names the files that define the measurement — the evaluation
+    script, the held-out data, whatever `run` reads to arrive at a number.
+    They are digested before and after each proposal, and a trial that moved
+    them is recorded as such instead of scored.
     """
 
     run: str
@@ -80,6 +92,7 @@ class Experiment:
     budget_seconds: float = 300.0
     propose: str | None = None
     env: dict[str, str] = field(default_factory=dict)
+    protect: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if self.budget_seconds <= 0:
@@ -88,3 +101,9 @@ class Experiment:
             raise ValueError("run command must not be empty")
         if isinstance(self.goal, str):
             self.goal = Goal(self.goal)
+        if isinstance(self.protect, str):
+            # A bare string is iterable, and would otherwise protect one
+            # pattern per character.
+            self.protect = (self.protect,)
+        else:
+            self.protect = tuple(self.protect)

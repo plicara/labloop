@@ -39,7 +39,8 @@ labloop run \
 best val_loss: 2.201 (trial 4)
 ```
 
-`+` kept, `-` reverted, `T` timed out, `!` crashed, `?` no metric found.
+`+` kept, `-` reverted, `T` timed out, `!` crashed, `?` no metric found,
+`H` the proposal changed the harness.
 
 Or from Python:
 
@@ -52,6 +53,7 @@ exp = Experiment(
     goal=Goal.MINIMIZE,
     budget_seconds=300,
     propose="my-agent --edit train.py",
+    protect=("eval.py", "data/holdout"),
 )
 
 loop = Loop(exp)
@@ -72,8 +74,9 @@ incumbent. Anything else is discarded:
 | `failed` | The command exited non-zero. |
 | `timed_out` | Exceeded the budget. Process group killed. |
 | `no_metric` | Ran clean but printed no metric. |
+| `harness_changed` | The proposal edited the thing doing the measuring. |
 
-Three details that matter:
+Four details that matter:
 
 - **A tie is not an improvement.** Equal scores revert, so the loop never
   accumulates neutral churn.
@@ -81,6 +84,52 @@ Three details that matter:
   result are different events and are recorded differently.
 - **The loop refuses to start on a dirty tree.** It reverts by discarding, so
   uncommitted work would be destroyed.
+- **A metric from a changed harness is not a result.** See below.
+
+## Protecting the measurement
+
+A keep-or-revert loop rewards whatever moves the metric, and your `propose`
+command can reach the evaluator. Agents take that route: published runs have
+seen them overwrite test cases and memorize evaluation answers rather than
+improve anything.
+
+Name the files that define the measurement and labloop digests them with
+SHA-256 before and after each proposal:
+
+```bash
+labloop run \
+  --run "python eval.py" \
+  --metric val_err \
+  --protect eval.py \
+  --protect data/holdout \
+  --propose "my-agent --edit train.py"
+```
+
+```
+[+] trial   0             1     0.0s  (baseline)
+[H] trial   1            --     0.0s  (proposal modified the harness)
+[+] trial   2        0.3333     0.0s  7c599cd
+```
+
+A pattern may name a file, a glob, or a directory — a directory covers the
+whole subtree, which is usually what frozen evaluation data needs. Renames,
+deletions, and added files all move the digest, because memorizing answers
+means adding files and not only editing them.
+
+**This detects, it does not prevent.** A shell command can do anything, and
+claiming otherwise would be a promise this design can't keep. What labloop
+gives you is that such a trial is recorded as `harness_changed` instead of
+scored, and that every trial carries the digest of how it was measured — so
+two trials with the same digest are comparable, and you can prove it after the
+fact. The ledger itself is checked the same way on every trial, without being
+declared: it holds the incumbent, and an agent that can rewrite it doesn't need
+to beat it.
+
+If the incumbent in your ledger was measured under a different digest, the loop
+stops rather than compare two numbers that came from different measurements.
+
+Patterns matching nothing are an error, not a silent pass — a typo there would
+quietly disable the whole check.
 
 ## Reading the metric
 

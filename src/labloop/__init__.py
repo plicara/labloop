@@ -18,6 +18,7 @@ most of the signal.
     Loop(exp).run(trials=20)
 """
 
+from .integrity import HarnessMismatchError, NoProtectedFilesError, harness_digest
 from .ledger import Ledger
 from .loop import Loop
 from .metrics import MetricNotFound, extract_metric
@@ -33,13 +34,16 @@ __all__ = [
     "Experiment",
     "GitWorkspace",
     "Goal",
+    "HarnessMismatchError",
     "Ledger",
     "Loop",
     "MetricNotFound",
+    "NoProtectedFilesError",
     "Outcome",
     "Trial",
     "Workspace",
     "__version__",
     "extract_metric",
+    "harness_digest",
     "run_command",
 ]

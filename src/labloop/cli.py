@@ -6,6 +6,7 @@ import argparse
 import sys
 
 from . import __version__
+from .integrity import HarnessMismatchError, NoProtectedFilesError
 from .ledger import Ledger
 from .loop import Loop
 from .types import Experiment, Goal, Outcome, Trial
@@ -17,6 +18,7 @@ _MARKS = {
     Outcome.FAILED: "!",
     Outcome.TIMED_OUT: "T",
     Outcome.NO_METRIC: "?",
+    Outcome.HARNESS_CHANGED: "H",
 }
 
 
@@ -48,6 +50,16 @@ def _build_parser() -> argparse.ArgumentParser:
         p.add_argument("--budget", type=float, default=300.0, help="seconds per command")
         p.add_argument("--workdir", default=".")
         p.add_argument("--ledger", default="labloop.jsonl")
+        p.add_argument(
+            "--protect",
+            action="append",
+            default=None,
+            metavar="PATH",
+            help=(
+                "file, directory, or glob that defines the measurement; a trial "
+                "that changes it is recorded, not scored (repeatable)"
+            ),
+        )
 
     baseline = sub.add_parser("baseline", help="measure the tree as it stands")
     add_common(baseline)
@@ -60,6 +72,7 @@ def _build_parser() -> argparse.ArgumentParser:
     log = sub.add_parser("log", help="summarize the ledger")
     log.add_argument("--ledger", default="labloop.jsonl")
     log.add_argument("--goal", choices=[g.value for g in Goal], default=Goal.MINIMIZE.value)
+    log.add_argument("--metric", default=None, help="metric name, for labelling only")
 
     return parser
 
@@ -76,6 +89,7 @@ def main(argv: list[str] | None = None) -> int:
         goal=Goal(args.goal),
         budget_seconds=args.budget,
         propose=getattr(args, "propose", None),
+        protect=tuple(args.protect or ()),
     )
     loop = Loop(experiment, workdir=args.workdir, ledger=args.ledger, reporter=_report)
 
@@ -84,7 +98,7 @@ def main(argv: list[str] | None = None) -> int:
             loop.baseline()
         else:
             loop.run(trials=args.trials)
-    except DirtyTreeError as exc:
+    except (DirtyTreeError, HarnessMismatchError, NoProtectedFilesError) as exc:
         print(f"labloop: {exc}", file=sys.stderr)
         return 2
     except KeyboardInterrupt:
@@ -111,7 +125,9 @@ def _log(args) -> int:
     print("\n" + "  ".join(f"{name}={n}" for name, n in counts.items() if n))
     best = ledger.best(Goal(args.goal))
     if best and best.metric is not None:
-        print(f"best: {best.metric:.6g} (trial {best.index})")
+        # The ledger records metric values, not the name they were read under.
+        label = args.metric or "best"
+        print(f"{label}: {best.metric:.6g} (trial {best.index})")
     return 0
 
 
