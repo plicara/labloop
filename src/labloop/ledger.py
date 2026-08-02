@@ -29,6 +29,38 @@ class Ledger:
         with self.path.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(trial.to_dict(), sort_keys=True) + "\n")
 
+    def append_manifest(self, spec: dict) -> None:
+        """Record the experiment spec a run started under.
+
+        Manifest lines sit in the same file as trials — the ledger is the
+        record of the run, and the spec is part of the record. They are
+        invisible to the trial iterator (no `outcome` field, so `from_dict`
+        rejects them), which is also what makes them backward compatible:
+        an older labloop reading this ledger skips them the same way it
+        skips a half-written line.
+        """
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self.path.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps({"manifest": 1, **spec}, sort_keys=True) + "\n")
+
+    def last_manifest(self) -> dict | None:
+        """The most recent spec recorded, or None on a pre-manifest ledger."""
+        found = None
+        if not self.path.exists():
+            return None
+        with self.path.open(encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    record = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(record, dict) and record.get("manifest") == 1:
+                    found = {k: v for k, v in record.items() if k != "manifest"}
+        return found
+
     def __iter__(self) -> Iterator[Trial]:
         if not self.path.exists():
             return

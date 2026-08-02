@@ -76,6 +76,7 @@ class Loop:
             return self._baseline()
 
     def _baseline(self) -> Trial:
+        self._record_manifest()
         # Digested before the run, so it describes the tree that was measured.
         harness = self._harness()
         clean_before = not self.workspace.is_dirty()
@@ -163,6 +164,7 @@ class Loop:
         if isinstance(self.workspace, GitWorkspace):
             self.workspace.require_clean()
 
+        self._record_manifest()
         incumbent = self._incumbent()
         results: list[Trial] = []
         stalled = 0
@@ -376,6 +378,34 @@ class Loop:
             commit=commit,
             stdout_tail=completed.tail,
         )
+
+    def _record_manifest(self) -> None:
+        """Write the spec this run starts under, and refuse identity drift.
+
+        The metric name and the goal define what the recorded numbers mean.
+        A ledger whose incumbent was a `val_loss` being minimized cannot
+        judge trials measuring an `accuracy` being maximized — the comparison
+        would be between different quantities and nobody would be told. The
+        rest of the spec (budgets, the propose command, trial counts) may
+        drift freely; changing those changes the schedule, not the meaning.
+
+        A new manifest line is appended only when the spec changed, so a
+        thousand identical invocations cost one line, and `resume` always
+        finds the spec that was actually in force.
+        """
+        spec = self.experiment.spec()
+        last = self.ledger.last_manifest()
+        if last is not None:
+            for field in ("metric", "goal"):
+                if field in last and last[field] != spec[field]:
+                    raise UsageError(
+                        f"this ledger's trials were recorded under {field}="
+                        f"{last[field]!r}, but this run says {field}={spec[field]!r}. "
+                        "Comparing them would mix different measurements — put the "
+                        "spec back, or start a new ledger."
+                    )
+        if last != spec:
+            self.ledger.append_manifest(spec)
 
     HISTORY_FILE = "labloop-history.jsonl"
 

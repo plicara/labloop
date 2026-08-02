@@ -136,6 +136,32 @@ class Experiment:
         """
         return self.budget_seconds if self.propose_budget is None else self.propose_budget
 
+    def spec(self) -> dict[str, Any]:
+        """The experiment as a manifest record.
+
+        `env` is deliberately absent: it is where credentials live, and the
+        ledger is a file that gets shared. A resumed run takes its
+        environment from the shell it resumes in, like every other run.
+        """
+        return {
+            "run": self.run,
+            "metric": self.metric,
+            "goal": self.goal.value,
+            "budget_seconds": self.budget_seconds,
+            "propose": self.propose,
+            "protect": list(self.protect),
+            "brief": self.brief,
+            "confirm": self.confirm,
+            "min_delta": self.min_delta,
+            "give_up_after": self.give_up_after,
+            "propose_budget": self.propose_budget,
+        }
+
+    @classmethod
+    def from_spec(cls, spec: dict[str, Any]) -> Experiment:
+        known = {f for f in cls.__dataclass_fields__}
+        return cls(**{k: v for k, v in spec.items() if k in known})
+
     def __post_init__(self) -> None:
         if self.budget_seconds <= 0:
             raise UsageError("budget_seconds must be positive")

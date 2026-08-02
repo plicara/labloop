@@ -116,6 +116,22 @@ end the run rather than spend the rest of an overnight budget failing
 identically. Occasional failures don't count; only an unbroken run of them does.
 Change it with `--give-up-after N`, or `0` to run regardless.
 
+## Crashes and resuming
+
+Every run records the spec it started under — command, metric, goal,
+budgets, protected files — as a manifest line in the ledger (never the
+environment, which is where credentials live). If the machine dies mid-run:
+
+```bash
+labloop resume --trials 20
+```
+
+continues under the recorded spec, same incumbent, same numbering — nothing
+retyped, nothing drifted. And because the metric name and goal define what
+the recorded numbers mean, a later run that changes either is refused with
+the field named: comparing a `val_loss` being minimized against an
+`accuracy` being maximized would mix measurements and tell no one.
+
 ## Reading the metric
 
 Two formats, no configuration. The last occurrence wins, so printing every

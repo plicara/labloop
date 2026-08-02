@@ -119,7 +119,8 @@ def test_the_ledger_never_stores_a_metric_json_cannot_express(tmp_path):
     loop.baseline()
     raw = (tmp_path / "l.jsonl").read_text()
     assert "NaN" not in raw and "Infinity" not in raw
-    assert json.loads(raw.strip())["metric"] is None
+    trial_lines = [json.loads(line) for line in raw.splitlines() if "outcome" in line]
+    assert trial_lines[-1]["metric"] is None
 
 
 def test_a_ledger_already_holding_a_nan_still_recovers(tmp_path):

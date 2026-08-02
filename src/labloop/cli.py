@@ -152,6 +152,18 @@ def _build_parser() -> argparse.ArgumentParser:
         "--repeat", type=_positive, default=5, help="how many runs (default 5)"
     )
 
+    resume = sub.add_parser(
+        "resume", help="continue a run under the spec recorded in the ledger"
+    )
+    resume.add_argument("--workdir", default=".")
+    resume.add_argument("--ledger", default="labloop.jsonl")
+    resume.add_argument("--trials", type=_positive, default=1)
+    resume.add_argument(
+        "--wait",
+        action="store_true",
+        help="if another run holds this ledger, queue behind it instead of failing",
+    )
+
     log = sub.add_parser("log", help="summarize the ledger")
     log.add_argument("--ledger", default="labloop.jsonl")
     log.add_argument("--goal", choices=[g.value for g in Goal], default=Goal.MINIMIZE.value)
@@ -167,6 +179,8 @@ def main(argv: list[str] | None = None) -> int:
         return _log(args)
 
     try:
+        if args.command == "resume":
+            return _resume(args)
         return _experiment_command(args)
     except (
         DirtyTreeError,
@@ -188,6 +202,49 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 130
+
+
+def _resume(args) -> int:
+    """Continue under the manifest, not under whatever was retyped.
+
+    After a crash the alternative is re-typing the invocation and hoping it
+    matches; if the metric or the protect set drifted, the guards fire and
+    the advice is to start a new ledger — for a run that was fine. The
+    manifest is the spec that was actually in force, so resume cannot drift.
+    """
+    workdir = Path(args.workdir)
+    if not workdir.is_dir():
+        raise UsageError(f"--workdir {args.workdir!r} is not a directory")
+    ledger_path = Path(args.ledger)
+    if not ledger_path.is_absolute():
+        ledger_path = workdir / ledger_path
+
+    spec = Ledger(ledger_path).last_manifest()
+    if spec is None:
+        raise UsageError(
+            f"{ledger_path} has no recorded spec to resume — it predates manifests "
+            "or no run has started here. Run `labloop run` with the full arguments once."
+        )
+    experiment = Experiment.from_spec(spec)
+    if experiment.propose is None:
+        raise UsageError(
+            "the recorded spec has no propose command (it was a baseline); "
+            "there is nothing to resume"
+        )
+
+    loop = Loop(
+        experiment,
+        workdir=workdir,
+        ledger=ledger_path,
+        reporter=_report,
+        wait_for_lock=args.wait,
+    )
+    loop.run(trials=args.trials)
+
+    best = loop.ledger.best(experiment.goal)
+    if best and best.metric is not None:
+        print(f"\nbest {experiment.metric}: {best.metric:.6g} (trial {best.index})")
+    return 0
 
 
 def _experiment_command(args) -> int:

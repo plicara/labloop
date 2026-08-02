@@ -39,7 +39,8 @@ def project(tmp_path, monkeypatch):
 
 
 def ledger(project):
-    return [json.loads(line) for line in (project / "labloop.jsonl").read_text().splitlines()]
+    lines = [json.loads(line) for line in (project / "labloop.jsonl").read_text().splitlines()]
+    return [entry for entry in lines if "manifest" not in entry]
 
 
 def test_baseline_records_and_reports(project, capsys):

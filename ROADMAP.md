@@ -33,7 +33,7 @@ have no guard at all — and worktrees are exactly how parallel directions
   a test: two real processes, one winner, one exit-2 refusal, contiguous
   indices. Windows uses msvcrt best-effort and is not exercised by CI.
 
-## 2. Resumability — `labloop resume` and run manifests
+## 2. Resumability — `labloop resume` and run manifests · **done**
 
 An overnight run dies (OOM, reboot, closed laptop). The ledger survives by
 design, but what the user then does is re-type the whole invocation and hope
@@ -47,6 +47,12 @@ guard fires and tells them to start a new ledger.
 - Acceptance: kill a run at trial N, `labloop resume`, ledger shows
   N+1 onward with the same incumbent and harness digest; changing
   `--metric` between the two is refused with the field named.
+- Shipped: manifest lines live in the ledger itself (invisible to older
+  readers, which skip them like any unparseable line), deduplicated so an
+  unchanged spec is one line however many runs start under it. `env` is
+  never recorded — that is where credentials live. Identity drift (metric,
+  goal) is refused by name on any run, not only resume; schedule drift
+  (budgets, propose, trials) is recorded and allowed.
 
 ## 3. Branching research directions — the named gap
 
