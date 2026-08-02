@@ -54,7 +54,7 @@ guard fires and tells them to start a new ledger.
   goal) is refused by name on any run, not only resume; schedule drift
   (budgets, propose, trials) is recorded and allowed.
 
-## 3. Branching research directions — the named gap
+## 3. Branching research directions — the named gap · **core done**
 
 One linear thread of commits today. The differentiator worth the most and
 the one to design most carefully:
@@ -73,6 +73,15 @@ the one to design most carefully:
 - Acceptance: two directions from one baseline, run in parallel, each
   advancing its own incumbent; `log --tree` shows both; the losing
   direction's trials remain queryable.
+- Shipped: `direction` on every trial (old ledgers read as one direction,
+  `main`), fork records in the ledger, per-direction incumbents seeded
+  from the fork point and blind to the parent's later progress,
+  `labloop branch` with worktree instructions, `--direction` on runs,
+  per-direction bests in `log`, resume returns to the direction in force.
+- Remaining, deliberately: simultaneous runs still serialize on the
+  per-run ledger lock (`--wait` queues them). True simultaneity needs
+  per-append locking with index coordination — a smaller, separate change
+  now that the semantics exist.
 
 ## 4. `labloop init` — the first five minutes
 

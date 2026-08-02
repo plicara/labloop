@@ -52,6 +52,7 @@ class Loop:
         workspace: Workspace | None = None,
         reporter: Reporter | None = None,
         wait_for_lock: bool = False,
+        direction: str = "main",
     ) -> None:
         self.experiment = experiment
         self.workdir = Path(workdir)
@@ -65,6 +66,7 @@ class Loop:
         self.workspace = workspace or GitWorkspace(self.workdir)
         self.reporter = reporter
         self.lock = LedgerLock(self.ledger.path, wait=wait_for_lock)
+        self.direction = direction
 
     def baseline(self) -> Trial:
         """Measure the tree as it stands, without proposing a change.
@@ -104,6 +106,7 @@ class Loop:
             note=note,
             stdout_tail=completed.tail,
             harness=harness,
+            direction=self.direction,
         )
         self._record(trial)
 
@@ -185,6 +188,7 @@ class Loop:
                         incumbent=incumbent,
                         duration_seconds=0.0,
                         note="stopped by hand; the tree may hold an unjudged change",
+                        direction=self.direction,
                     )
                 )
                 raise
@@ -225,6 +229,7 @@ class Loop:
                     incumbent=incumbent,
                     duration_seconds=duration,
                     harness=harness,
+                    direction=self.direction,
                     **{"metric": None, **fields},  # type: ignore[arg-type]
                 )
             )
@@ -393,7 +398,7 @@ class Loop:
         thousand identical invocations cost one line, and `resume` always
         finds the spec that was actually in force.
         """
-        spec = self.experiment.spec()
+        spec = {**self.experiment.spec(), "direction": self.direction}
         last = self.ledger.last_manifest()
         if last is not None:
             for field in ("metric", "goal"):
@@ -462,7 +467,10 @@ class Loop:
             yield dict(self.experiment.env)
             return
 
-        payload = _brief.build(self.experiment, self.ledger.trials(), index, incumbent)
+        history = [t for t in self.ledger if t.direction == self.direction]
+        payload = _brief.build(
+            self.experiment, history, index, incumbent, direction=self.direction
+        )
         handle = tempfile.NamedTemporaryFile(
             "w",
             prefix=f"labloop-brief-{index}-",
@@ -517,7 +525,7 @@ class Loop:
         harness was declared carry no digest and cannot be checked either way,
         so they are accepted — the check can only speak for what it measured.
         """
-        best = self.ledger.best(self.experiment.goal)
+        best = self.ledger.best(self.experiment.goal, direction=self.direction)
         if best is None:
             return None
 

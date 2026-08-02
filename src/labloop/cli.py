@@ -55,6 +55,8 @@ def _report(trial: Trial) -> None:
         f"[{_MARKS[trial.outcome]}] trial {trial.index:>3}  "
         f"{metric:>12}  {trial.duration_seconds:6.1f}s"
     )
+    if trial.direction != "main":
+        line += f"  [{trial.direction}]"
     if trial.commit:
         line += f"  {trial.commit}"
     if trial.note:
@@ -95,6 +97,11 @@ def _build_parser() -> argparse.ArgumentParser:
         )
         p.add_argument("--workdir", default=".")
         p.add_argument("--ledger", default="labloop.jsonl")
+        p.add_argument(
+            "--direction",
+            default="main",
+            help="research direction to advance (see `labloop branch`)",
+        )
         p.add_argument(
             "--wait",
             action="store_true",
@@ -152,6 +159,20 @@ def _build_parser() -> argparse.ArgumentParser:
         "--repeat", type=_positive, default=5, help="how many runs (default 5)"
     )
 
+    branch = sub.add_parser(
+        "branch", help="fork a new research direction from a kept trial"
+    )
+    branch.add_argument("name", help="name for the new direction")
+    branch.add_argument(
+        "--from-trial",
+        type=int,
+        required=True,
+        metavar="N",
+        help="kept trial to fork from; its metric becomes the number to beat",
+    )
+    branch.add_argument("--workdir", default=".")
+    branch.add_argument("--ledger", default="labloop.jsonl")
+
     resume = sub.add_parser(
         "resume", help="continue a run under the spec recorded in the ledger"
     )
@@ -179,6 +200,8 @@ def main(argv: list[str] | None = None) -> int:
         return _log(args)
 
     try:
+        if args.command == "branch":
+            return _branch(args)
         if args.command == "resume":
             return _resume(args)
         return _experiment_command(args)
@@ -238,12 +261,56 @@ def _resume(args) -> int:
         ledger=ledger_path,
         reporter=_report,
         wait_for_lock=args.wait,
+        direction=spec.get("direction", "main"),
     )
     loop.run(trials=args.trials)
 
     best = loop.ledger.best(experiment.goal)
     if best and best.metric is not None:
         print(f"\nbest {experiment.metric}: {best.metric:.6g} (trial {best.index})")
+    return 0
+
+
+def _branch(args) -> int:
+    """Fork a direction: record it in the ledger, create its git branch.
+
+    The fork point must be a kept trial — it is the incumbent the new
+    direction starts from, and a reverted trial's tree no longer exists.
+    """
+    workdir = Path(args.workdir)
+    if not workdir.is_dir():
+        raise UsageError(f"--workdir {args.workdir!r} is not a directory")
+    ledger_path = Path(args.ledger)
+    if not ledger_path.is_absolute():
+        ledger_path = workdir / ledger_path
+
+    ledger = Ledger(ledger_path)
+    name = args.name.strip()
+    if not name or "/" in name or name in ledger.directions():
+        raise UsageError(
+            f"direction name {args.name!r} is empty, contains '/', or already exists"
+        )
+    fork_from = next((t for t in ledger if t.index == args.from_trial), None)
+    if fork_from is None:
+        raise UsageError(f"trial {args.from_trial} is not in {ledger_path}")
+    if fork_from.outcome is not Outcome.KEPT or fork_from.metric is None:
+        raise UsageError(
+            f"trial {args.from_trial} was {fork_from.outcome.value}; a direction can "
+            "only fork from a kept trial, whose tree exists and whose metric is real"
+        )
+
+    ledger.append_fork(name, args.from_trial)
+    print(
+        f"direction {name!r} forks from trial {fork_from.index} "
+        f"({fork_from.metric:.6g}, commit {fork_from.commit or 'baseline HEAD'})"
+    )
+    if fork_from.commit:
+        print(
+            "\nRun it in its own worktree so directions don't fight over one tree:\n"
+            f"    git worktree add ../{name} -b labloop/{name} {fork_from.commit}\n"
+            f"    cd ../{name}\n"
+            f"    labloop run --direction {name} --ledger {ledger_path.resolve()} ..."
+        )
     return 0
 
 
@@ -271,6 +338,7 @@ def _experiment_command(args) -> int:
         ledger=args.ledger,
         reporter=_report,
         wait_for_lock=getattr(args, "wait", False),
+        direction=getattr(args, "direction", "main"),
     )
 
     if args.command == "noise":
@@ -328,10 +396,24 @@ def _log(args) -> int:
 
     counts = ledger.summary()
     print("\n" + "  ".join(f"{name}={n}" for name, n in counts.items() if n))
+    label = args.metric or "best"
+    directions = ledger.directions()
+    if len(directions) > 1:
+        # More than one line of inquiry: report each direction's own best,
+        # because comparing them is exactly what the reader is here to do.
+        forks = ledger.forks()
+        for direction in directions:
+            best = ledger.best(Goal(args.goal), direction=direction)
+            forked = f" (forked from trial {forks[direction]})" if direction in forks else ""
+            if best and best.metric is not None:
+                print(f"{direction}: best {label} {best.metric:.6g} (trial {best.index}){forked}")
+            else:
+                print(f"{direction}: nothing kept yet{forked}")
+        return 0
+
     best = ledger.best(Goal(args.goal))
     if best and best.metric is not None:
         # The ledger records metric values, not the name they were read under.
-        label = args.metric or "best"
         print(f"{label}: {best.metric:.6g} (trial {best.index})")
     return 0
 

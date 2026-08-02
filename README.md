@@ -116,6 +116,29 @@ end the run rather than spend the rest of an overnight budget failing
 identically. Occasional failures don't count; only an unbroken run of them does.
 Change it with `--give-up-after N`, or `0` to run regardless.
 
+## Research directions
+
+Autoresearch grows a single thread of commits; its author has said the next
+step is many. A direction is a parallel line of inquiry over the same shared
+ledger, with its own incumbent:
+
+```bash
+labloop branch wide-lr --from-trial 7
+git worktree add ../wide-lr -b labloop/wide-lr <trial-7-commit>
+cd ../wide-lr && labloop run --direction wide-lr --ledger <shared> ...
+```
+
+The fork starts from the kept trial's metric — its first attempt has to beat
+where it forked from, not zero, and not the parent's later progress. Trials
+carry their direction, indices stay globally unique, and `labloop log`
+reports each direction's best side by side. A proposer's brief contains only
+its own direction's history.
+
+Two directions cannot run at the same instant yet: the ledger lock
+serializes runs, so simultaneous loops queue (`--wait`) rather than
+interleave. Alternating runs, or runs from different machines at different
+times, work today.
+
 ## Crashes and resuming
 
 Every run records the spec it started under — command, metric, goal,

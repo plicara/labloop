@@ -70,6 +70,13 @@ class Trial:
     Two trials carrying the same digest were measured the same way. None means
     no claim was made, which is not the same as nothing having changed.
     """
+    direction: str = "main"
+    """Which research direction this trial belongs to.
+
+    Directions are parallel lines of inquiry over one shared ledger, each
+    advancing its own incumbent. Every pre-existing ledger is one direction
+    named main, which is also the default when nobody asks for more.
+    """
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)

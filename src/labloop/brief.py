@@ -36,11 +36,13 @@ def build(
     index: int,
     incumbent: float | None,
     recent: int = RECENT,
+    direction: str = "main",
 ) -> dict[str, Any]:
     """Assemble the brief for the trial about to be proposed."""
     recent_trials = list(history)[-recent:] if recent > 0 else []
     return {
         "trial": index,
+        "direction": direction,
         "metric": experiment.metric,
         "goal": experiment.goal.value,
         "incumbent": incumbent,
