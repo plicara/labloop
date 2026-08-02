@@ -166,6 +166,61 @@ def test_a_proposal_that_adds_a_new_module_is_committed_whole(project, capsys):
     assert "helper.py" in tracked
 
 
+def test_run_artifacts_are_not_committed_and_do_not_linger(project, capsys):
+    # The nanogpt case: the experiment writes a checkpoint every trial. The
+    # commit must record the change and the decision log, not the artifact —
+    # and the artifact must not survive to dirty the next trial either.
+    (project / "train.py").write_text(
+        'open("checkpoint.bin", "wb").write(b"\\0" * 100_000)\nprint("val_loss = 1.0")\n'
+    )
+    git("commit", "-aqm", "writes a checkpoint", cwd=project)
+
+    main(["baseline", "--run", "python train.py", "--metric", "val_loss"])
+    code = main(
+        [
+            "run",
+            "--run",
+            "python train.py",
+            "--metric",
+            "val_loss",
+            "--propose",
+            r"sed -i 's/= 1\.0/= 0.5/' train.py",
+        ]
+    )
+    assert code == 0
+    assert "[+] trial   1" in capsys.readouterr().out
+
+    tracked = git("ls-files", cwd=project)
+    assert "checkpoint.bin" not in tracked, "artifacts must not enter the history"
+    assert "labloop-history.jsonl" in tracked, "the decision log must"
+    assert not (project / "checkpoint.bin").exists(), "and must not dirty the next trial"
+    assert git("status", "--porcelain", cwd=project).strip() == ""
+
+
+def test_the_decision_log_respects_a_gitignore_that_covers_it(project, capsys):
+    # A user who gitignored labloop* has said what they want. The log is
+    # still written locally, just not forced into the commit.
+    (project / ".gitignore").write_text("labloop*.jsonl\n__pycache__/\n")
+    git("commit", "-aqm", "ignore labloop files", cwd=project)
+
+    main(["baseline", "--run", "python train.py", "--metric", "val_loss"])
+    code = main(
+        [
+            "run",
+            "--run",
+            "python train.py",
+            "--metric",
+            "val_loss",
+            "--propose",
+            "echo 'print(\"val_loss = 1.0\")' > train.py",
+        ]
+    )
+    assert code == 0
+    assert "[+] trial   1" in capsys.readouterr().out
+    assert "labloop-history.jsonl" not in git("ls-files", cwd=project)
+    assert (project / "labloop-history.jsonl").exists()
+
+
 def test_noise_reports_a_spread_without_writing_a_ledger(project, capsys):
     code = main(["noise", "--run", "python train.py", "--metric", "val_loss", "--repeat", "3"])
     assert code == 0

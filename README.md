@@ -271,16 +271,24 @@ getting to decide what happened.
 Pass `--no-brief` to turn it off. The file is written outside the working tree
 either way, so it never dirties the tree or lands in a commit.
 
-## Keep artifacts out of git
+## What gets committed
 
-A kept trial is committed with `git add -A`, so anything your experiment leaves
-behind is committed too. A checkpoint written every trial is a checkpoint in
-every commit, and the commit stops meaning "the change that improved the
+A kept trial commits exactly two things: the change the proposal made, and
+`labloop-history.jsonl` — a sparse decision log with one compact line per
+trial, reverted ones included, so the research record travels with the
+repository while the bulky output tails stay in the local ledger.
+
+Nothing else. Whatever the run produced beyond the proposed change —
+checkpoints, logs, caches — is discarded after the trial is judged, exactly as
+it already was on a reverted trial. A training run that writes a checkpoint
+per trial would otherwise turn an overnight loop into a repository of hundreds
+of gigabytes, and the commit would stop meaning "the change that improved the
 metric".
 
-Put artifacts in `.gitignore` — checkpoints, logs, `__pycache__`, whatever your
-run writes. You will hit this anyway: the loop refuses to start on a dirty tree,
-and an untracked artifact makes the tree dirty.
+If you want an artifact to survive across trials (a download cache, a
+warm-start checkpoint), put it in `.gitignore`: ignored files are never swept
+and never committed. If you gitignore the decision log itself, it is still
+written locally but left out of commits — a stated preference is respected.
 
 ## The ledger
 

@@ -15,17 +15,31 @@ class FakeWorkspace:
         # Dirty by default, standing in for a proposal that edited something.
         # Most tests care about the judging, not the editing.
         self._dirty = dirty
+        self._just_committed = False
         self.reverts = 0
         self.commits: list[str] = []
+        self.committed_paths: list[list[str] | None] = []
 
     def is_dirty(self) -> bool:
+        # Immediately after a commit the tree matches HEAD (this fake has no
+        # artifacts), but the next trial's proposal dirties it again. The
+        # loop checks exactly once between the two, so one clean answer per
+        # commit models git faithfully.
+        if self._just_committed:
+            self._just_committed = False
+            return False
         return self._dirty
+
+    def changed_paths(self) -> list[str]:
+        return ["train.py"] if self._dirty else []
 
     def revert(self) -> None:
         self.reverts += 1
 
-    def commit(self, message: str) -> str:
+    def commit(self, message: str, paths=None) -> str:
         self.commits.append(message)
+        self.committed_paths.append(list(paths) if paths is not None else None)
+        self._just_committed = True
         return f"abc{len(self.commits):04d}"
 
 

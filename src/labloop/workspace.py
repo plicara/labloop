@@ -1,14 +1,15 @@
 """Git operations backing keep-or-revert.
 
-The loop needs exactly three things from version control: know whether the
-tree is clean, throw away a change, or record one. Keeping that behind an
-interface means the loop logic never shells out to git directly, and tests can
-substitute an in-memory workspace.
+The loop needs four things from version control: know whether the tree is
+clean, say what changed, throw away a change, or record one. Keeping that
+behind an interface means the loop logic never shells out to git directly, and
+tests can substitute an in-memory workspace.
 """
 
 from __future__ import annotations
 
 import subprocess
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Protocol
 
@@ -21,8 +22,9 @@ class DirtyTreeError(RuntimeError):
 
 class Workspace(Protocol):
     def is_dirty(self) -> bool: ...
+    def changed_paths(self) -> list[str]: ...
     def revert(self) -> None: ...
-    def commit(self, message: str) -> str: ...
+    def commit(self, message: str, paths: Sequence[str] | None = None) -> str: ...
 
 
 class GitWorkspace:
@@ -70,7 +72,60 @@ class GitWorkspace:
         self._git("reset", "--hard")
         self._git("clean", "-fd")
 
-    def commit(self, message: str) -> str:
-        self._git("add", "-A")
+    def changed_paths(self) -> list[str]:
+        """Every path the tree differs from HEAD on, staged or not.
+
+        Parsed from `--porcelain -z`: NUL separators survive filenames with
+        spaces, and nothing here strips the status columns — the plain form
+        went through a helper that trimmed the first line's leading space,
+        which silently turned ` M train.py` into `rain.py`.
+        """
+        result = subprocess.run(
+            ["git", "status", "--porcelain", "-z"],
+            cwd=str(self.root),
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"git status failed: {result.stderr.strip()}")
+
+        tokens = result.stdout.split("\0")
+        paths: set[str] = set()
+        index = 0
+        while index < len(tokens):
+            token = tokens[index]
+            if not token:
+                index += 1
+                continue
+            status, name = token[:2], token[3:]
+            paths.add(name)
+            # A rename or copy carries the original name as its own token.
+            if "R" in status or "C" in status:
+                index += 1
+                paths.add(tokens[index])
+            index += 1
+        return sorted(paths)
+
+    def commit(self, message: str, paths: Sequence[str] | None = None) -> str:
+        """Record a change. With `paths`, only those; otherwise everything.
+
+        Ignored paths are dropped rather than forced in: `git add` refuses
+        them, and a user who gitignored a file has already said what they want.
+        """
+        if paths is None:
+            self._git("add", "-A")
+        else:
+            wanted = [p for p in paths if not self._is_ignored(p)]
+            if not wanted:
+                raise RuntimeError("nothing to commit: every named path is gitignored")
+            self._git("add", "-A", "--", *wanted)
         self._git("commit", "-m", message)
         return self._git("rev-parse", "--short", "HEAD")
+
+    def _is_ignored(self, path: str) -> bool:
+        result = subprocess.run(
+            ["git", "check-ignore", "-q", "--", path],
+            cwd=str(self.root),
+            capture_output=True,
+        )
+        return result.returncode == 0

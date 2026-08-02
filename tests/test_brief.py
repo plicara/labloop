@@ -176,8 +176,9 @@ def test_the_brief_does_not_survive_into_the_working_tree(tmp_path):
     loop.run(trials=1)
 
     new = {p.name for p in tmp_path.iterdir()} - {p.name for p in before}
-    assert new == {"l.jsonl"}, (
-        "a brief written into the workdir would dirty the tree and be committed"
+    assert new == {"l.jsonl", "labloop-history.jsonl"}, (
+        "a brief written into the workdir would dirty the tree and be committed; "
+        "only the ledger and the committed decision log belong here"
     )
 
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 import tempfile
 from collections.abc import Callable, Iterator
@@ -70,6 +71,7 @@ class Loop:
         """
         # Digested before the run, so it describes the tree that was measured.
         harness = self._harness()
+        clean_before = not self.workspace.is_dirty()
         completed = run_command(
             self.experiment.run,
             cwd=self.workdir,
@@ -96,6 +98,14 @@ class Loop:
             harness=harness,
         )
         self._record(trial)
+
+        # A run that spews artifacts onto a clean tree would block the next
+        # `run` on the dirty-tree interlock. Sweeping is only safe when the
+        # tree was clean going in: on a dirty tree everything present might
+        # be the user's work, and baseline measures the tree as it stands —
+        # it has no business deleting any of it.
+        if clean_before and self.workspace.is_dirty():
+            self.workspace.revert()
         return trial
 
     def measure_noise(self, repeats: int = 5) -> list[float]:
@@ -254,6 +264,14 @@ class Loop:
                 stdout_tail=proposal.tail,
             )
 
+        # What the proposal touched, captured before the experiment runs so
+        # a kept commit records the change and not the artifacts. A training
+        # run can leave checkpoints of hundreds of megabytes per trial;
+        # committing them turns an overnight run into a repository of
+        # hundreds of gigabytes, and the commit stops meaning "the change
+        # that improved the metric".
+        proposed_paths = self.workspace.changed_paths()
+
         completed = run_command(
             self.experiment.run,
             cwd=self.workdir,
@@ -314,7 +332,8 @@ class Loop:
             message += f" (was {incumbent:.6g})"
 
         try:
-            commit = self.workspace.commit(message)
+            history = self._write_history(index, metric, incumbent)
+            commit = self.workspace.commit(message, [*proposed_paths, history])
         except RuntimeError as exc:
             # A pre-commit hook that rejects the change, or any other reason
             # git declines. The measurement was real, so it is recorded, but a
@@ -328,6 +347,13 @@ class Loop:
                 stdout_tail=completed.tail,
             )
 
+        if self.workspace.is_dirty():
+            # Whatever the run produced beyond the proposed change —
+            # checkpoints, logs, caches not covered by .gitignore. The same
+            # sweep every reverted trial already gets; a kept trial's
+            # artifacts are no more part of the change than a reverted one's.
+            self.workspace.revert()
+
         return record(
             Outcome.KEPT,
             spent,
@@ -335,6 +361,44 @@ class Loop:
             commit=commit,
             stdout_tail=completed.tail,
         )
+
+    HISTORY_FILE = "labloop-history.jsonl"
+
+    def _write_history(self, index: int, metric: float, incumbent: float | None) -> str:
+        """Refresh the decision log that travels with the repository.
+
+        The ledger stays out of git — it carries output tails and can grow
+        without bound. This is the sparse version: one compact line per
+        trial, reverted ones included, because the attempts that were thrown
+        away are most of the information and `git log` only remembers what
+        was kept. Rewritten in full each time, but earlier lines never
+        change, so every commit's diff is only the lines since the last keep.
+        """
+        entries = [
+            {
+                "index": t.index,
+                "outcome": t.outcome.value,
+                "metric": t.metric,
+                "incumbent": t.incumbent,
+                "note": t.note,
+            }
+            for t in self.ledger
+        ]
+        entries.append(
+            {
+                "index": index,
+                "outcome": Outcome.KEPT.value,
+                "metric": metric,
+                "incumbent": incumbent,
+                "note": "",
+            }
+        )
+        path = self.workdir / self.HISTORY_FILE
+        path.write_text(
+            "".join(json.dumps(e, sort_keys=True) + "\n" for e in entries),
+            encoding="utf-8",
+        )
+        return self.HISTORY_FILE
 
     def _beats(self, candidate: float, incumbent: float | None) -> bool:
         if incumbent is None:

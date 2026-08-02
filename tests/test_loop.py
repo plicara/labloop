@@ -206,6 +206,54 @@ def test_a_non_positive_proposal_budget_is_rejected():
         Experiment(run="x", metric="m", propose_budget=0)
 
 
+def test_a_kept_trial_commits_the_proposed_change_not_everything(tmp_path):
+    # `git add -A` would sweep in whatever the run produced — a checkpoint per
+    # trial turns an overnight run into a repository of hundreds of gigabytes.
+    loop, ws = make_loop(tmp_path, run="echo val=0.5")
+    (trial,) = loop.run(trials=1)
+
+    assert trial.outcome is Outcome.KEPT
+    (paths,) = ws.committed_paths
+    assert paths is not None, "a kept trial must name what it commits"
+    assert "train.py" in paths, "the proposed change itself"
+    assert "labloop-history.jsonl" in paths, "and the decision log"
+
+
+def test_the_decision_log_carries_reverted_trials_too(tmp_path):
+    # git log only remembers what was kept; the reverted attempts are most of
+    # the information, so the committed log must include them.
+    loop, _ = make_loop(tmp_path, run="echo val=5.0")
+    loop.baseline()
+    loop, _ = make_loop(tmp_path, run="echo val=9.0")
+    loop.run(trials=1)  # worse: reverted
+    loop, _ = make_loop(tmp_path, run="echo val=1.0")
+    loop.run(trials=1)  # better: kept, writes the log
+
+    lines = [
+        json.loads(line)
+        for line in (tmp_path / "labloop-history.jsonl").read_text().splitlines()
+    ]
+    outcomes = [entry["outcome"] for entry in lines]
+    assert outcomes == ["kept", "reverted", "kept"]
+    assert lines[1]["metric"] == 9.0, "the discarded number is the point"
+    assert all("stdout" not in key for entry in lines for key in entry), (
+        "sparse means no output tails in the committed log"
+    )
+
+
+def test_leftover_artifacts_are_swept_after_a_kept_commit(tmp_path):
+    # The fake reports the tree still dirty after the commit — run artifacts
+    # beyond the proposed change. They get the same discard a reverted trial's
+    # artifacts always got.
+    loop, ws = make_loop(tmp_path, run="echo val=0.5")
+    ws.is_dirty = lambda: True  # always dirty: artifacts remain post-commit
+
+    (trial,) = loop.run(trials=1)
+
+    assert trial.outcome is Outcome.KEPT
+    assert ws.reverts == 1, "artifacts the commit skipped must not linger"
+
+
 def test_failed_proposal_short_circuits_the_run(tmp_path):
     loop, ws = make_loop(tmp_path, run="echo val=0.001", propose="exit 3")
     (trial,) = loop.run(trials=1)
@@ -237,7 +285,7 @@ def test_a_commit_git_refuses_is_recorded_not_a_crash(tmp_path):
     # with it.
     loop, ws = make_loop(tmp_path, run="echo val=0.5")
 
-    def refuse(message):
+    def refuse(message, paths=None):
         raise RuntimeError("git commit failed: lint failed: no docstring")
 
     ws.commit = refuse
@@ -255,7 +303,7 @@ def test_a_repo_that_never_accepts_a_commit_stops_the_run(tmp_path):
     # These trials carry a metric, so a stall rule keyed on "no metric" would
     # let them run all night.
     loop, ws = make_loop(tmp_path, run="echo val=0.5")
-    ws.commit = lambda message: (_ for _ in ()).throw(RuntimeError("hook says no"))
+    ws.commit = lambda message, paths=None: (_ for _ in ()).throw(RuntimeError("hook says no"))
     loop.experiment.give_up_after = 3
 
     with pytest.raises(StalledError, match="no verdict"):
@@ -326,7 +374,7 @@ def test_an_interrupted_trial_still_reaches_the_ledger(tmp_path):
     assert last.incumbent == 1.0
 
 
-def _raise_interrupt(message: str) -> str:
+def _raise_interrupt(message: str, paths=None) -> str:
     raise KeyboardInterrupt
 
 
