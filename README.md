@@ -16,7 +16,9 @@ pip install labloop
 
 ## Use
 
-Check the experiment gives the same answer twice, take a baseline, then let an
+In a fresh repository, `labloop init` gitignores the ledger, writes a
+stand-in experiment if you have none, and prints the exact first commands.
+Then: check the experiment gives the same answer twice, take a baseline, then let an
 agent iterate against it:
 
 ```bash
@@ -337,10 +339,14 @@ written locally but left out of commits — a stated preference is respected.
 ## The ledger
 
 Trials append to `labloop.jsonl` — one JSON object per line, readable while the
-run is still going.
+run is still going. Query it without leaving the tool:
 
 ```bash
-labloop log --metric val_loss
+labloop log --metric val_loss              # replay with per-direction bests
+labloop log --json                         # one strict JSON object per trial
+labloop log --outcome reverted --json      # only what was thrown away
+labloop log --since-trial 40 --direction wide-lr
+labloop log --compare main wide-lr         # refuses if their harnesses differ
 ```
 
 ```python

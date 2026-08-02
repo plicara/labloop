@@ -83,7 +83,7 @@ the one to design most carefully:
   per-append locking with index coordination — a smaller, separate change
   now that the semantics exist.
 
-## 4. `labloop init` — the first five minutes
+## 4. `labloop init` — the first five minutes · **done**
 
 The README teaches concepts; nothing scaffolds a project. `init` writes the
 pieces a new project needs and nothing else: a `.gitignore` covering ledger
@@ -95,8 +95,13 @@ holds still.
 
 - Acceptance: `labloop init && labloop baseline ...` works in an empty git
   repo without editing anything by hand.
+- Shipped: gitignore patched idempotently, a stand-in experiment written
+  only when no Python file exists to shadow, refusal outside git with the
+  fix named, and copy-paste next steps ending in the noise check. It
+  prints the noise command rather than running it: init should not spend
+  minutes of compute uninvited.
 
-## 5. Ledger tooling — the artifact half of the pitch
+## 5. Ledger tooling — the artifact half of the pitch · **done**
 
 "Trial history as a queryable artifact" currently means "it's JSONL, bring
 jq". Minimum honest version:
@@ -107,6 +112,10 @@ jq". Minimum honest version:
   where harness digests differ.
 - Acceptance: every README claim about querying the ledger is a copy-paste
   command that works.
+- Shipped: `log --json` (stable field names from the trial schema),
+  `--outcome`, `--direction`, `--since-trial`, and `--compare A B` which
+  refuses when the two directions' harness digests differ. Each README
+  example has a test running the same command.
 
 ## 6. Release engineering
 

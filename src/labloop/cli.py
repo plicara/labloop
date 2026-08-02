@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import statistics
 import sys
 from pathlib import Path
@@ -159,6 +160,9 @@ def _build_parser() -> argparse.ArgumentParser:
         "--repeat", type=_positive, default=5, help="how many runs (default 5)"
     )
 
+    init = sub.add_parser("init", help="set a repository up for labloop")
+    init.add_argument("--workdir", default=".")
+
     branch = sub.add_parser(
         "branch", help="fork a new research direction from a kept trial"
     )
@@ -185,10 +189,32 @@ def _build_parser() -> argparse.ArgumentParser:
         help="if another run holds this ledger, queue behind it instead of failing",
     )
 
-    log = sub.add_parser("log", help="summarize the ledger")
+    log = sub.add_parser("log", help="summarize or query the ledger")
     log.add_argument("--ledger", default="labloop.jsonl")
     log.add_argument("--goal", choices=[g.value for g in Goal], default=Goal.MINIMIZE.value)
     log.add_argument("--metric", default=None, help="metric name, for labelling only")
+    log.add_argument(
+        "--json",
+        action="store_true",
+        help="one JSON object per trial, for jq and friends",
+    )
+    log.add_argument(
+        "--outcome",
+        choices=[o.value for o in Outcome],
+        default=None,
+        help="only trials that ended this way",
+    )
+    log.add_argument("--direction", default=None, help="only this direction's trials")
+    log.add_argument(
+        "--since-trial", type=int, default=None, metavar="N", help="only trials with index >= N"
+    )
+    log.add_argument(
+        "--compare",
+        nargs=2,
+        metavar=("A", "B"),
+        default=None,
+        help="compare two directions' bests; refuses when their harnesses differ",
+    )
 
     return parser
 
@@ -196,10 +222,11 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
 
-    if args.command == "log":
-        return _log(args)
-
     try:
+        if args.command == "log":
+            return _log(args)
+        if args.command == "init":
+            return _init(args)
         if args.command == "branch":
             return _branch(args)
         if args.command == "resume":
@@ -268,6 +295,66 @@ def _resume(args) -> int:
     best = loop.ledger.best(experiment.goal)
     if best and best.metric is not None:
         print(f"\nbest {experiment.metric}: {best.metric:.6g} (trial {best.index})")
+    return 0
+
+
+_EXAMPLE = """\
+# labloop example: delete me once you have a real experiment.
+# The loop keeps a change only if the printed metric improves.
+LR = 0.5
+print(f"val_loss = {abs(LR - 0.03):.4f}")
+"""
+
+_IGNORES = ("labloop.jsonl", "__pycache__/")
+
+
+def _init(args) -> int:
+    """Set a repository up: gitignore the ledger, show the first commands.
+
+    Writes as little as possible. The one thing every project needs is the
+    ledger kept out of git; the example experiment appears only when there is
+    no Python file it could shadow, and everything printed at the end is
+    copy-paste runnable.
+    """
+    import subprocess
+
+    workdir = Path(args.workdir)
+    if not workdir.is_dir():
+        raise UsageError(f"--workdir {args.workdir!r} is not a directory")
+    probe = subprocess.run(
+        ["git", "rev-parse", "--git-dir"], cwd=workdir, capture_output=True
+    )
+    if probe.returncode != 0:
+        raise UsageError(
+            "not a git repository — the loop keeps and reverts through git, so run "
+            "`git init` first"
+        )
+
+    gitignore = workdir / ".gitignore"
+    existing = gitignore.read_text().splitlines() if gitignore.exists() else []
+    missing = [entry for entry in _IGNORES if entry not in existing]
+    if missing:
+        text = "\n".join([*existing, *missing]) + "\n"
+        gitignore.write_text(text)
+        print(f"added to .gitignore: {', '.join(missing)}")
+    else:
+        print(".gitignore already covers labloop")
+
+    run_cmd = None
+    if not list(workdir.glob("*.py")):
+        example = workdir / "labloop-example.py"
+        example.write_text(_EXAMPLE)
+        run_cmd = f"python {example.name}"
+        print(f"wrote {example.name} — a stand-in experiment that prints val_loss")
+
+    print(
+        "\nNext, in order:\n"
+        "    git add -A && git commit -m 'labloop setup'\n"
+        f"    labloop noise --run {run_cmd or '<your command>'!r} --metric val_loss\n"
+        f"    labloop baseline --run {run_cmd or '<your command>'!r} --metric val_loss\n"
+        "\nThe noise check is not ceremony: keep-or-revert is only as good as the\n"
+        "metric holding still."
+    )
     return 0
 
 
@@ -384,11 +471,57 @@ def _noise(loop: Loop, repeats: int) -> int:
     return 0
 
 
+def _compare(ledger: Ledger, args) -> int:
+    """Two directions' bests, side by side — only if they measured alike.
+
+    Numbers from different harness digests are not comparable, and a
+    comparison that quietly ignored that would be the tool doing the exact
+    thing it exists to catch.
+    """
+    goal, label = Goal(args.goal), args.metric or "best"
+    bests = {}
+    for name in args.compare:
+        if name not in ledger.directions():
+            raise UsageError(f"direction {name!r} is not in {args.ledger}")
+        bests[name] = ledger.best(goal, direction=name)
+
+    digests = {b.harness for b in bests.values() if b is not None and b.harness}
+    if len(digests) > 1:
+        raise UsageError(
+            f"directions {args.compare[0]!r} and {args.compare[1]!r} were measured "
+            "by different harnesses; their metrics are not comparable"
+        )
+
+    for name, best in bests.items():
+        if best is None or best.metric is None:
+            print(f"{name}: nothing kept yet")
+        else:
+            print(f"{name}: {label} {best.metric:.6g} (trial {best.index})")
+    return 0
+
+
 def _log(args) -> int:
     ledger = Ledger(args.ledger)
+    if args.compare:
+        return _compare(ledger, args)
+
     trials = ledger.trials()
     if not trials:
         print(f"no trials recorded in {args.ledger}")
+        return 0
+    if args.direction is not None:
+        trials = [t for t in trials if t.direction == args.direction]
+    if args.outcome is not None:
+        trials = [t for t in trials if t.outcome.value == args.outcome]
+    if args.since_trial is not None:
+        trials = [t for t in trials if t.index >= args.since_trial]
+    if not trials:
+        print("no trials match the filters")
+        return 0
+
+    if args.json:
+        for trial in trials:
+            print(json.dumps(trial.to_dict(), sort_keys=True))
         return 0
 
     for trial in trials:
