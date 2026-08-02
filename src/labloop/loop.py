@@ -24,7 +24,7 @@ from .integrity import (
 from .ledger import Ledger
 from .lock import LedgerLock
 from .metrics import MetricNotFound, extract_metric
-from .runner import run_command
+from .runner import Completed, run_command
 from .types import Experiment, Goal, Outcome, Trial, UsageError
 from .workspace import GitWorkspace, Workspace
 
@@ -117,7 +117,7 @@ class Loop:
             self.workspace.revert()
         return trial
 
-    def _measure(self):
+    def _measure(self) -> Completed:
         """Run the experiment once under its budget."""
         return run_command(
             self.experiment.run,
@@ -324,16 +324,16 @@ class Loop:
             again = self._measure()
             second = self._read_metric(again.output)
             spent += again.duration_seconds
-            usable = second is not None and again.ok and math.isfinite(second)
+            shown = f"{second:.6g}" if second is not None else "--"
+            note = f"won at {metric:.6g} but measured {shown} on a second run"
 
-            if not (usable and self._beats(second, incumbent)):
-                shown = f"{second:.6g}" if second is not None else "--"
+            if second is None or not again.ok or not math.isfinite(second):
                 return reject(
-                    Outcome.REVERTED,
-                    spent,
-                    metric=second if usable else None,
-                    note=f"won at {metric:.6g} but measured {shown} on a second run",
-                    stdout_tail=again.tail,
+                    Outcome.REVERTED, spent, metric=None, note=note, stdout_tail=again.tail
+                )
+            if not self._beats(second, incumbent):
+                return reject(
+                    Outcome.REVERTED, spent, metric=second, note=note, stdout_tail=again.tail
                 )
 
             # The incumbent advances to the weaker of the two. A lucky draw
@@ -571,7 +571,7 @@ class Loop:
             return None
 
     @staticmethod
-    def _failure(completed) -> Outcome:
+    def _failure(completed: Completed) -> Outcome:
         """Why a trial produced nothing usable.
 
         Exit status is read before the metric. A crashed run that printed

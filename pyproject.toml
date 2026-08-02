@@ -1,6 +1,6 @@
 [project]
 name = "labloop"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Keep a change only if it measurably helps: an experiment loop for agent-driven research."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -19,11 +19,12 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: Software Development :: Testing",
+  "Typing :: Typed",
 ]
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "ruff>=0.6"]
+dev = ["pytest>=8.0", "ruff>=0.6", "mypy>=1.10"]
 
 [project.scripts]
 labloop = "labloop.cli:main"
@@ -32,13 +33,33 @@ labloop = "labloop.cli:main"
 Homepage = "https://github.com/foothills-labs/labloop"
 Repository = "https://github.com/foothills-labs/labloop"
 Issues = "https://github.com/foothills-labs/labloop/issues"
+Changelog = "https://github.com/foothills-labs/labloop/blob/main/CHANGELOG.md"
+Roadmap = "https://github.com/foothills-labs/labloop/blob/main/ROADMAP.md"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+# The version lives in exactly one place: labloop/__init__.py.
+[tool.hatch.version]
+path = "src/labloop/__init__.py"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/labloop"]
+
+# The sdist is the archival artifact: everything needed to understand and
+# re-verify the release, not only to install it.
+[tool.hatch.build.targets.sdist]
+include = [
+  "src/labloop",
+  "tests",
+  "experiments",
+  "README.md",
+  "CHANGELOG.md",
+  "ROADMAP.md",
+  "CONTRIBUTING.md",
+  "LICENSE",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -49,3 +70,7 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+strict = true
+files = ["src/labloop"]

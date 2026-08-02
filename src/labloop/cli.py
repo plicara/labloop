@@ -254,7 +254,7 @@ def main(argv: list[str] | None = None) -> int:
         return 130
 
 
-def _resume(args) -> int:
+def _resume(args: argparse.Namespace) -> int:
     """Continue under the manifest, not under whatever was retyped.
 
     After a crash the alternative is re-typing the invocation and hoping it
@@ -305,7 +305,7 @@ print(f"val_loss = {abs(LR - 0.03):.4f}")
 _IGNORES = ("labloop.jsonl", "__pycache__/")
 
 
-def _init(args) -> int:
+def _init(args: argparse.Namespace) -> int:
     """Set a repository up: gitignore the ledger, show the first commands.
 
     Writes as little as possible. The one thing every project needs is the
@@ -355,7 +355,7 @@ def _init(args) -> int:
     return 0
 
 
-def _paths(args) -> tuple[Path, Path]:
+def _paths(args: argparse.Namespace) -> tuple[Path, Path]:
     """Resolve --workdir and --ledger the same way everywhere.
 
     The ledger is relative to the project, not the shell — three commands
@@ -370,7 +370,7 @@ def _paths(args) -> tuple[Path, Path]:
     return workdir, ledger_path
 
 
-def _branch(args) -> int:
+def _branch(args: argparse.Namespace) -> int:
     """Fork a direction: record it in the ledger, create its git branch.
 
     The fork point must be a kept trial — it is the incumbent the new
@@ -412,7 +412,7 @@ def _fork_point(ledger: Ledger, index: int, ledger_path: Path) -> Trial:
     return trial
 
 
-def _experiment_command(args) -> int:
+def _experiment_command(args: argparse.Namespace) -> int:
     workdir, _ = _paths(args)
 
     experiment = Experiment(
@@ -480,7 +480,7 @@ def _noise(loop: Loop, repeats: int) -> int:
     return 0
 
 
-def _compare(ledger: Ledger, args) -> int:
+def _compare(ledger: Ledger, args: argparse.Namespace) -> int:
     """Two directions' bests, side by side — only if they measured alike.
 
     Numbers from different harness digests are not comparable, and a
@@ -509,7 +509,7 @@ def _compare(ledger: Ledger, args) -> int:
     return 0
 
 
-def _log(args) -> int:
+def _log(args: argparse.Namespace) -> int:
     ledger = Ledger(args.ledger)
     if args.compare:
         return _compare(ledger, args)
@@ -536,7 +536,7 @@ def _log(args) -> int:
     return 0
 
 
-def _filtered(trials: list[Trial], args) -> list[Trial]:
+def _filtered(trials: list[Trial], args: argparse.Namespace) -> list[Trial]:
     if args.direction is not None:
         trials = [t for t in trials if t.direction == args.direction]
     if args.outcome is not None:
@@ -546,7 +546,7 @@ def _filtered(trials: list[Trial], args) -> list[Trial]:
     return trials
 
 
-def _print_bests(ledger: Ledger, args) -> None:
+def _print_bests(ledger: Ledger, args: argparse.Namespace) -> None:
     label = args.metric or "best"
     directions = ledger.directions()
     if len(directions) <= 1:

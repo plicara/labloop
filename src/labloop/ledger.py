@@ -14,6 +14,7 @@ import json
 import math
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Any, cast
 
 from .types import Goal, Outcome, Trial
 
@@ -27,7 +28,7 @@ class Ledger:
     def append(self, trial: Trial) -> None:
         self._append(trial.to_dict())
 
-    def append_manifest(self, spec: dict) -> None:
+    def append_manifest(self, spec: dict[str, Any]) -> None:
         """Record the experiment spec a run started under.
 
         Manifest lines sit in the same file as trials — the ledger is the
@@ -39,12 +40,12 @@ class Ledger:
         """
         self._append({"manifest": 1, **spec})
 
-    def _append(self, record: dict) -> None:
+    def _append(self, record: dict[str, Any]) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(record, sort_keys=True) + "\n")
 
-    def _raw_records(self):
+    def _raw_records(self) -> Iterator[dict[str, Any]]:
         """Every parseable JSON object in the file, in order.
 
         Blank and half-written lines are skipped, not fatal: a truncated
@@ -64,7 +65,7 @@ class Ledger:
                 if isinstance(record, dict):
                     yield record
 
-    def _records(self, kind: str):
+    def _records(self, kind: str) -> Iterator[dict[str, Any]]:
         """Every non-trial record of one kind, in file order.
 
         Trials, manifests and forks share the file; each non-trial kind is
@@ -75,11 +76,11 @@ class Ledger:
             if record.get(kind) == 1:
                 yield {k: v for k, v in record.items() if k != kind}
 
-    def manifests(self) -> list[dict]:
+    def manifests(self) -> list[dict[str, Any]]:
         """Every spec recorded, oldest first."""
         return list(self._records("manifest"))
 
-    def last_manifest(self) -> dict | None:
+    def last_manifest(self) -> dict[str, Any] | None:
         """The most recent spec recorded, or None on a pre-manifest ledger."""
         manifests = self.manifests()
         return manifests[-1] if manifests else None
@@ -116,7 +117,8 @@ class Ledger:
         if not scored:
             return None
         pick = min if goal is Goal.MINIMIZE else max
-        return pick(scored, key=lambda t: t.metric)  # type: ignore[arg-type]
+        # _scoreable guarantees a real metric on everything in `scored`.
+        return pick(scored, key=lambda t: cast(float, t.metric))
 
     def directions(self) -> list[str]:
         """Every direction the ledger has seen, forked-but-unstarted included."""

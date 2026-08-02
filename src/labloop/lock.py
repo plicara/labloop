@@ -23,6 +23,7 @@ import os
 import tempfile
 from pathlib import Path
 from types import TracebackType
+from typing import IO
 
 __all__ = ["LedgerLock", "LedgerLockedError"]
 
@@ -49,7 +50,7 @@ class LedgerLock:
         digest = hashlib.sha256(resolved.encode("utf-8")).hexdigest()[:16]
         self.path = Path(tempfile.gettempdir()) / f"labloop-{digest}.lock"
         self.wait = wait
-        self._handle = None
+        self._handle: IO[str] | None = None
         self._depth = 0
 
     def acquire(self) -> None:
@@ -79,7 +80,7 @@ class LedgerLock:
         self._handle = handle
         self._depth = 1
 
-    def _flock(self, handle) -> None:
+    def _flock(self, handle: IO[str]) -> None:
         if os.name == "posix":
             import fcntl
 
@@ -88,9 +89,9 @@ class LedgerLock:
         else:  # pragma: no cover - exercised only on Windows
             import msvcrt
 
-            mode = msvcrt.LK_LOCK if self.wait else msvcrt.LK_NBLCK
+            mode = msvcrt.LK_LOCK if self.wait else msvcrt.LK_NBLCK  # type: ignore[attr-defined]
             handle.seek(0)
-            msvcrt.locking(handle.fileno(), mode, 1)
+            msvcrt.locking(handle.fileno(), mode, 1)  # type: ignore[attr-defined]
 
     def release(self) -> None:
         if self._depth == 0:

@@ -1,5 +1,9 @@
 # labloop
 
+[![CI](https://github.com/foothills-labs/labloop/actions/workflows/ci.yml/badge.svg)](https://github.com/foothills-labs/labloop/actions/workflows/ci.yml)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](https://github.com/foothills-labs/labloop/blob/main/pyproject.toml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-green)](https://github.com/foothills-labs/labloop/blob/main/LICENSE)
+
 **Keep a change only if it measurably helps.**
 
 An experiment loop for agent-driven research. Point it at a command that runs

@@ -16,3 +16,4 @@ labloop.jsonl
 .DS_Store
 .idea/
 .vscode/
+dist/

@@ -45,19 +45,19 @@ def run_command(
     merged_env = {**os.environ, **(env or {})}
     start = time.monotonic()
 
-    popen_kwargs: dict = {
-        "cwd": str(cwd),
-        "shell": True,
-        "stdout": subprocess.PIPE,
-        "stderr": subprocess.STDOUT,
-        "text": True,
-        "errors": "replace",
-        "env": merged_env,
-    }
-    if os.name == "posix":
-        popen_kwargs["start_new_session"] = True
-
-    process = subprocess.Popen(command, **popen_kwargs)
+    process = subprocess.Popen(
+        command,
+        cwd=str(cwd),
+        shell=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        errors="replace",
+        env=merged_env,
+        # Its own session, so a timeout can kill the whole process group.
+        # POSIX-only semantics; Windows rejects True, so gate on platform.
+        start_new_session=os.name == "posix",
+    )
 
     timed_out = False
     try:
@@ -75,7 +75,7 @@ def run_command(
     )
 
 
-def _terminate(process: subprocess.Popen) -> None:
+def _terminate(process: subprocess.Popen[str]) -> None:
     """Kill the process and any children it spawned."""
     if os.name == "posix":
         try:
