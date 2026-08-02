@@ -105,6 +105,11 @@ than the experiment takes is ordinary, so give the proposal its own with
 is killed with its whole process group and recorded as `timed_out`, so a
 training script's workers can't survive to contend with the next trial.
 
+One loop per ledger, enforced. A second `labloop run` against a ledger already
+in use is refused with the holder's pid rather than allowed to interleave
+trial indices; pass `--wait` to queue behind it instead. The lock dies with
+its process, so a crashed run cannot leave a stale one.
+
 It also stops when it stops learning. Ten trials in a row that produce no metric
 at all — a mistyped `propose` command, an agent that never applies its edit —
 end the run rather than spend the rest of an overnight budget failing

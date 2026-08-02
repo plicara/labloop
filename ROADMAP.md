@@ -13,7 +13,7 @@ single PhD student, it's to emulate a research community of them." The
 differentiators below are, in order: trust the number, don't lose the work,
 run more than one thread, and be easy to start.
 
-## 1. Concurrency safety — ledger locking
+## 1. Concurrency safety — ledger locking · **done**
 
 Two loops over one ledger interleave silently today: interleaved trial
 indices, two incumbents, a corrupted record. The dirty-tree interlock
@@ -27,6 +27,11 @@ have no guard at all — and worktrees are exactly how parallel directions
 - Acceptance: the concurrent-loops probe from the test suite ends with one
   winner, one clean refusal, zero interleaved lines. Windows lock path
   covered in CI or explicitly documented as unsupported.
+- Shipped: flock on a temp-dir sidecar keyed by the ledger's resolved path
+  (never in the working tree, where it would trip the dirty-tree
+  interlock), re-entrant, released by the OS on process death. The race is
+  a test: two real processes, one winner, one exit-2 refusal, contiguous
+  indices. Windows uses msvcrt best-effort and is not exercised by CI.
 
 ## 2. Resumability — `labloop resume` and run manifests
 

@@ -20,6 +20,7 @@ from .integrity import (
     harness_files,
 )
 from .ledger import Ledger
+from .lock import LedgerLock
 from .metrics import MetricNotFound, extract_metric
 from .runner import run_command
 from .types import Experiment, Goal, Outcome, Trial, UsageError
@@ -50,6 +51,7 @@ class Loop:
         ledger: str | Path = "labloop.jsonl",
         workspace: Workspace | None = None,
         reporter: Reporter | None = None,
+        wait_for_lock: bool = False,
     ) -> None:
         self.experiment = experiment
         self.workdir = Path(workdir)
@@ -62,6 +64,7 @@ class Loop:
         self.ledger = Ledger(ledger if ledger.is_absolute() else self.workdir / ledger)
         self.workspace = workspace or GitWorkspace(self.workdir)
         self.reporter = reporter
+        self.lock = LedgerLock(self.ledger.path, wait=wait_for_lock)
 
     def baseline(self) -> Trial:
         """Measure the tree as it stands, without proposing a change.
@@ -69,6 +72,10 @@ class Loop:
         Establishes the incumbent. Recorded as KEPT because it is the state
         the working tree is actually in — there is nothing to revert to.
         """
+        with self.lock:
+            return self._baseline()
+
+    def _baseline(self) -> Trial:
         # Digested before the run, so it describes the tree that was measured.
         harness = self._harness()
         clean_before = not self.workspace.is_dirty()
@@ -139,12 +146,20 @@ class Loop:
         return values
 
     def run(self, trials: int = 1) -> list[Trial]:
-        """Run `trials` proposal-and-judge cycles."""
+        """Run `trials` proposal-and-judge cycles.
+
+        Holds the ledger lock throughout: two loops over one ledger would
+        interleave trial indices and each advance its own incumbent.
+        """
         if self.experiment.propose is None:
             raise UsageError(
                 "experiment has no `propose` command; use baseline() to measure "
                 "the tree as-is, or set propose to an agent invocation"
             )
+        with self.lock:
+            return self._run(trials)
+
+    def _run(self, trials: int) -> list[Trial]:
         if isinstance(self.workspace, GitWorkspace):
             self.workspace.require_clean()
 

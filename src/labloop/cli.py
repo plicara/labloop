@@ -10,6 +10,7 @@ from pathlib import Path
 from . import __version__
 from .integrity import HarnessMismatchError, NoProtectedFilesError
 from .ledger import Ledger
+from .lock import LedgerLockedError
 from .loop import Loop, StalledError
 from .types import Experiment, Goal, Outcome, Trial, UsageError
 from .workspace import DirtyTreeError
@@ -95,6 +96,11 @@ def _build_parser() -> argparse.ArgumentParser:
         p.add_argument("--workdir", default=".")
         p.add_argument("--ledger", default="labloop.jsonl")
         p.add_argument(
+            "--wait",
+            action="store_true",
+            help="if another run holds this ledger, queue behind it instead of failing",
+        )
+        p.add_argument(
             "--protect",
             action="append",
             default=None,
@@ -165,6 +171,7 @@ def main(argv: list[str] | None = None) -> int:
     except (
         DirtyTreeError,
         HarnessMismatchError,
+        LedgerLockedError,
         NoProtectedFilesError,
         StalledError,
         UsageError,
@@ -201,7 +208,13 @@ def _experiment_command(args) -> int:
         give_up_after=getattr(args, "give_up_after", 0),
         propose_budget=getattr(args, "propose_budget", None),
     )
-    loop = Loop(experiment, workdir=args.workdir, ledger=args.ledger, reporter=_report)
+    loop = Loop(
+        experiment,
+        workdir=args.workdir,
+        ledger=args.ledger,
+        reporter=_report,
+        wait_for_lock=getattr(args, "wait", False),
+    )
 
     if args.command == "noise":
         return _noise(loop, args.repeat)

@@ -329,6 +329,54 @@ def test_a_non_positive_trial_count_is_refused(project):
     assert exit_info.value.code == 2
 
 
+def test_two_concurrent_runs_produce_one_winner_and_one_refusal(project):
+    # The roadmap's acceptance test for locking: launch two real labloop
+    # processes against one ledger; one must win, one must be refused with
+    # exit 2, and the ledger must hold no interleaved indices.
+    import os
+    import sys
+
+    command = [
+        sys.executable,
+        "-m",
+        "labloop.cli",
+        "run",
+        "--run",
+        "sleep 0.4; python train.py",
+        "--metric",
+        "val_loss",
+        "--propose",
+        "date > note.txt",
+        "--trials",
+        "2",
+    ]
+    env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
+
+    def launch():
+        return subprocess.Popen(
+            command,
+            cwd=project,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+
+    first, second = launch(), launch()
+    _, err_first = first.communicate(timeout=60)
+    _, err_second = second.communicate(timeout=60)
+
+    codes = sorted([first.returncode, second.returncode])
+    assert codes == [0, 2], f"expected one winner and one refusal, got {codes}"
+    loser_err = err_first if first.returncode == 2 else err_second
+    assert "another labloop run" in loser_err
+
+    indices = [entry["index"] for entry in ledger(project)]
+    assert indices == list(range(len(indices))), (
+        f"interleaved or duplicated trial indices: {indices}"
+    )
+
+
 def test_version_is_reported(capsys):
     with pytest.raises(SystemExit) as exit_info:
         main(["--version"])
