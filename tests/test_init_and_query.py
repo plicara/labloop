@@ -8,15 +8,12 @@ the tool rather than about jq.
 from __future__ import annotations
 
 import json
-import subprocess
 
 import pytest
 
 from labloop.cli import main
 
-
-def git(*args, cwd):
-    subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
+from .conftest import run_git as git  # noqa: E402
 
 
 @pytest.fixture

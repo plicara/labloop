@@ -106,19 +106,19 @@ def _perturb(config: dict, rng: random.Random) -> dict:
     }
 
 
-def _lr_down(config: dict, rng: random.Random) -> dict:
+def _lr_down(config: dict, _rng: random.Random) -> dict:
     return {**config, "lr": config["lr"] / 3.0}
 
 
-def _epochs_down(config: dict, rng: random.Random) -> dict:
+def _epochs_down(config: dict, _rng: random.Random) -> dict:
     return {**config, "epochs": max(50, int(config["epochs"] * 0.6))}
 
 
-def _depth_down(config: dict, rng: random.Random) -> dict:
+def _depth_down(config: dict, _rng: random.Random) -> dict:
     return {**config, "depth": max(1, config["depth"] - 1)}
 
 
-def _restart(config: dict, rng: random.Random) -> dict:
+def _restart(_config: dict, rng: random.Random) -> dict:
     return {
         "lr": 10 ** rng.uniform(-4, 0),
         "depth": rng.randint(1, 8),

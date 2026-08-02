@@ -9,7 +9,9 @@ from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
-from . import brief as _brief
+from .brief import build as _build_brief
+from .brief import dumps as _dumps_brief
+from .brief import environment as _brief_environment
 from .integrity import (
     HarnessMismatchError,
     NoProtectedFilesError,
@@ -83,12 +85,7 @@ class Loop:
         # Digested before the run, so it describes the tree that was measured.
         harness = self._harness()
         clean_before = not self.workspace.is_dirty()
-        completed = run_command(
-            self.experiment.run,
-            cwd=self.workdir,
-            timeout=self.experiment.budget_seconds,
-            env=self.experiment.env,
-        )
+        completed = self._measure()
         metric = self._read_metric(completed.output)
         note = "baseline"
         if metric is None or not completed.ok:
@@ -120,6 +117,15 @@ class Loop:
             self.workspace.revert()
         return trial
 
+    def _measure(self):
+        """Run the experiment once under its budget."""
+        return run_command(
+            self.experiment.run,
+            cwd=self.workdir,
+            timeout=self.experiment.budget_seconds,
+            env=self.experiment.env,
+        )
+
     def measure_noise(self, repeats: int = 5) -> list[float]:
         """Run the experiment repeatedly without changing anything.
 
@@ -135,12 +141,7 @@ class Loop:
 
         values: list[float] = []
         for _ in range(repeats):
-            completed = run_command(
-                self.experiment.run,
-                cwd=self.workdir,
-                timeout=self.experiment.budget_seconds,
-                env=self.experiment.env,
-            )
+            completed = self._measure()
             metric = self._read_metric(completed.output)
             if metric is None or not completed.ok or not math.isfinite(metric):
                 raise RuntimeError(
@@ -296,12 +297,7 @@ class Loop:
         # that improved the metric".
         proposed_paths = self.workspace.changed_paths()
 
-        completed = run_command(
-            self.experiment.run,
-            cwd=self.workdir,
-            timeout=self.experiment.budget_seconds,
-            env=self.experiment.env,
-        )
+        completed = self._measure()
         metric = self._read_metric(completed.output)
         spent += completed.duration_seconds
 
@@ -325,12 +321,7 @@ class Loop:
             )
 
         if self.experiment.confirm:
-            again = run_command(
-                self.experiment.run,
-                cwd=self.workdir,
-                timeout=self.experiment.budget_seconds,
-                env=self.experiment.env,
-            )
+            again = self._measure()
             second = self._read_metric(again.output)
             spent += again.duration_seconds
             usable = second is not None and again.ok and math.isfinite(second)
@@ -496,7 +487,7 @@ class Loop:
             return
 
         history = [t for t in self.ledger if t.direction == self.direction]
-        payload = _brief.build(
+        payload = _build_brief(
             self.experiment, history, index, incumbent, direction=self.direction
         )
         handle = tempfile.NamedTemporaryFile(
@@ -508,8 +499,8 @@ class Loop:
         )
         try:
             with handle as fh:
-                fh.write(_brief.dumps(payload))
-            yield {**self.experiment.env, **_brief.environment(handle.name, payload)}
+                fh.write(_dumps_brief(payload))
+            yield {**self.experiment.env, **_brief_environment(handle.name, payload)}
         finally:
             Path(handle.name).unlink(missing_ok=True)
 

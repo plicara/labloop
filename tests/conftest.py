@@ -7,7 +7,38 @@ command line end to end in test_cli.py.
 
 from __future__ import annotations
 
+import subprocess
+
+import pytest
+
 from labloop import Experiment, Goal, Loop
+
+
+def run_git(*args, cwd):
+    """git, checked, captured — the form every test wants."""
+    return subprocess.run(
+        ["git", *args], cwd=cwd, check=True, capture_output=True, text=True
+    ).stdout
+
+
+@pytest.fixture
+def project(tmp_path, monkeypatch):
+    """A committed git repo whose experiment prints val_loss, as cwd.
+
+    One fixture instead of a copy per test file: four hand-rolled variants
+    of the same repo is how one of them ends up subtly different.
+    """
+    (tmp_path / "train.py").write_text('print("val_loss = 2.0")\n')
+    (tmp_path / "eval.py").write_text("threshold = 0.5\n")
+    (tmp_path / ".gitignore").write_text("labloop.jsonl\n__pycache__/\n")
+    run_git("init", "-q", ".", cwd=tmp_path)
+    run_git("config", "user.email", "t@t.test", cwd=tmp_path)
+    run_git("config", "user.name", "t", cwd=tmp_path)
+    run_git("add", "-A", cwd=tmp_path)
+    run_git("commit", "-qm", "init", cwd=tmp_path)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("PYTHONDONTWRITEBYTECODE", "1")
+    return tmp_path
 
 
 class FakeWorkspace:

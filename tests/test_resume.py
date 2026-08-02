@@ -111,25 +111,6 @@ def test_spec_round_trips_through_from_spec(tmp_path):
 # --- the resume command, end to end -----------------------------------------
 
 
-@pytest.fixture
-def project(tmp_path, monkeypatch):
-    import subprocess
-
-    def git(*args):
-        subprocess.run(["git", *args], cwd=tmp_path, check=True, capture_output=True)
-
-    (tmp_path / "train.py").write_text('print("val_loss = 2.0")\n')
-    (tmp_path / ".gitignore").write_text("labloop.jsonl\n__pycache__/\n")
-    git("init", "-q", ".")
-    git("config", "user.email", "t@t.test")
-    git("config", "user.name", "t")
-    git("add", "-A")
-    git("commit", "-qm", "init")
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("PYTHONDONTWRITEBYTECODE", "1")
-    return tmp_path
-
-
 def test_resume_continues_under_the_recorded_spec(project, capsys):
     main(["baseline", "--run", "python train.py", "--metric", "val_loss"])
     main(

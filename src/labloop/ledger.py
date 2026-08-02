@@ -25,9 +25,7 @@ class Ledger:
         self.path = Path(path)
 
     def append(self, trial: Trial) -> None:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        with self.path.open("a", encoding="utf-8") as fh:
-            fh.write(json.dumps(trial.to_dict(), sort_keys=True) + "\n")
+        self._append(trial.to_dict())
 
     def append_manifest(self, spec: dict) -> None:
         """Record the experiment spec a run started under.
@@ -39,15 +37,21 @@ class Ledger:
         an older labloop reading this ledger skips them the same way it
         skips a half-written line.
         """
+        self._append({"manifest": 1, **spec})
+
+    def _append(self, record: dict) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open("a", encoding="utf-8") as fh:
-            fh.write(json.dumps({"manifest": 1, **spec}, sort_keys=True) + "\n")
+            fh.write(json.dumps(record, sort_keys=True) + "\n")
 
-    def manifests(self) -> list[dict]:
-        """Every spec recorded, oldest first."""
-        found: list[dict] = []
+    def _raw_records(self):
+        """Every parseable JSON object in the file, in order.
+
+        Blank and half-written lines are skipped, not fatal: a truncated
+        final line is what a hard kill leaves behind.
+        """
         if not self.path.exists():
-            return found
+            return
         with self.path.open(encoding="utf-8") as fh:
             for line in fh:
                 line = line.strip()
@@ -57,9 +61,23 @@ class Ledger:
                     record = json.loads(line)
                 except json.JSONDecodeError:
                     continue
-                if isinstance(record, dict) and record.get("manifest") == 1:
-                    found.append({k: v for k, v in record.items() if k != "manifest"})
-        return found
+                if isinstance(record, dict):
+                    yield record
+
+    def _records(self, kind: str):
+        """Every non-trial record of one kind, in file order.
+
+        Trials, manifests and forks share the file; each non-trial kind is
+        marked by its own key so unknown kinds stay skippable both forward
+        and backward.
+        """
+        for record in self._raw_records():
+            if record.get(kind) == 1:
+                yield {k: v for k, v in record.items() if k != kind}
+
+    def manifests(self) -> list[dict]:
+        """Every spec recorded, oldest first."""
+        return list(self._records("manifest"))
 
     def last_manifest(self) -> dict | None:
         """The most recent spec recorded, or None on a pre-manifest ledger."""
@@ -67,18 +85,13 @@ class Ledger:
         return manifests[-1] if manifests else None
 
     def __iter__(self) -> Iterator[Trial]:
-        if not self.path.exists():
-            return
-        with self.path.open(encoding="utf-8") as fh:
-            for line in fh:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    yield Trial.from_dict(json.loads(line))
-                except (json.JSONDecodeError, KeyError, ValueError):
-                    # A truncated final line is expected after a hard kill.
-                    continue
+        for record in self._raw_records():
+            try:
+                yield Trial.from_dict(record)
+            except (KeyError, ValueError):
+                # Not a trial: a manifest, a fork, or a kind from a newer
+                # version. All deliberately skippable.
+                continue
 
     def trials(self) -> list[Trial]:
         return list(self)
@@ -96,18 +109,10 @@ class Ledger:
         ledgers written before the loop refused to keep such a value still
         exist.
         """
-        scored = [
-            t
-            for t in self
-            if t.outcome is Outcome.KEPT and t.metric is not None and math.isfinite(t.metric)
-        ]
-        if direction is not None:
-            fork_from = self.forks().get(direction)
-            scored = [
-                t
-                for t in scored
-                if t.direction == direction or (fork_from is not None and t.index == fork_from)
-            ]
+        # The fork table is read once, not per trial — a 700-trial ledger
+        # would otherwise rescan the whole file 700 times.
+        fork_from = self.forks().get(direction) if direction is not None else None
+        scored = [t for t in self if _scoreable(t, direction, fork_from)]
         if not scored:
             return None
         pick = min if goal is Goal.MINIMIZE else max
@@ -121,33 +126,11 @@ class Ledger:
 
     def append_fork(self, direction: str, from_index: int) -> None:
         """Record that `direction` starts from trial `from_index`."""
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        with self.path.open("a", encoding="utf-8") as fh:
-            fh.write(
-                json.dumps(
-                    {"fork": 1, "direction": direction, "from_index": from_index},
-                    sort_keys=True,
-                )
-                + "\n"
-            )
+        self._append({"fork": 1, "direction": direction, "from_index": from_index})
 
     def forks(self) -> dict[str, int]:
         """direction -> the trial index it forked from."""
-        found: dict[str, int] = {}
-        if not self.path.exists():
-            return found
-        with self.path.open(encoding="utf-8") as fh:
-            for line in fh:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    record = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if isinstance(record, dict) and record.get("fork") == 1:
-                    found[record["direction"]] = record["from_index"]
-        return found
+        return {r["direction"]: r["from_index"] for r in self._records("fork")}
 
     def next_index(self) -> int:
         last = -1
@@ -160,3 +143,14 @@ class Ledger:
         for trial in self:
             counts[trial.outcome.value] += 1
         return counts
+
+
+def _scoreable(trial: Trial, direction: str | None, fork_from: int | None) -> bool:
+    """Can this trial hold the incumbent for `direction`?"""
+    if trial.outcome is not Outcome.KEPT or trial.metric is None:
+        return False
+    if not math.isfinite(trial.metric):
+        return False
+    if direction is None:
+        return True
+    return trial.direction == direction or trial.index == fork_from

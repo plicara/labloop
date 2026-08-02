@@ -107,24 +107,34 @@ def _why(trial: Trial, experiment: Experiment) -> str:
     a label; "tied the incumbent, and a tie is not an improvement" is
     something to act on.
     """
+    if trial.outcome in (Outcome.KEPT, Outcome.REVERTED):
+        return _why_verdict(trial, experiment)
+    return _why_no_verdict(trial, experiment)
+
+
+def _why_verdict(trial: Trial, experiment: Experiment) -> str:
+    """The trial was judged on its merits; explain the judgement."""
     metric, goal = experiment.metric, experiment.goal
     if trial.outcome is Outcome.KEPT:
         if trial.incumbent is None:
             return f"kept: first measurement of {metric}, nothing to beat yet"
         return f"kept: {metric} {trial.metric:.6g} beat {trial.incumbent:.6g}"
 
-    if trial.outcome is Outcome.REVERTED:
-        if trial.metric == trial.incumbent:
-            return (
-                f"reverted: {metric} {trial.metric:.6g} tied the incumbent, and a "
-                "tie is not an improvement"
-            )
-        direction = "lower" if goal is Goal.MINIMIZE else "higher"
+    if trial.metric == trial.incumbent:
         return (
-            f"reverted: {metric} {trial.metric:.6g} did not beat "
-            f"{trial.incumbent:.6g}; {direction} is better"
+            f"reverted: {metric} {trial.metric:.6g} tied the incumbent, and a "
+            "tie is not an improvement"
         )
+    direction = "lower" if goal is Goal.MINIMIZE else "higher"
+    return (
+        f"reverted: {metric} {trial.metric:.6g} did not beat "
+        f"{trial.incumbent:.6g}; {direction} is better"
+    )
 
+
+def _why_no_verdict(trial: Trial, experiment: Experiment) -> str:
+    """The machinery, not the merit, decided; explain what to do about it."""
+    metric = experiment.metric
     if trial.outcome is Outcome.TIMED_OUT:
         # The note distinguishes a proposal that ran long from an experiment
         # that did; only the latter is about the code under study.

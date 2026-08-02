@@ -262,13 +262,7 @@ def _resume(args) -> int:
     the advice is to start a new ledger — for a run that was fine. The
     manifest is the spec that was actually in force, so resume cannot drift.
     """
-    workdir = Path(args.workdir)
-    if not workdir.is_dir():
-        raise UsageError(f"--workdir {args.workdir!r} is not a directory")
-    ledger_path = Path(args.ledger)
-    if not ledger_path.is_absolute():
-        ledger_path = workdir / ledger_path
-
+    workdir, ledger_path = _paths(args)
     manifests = Ledger(ledger_path).manifests()
     if not manifests:
         raise UsageError(
@@ -361,11 +355,11 @@ def _init(args) -> int:
     return 0
 
 
-def _branch(args) -> int:
-    """Fork a direction: record it in the ledger, create its git branch.
+def _paths(args) -> tuple[Path, Path]:
+    """Resolve --workdir and --ledger the same way everywhere.
 
-    The fork point must be a kept trial — it is the incumbent the new
-    direction starts from, and a reverted trial's tree no longer exists.
+    The ledger is relative to the project, not the shell — three commands
+    each doing this by hand is how one of them ends up not doing it.
     """
     workdir = Path(args.workdir)
     if not workdir.is_dir():
@@ -373,22 +367,23 @@ def _branch(args) -> int:
     ledger_path = Path(args.ledger)
     if not ledger_path.is_absolute():
         ledger_path = workdir / ledger_path
+    return workdir, ledger_path
 
+
+def _branch(args) -> int:
+    """Fork a direction: record it in the ledger, create its git branch.
+
+    The fork point must be a kept trial — it is the incumbent the new
+    direction starts from, and a reverted trial's tree no longer exists.
+    """
+    _, ledger_path = _paths(args)
     ledger = Ledger(ledger_path)
     name = args.name.strip()
     if not name or "/" in name or name in ledger.directions():
         raise UsageError(
             f"direction name {args.name!r} is empty, contains '/', or already exists"
         )
-    fork_from = next((t for t in ledger if t.index == args.from_trial), None)
-    if fork_from is None:
-        raise UsageError(f"trial {args.from_trial} is not in {ledger_path}")
-    if fork_from.outcome is not Outcome.KEPT or fork_from.metric is None:
-        raise UsageError(
-            f"trial {args.from_trial} was {fork_from.outcome.value}; a direction can "
-            "only fork from a kept trial, whose tree exists and whose metric is real"
-        )
-
+    fork_from = _fork_point(ledger, args.from_trial, ledger_path)
     ledger.append_fork(name, args.from_trial)
     print(
         f"direction {name!r} forks from trial {fork_from.index} "
@@ -404,10 +399,21 @@ def _branch(args) -> int:
     return 0
 
 
+def _fork_point(ledger: Ledger, index: int, ledger_path: Path) -> Trial:
+    """The trial a new direction starts from — kept, with a real metric."""
+    trial = next((t for t in ledger if t.index == index), None)
+    if trial is None:
+        raise UsageError(f"trial {index} is not in {ledger_path}")
+    if trial.outcome is not Outcome.KEPT or trial.metric is None:
+        raise UsageError(
+            f"trial {index} was {trial.outcome.value}; a direction can only fork "
+            "from a kept trial, whose tree exists and whose metric is real"
+        )
+    return trial
+
+
 def _experiment_command(args) -> int:
-    workdir = Path(args.workdir)
-    if not workdir.is_dir():
-        raise UsageError(f"--workdir {args.workdir!r} is not a directory")
+    workdir, _ = _paths(args)
 
     experiment = Experiment(
         run=args.run,
@@ -482,11 +488,11 @@ def _compare(ledger: Ledger, args) -> int:
     thing it exists to catch.
     """
     goal, label = Goal(args.goal), args.metric or "best"
-    bests = {}
+    known = ledger.directions()
     for name in args.compare:
-        if name not in ledger.directions():
+        if name not in known:
             raise UsageError(f"direction {name!r} is not in {args.ledger}")
-        bests[name] = ledger.best(goal, direction=name)
+    bests = {name: ledger.best(goal, direction=name) for name in args.compare}
 
     digests = {b.harness for b in bests.values() if b is not None and b.harness}
     if len(digests) > 1:
@@ -512,12 +518,7 @@ def _log(args) -> int:
     if not trials:
         print(f"no trials recorded in {args.ledger}")
         return 0
-    if args.direction is not None:
-        trials = [t for t in trials if t.direction == args.direction]
-    if args.outcome is not None:
-        trials = [t for t in trials if t.outcome.value == args.outcome]
-    if args.since_trial is not None:
-        trials = [t for t in trials if t.index >= args.since_trial]
+    trials = _filtered(trials, args)
     if not trials:
         print("no trials match the filters")
         return 0
@@ -529,29 +530,43 @@ def _log(args) -> int:
 
     for trial in trials:
         _report(trial)
-
     counts = ledger.summary()
     print("\n" + "  ".join(f"{name}={n}" for name, n in counts.items() if n))
+    _print_bests(ledger, args)
+    return 0
+
+
+def _filtered(trials: list[Trial], args) -> list[Trial]:
+    if args.direction is not None:
+        trials = [t for t in trials if t.direction == args.direction]
+    if args.outcome is not None:
+        trials = [t for t in trials if t.outcome.value == args.outcome]
+    if args.since_trial is not None:
+        trials = [t for t in trials if t.index >= args.since_trial]
+    return trials
+
+
+def _print_bests(ledger: Ledger, args) -> None:
     label = args.metric or "best"
     directions = ledger.directions()
-    if len(directions) > 1:
-        # More than one line of inquiry: report each direction's own best,
-        # because comparing them is exactly what the reader is here to do.
-        forks = ledger.forks()
-        for direction in directions:
-            best = ledger.best(Goal(args.goal), direction=direction)
-            forked = f" (forked from trial {forks[direction]})" if direction in forks else ""
-            if best and best.metric is not None:
-                print(f"{direction}: best {label} {best.metric:.6g} (trial {best.index}){forked}")
-            else:
-                print(f"{direction}: nothing kept yet{forked}")
-        return 0
+    if len(directions) <= 1:
+        best = ledger.best(Goal(args.goal))
+        if best and best.metric is not None:
+            # The ledger records metric values, not the name they were read
+            # under.
+            print(f"{label}: {best.metric:.6g} (trial {best.index})")
+        return
 
-    best = ledger.best(Goal(args.goal))
-    if best and best.metric is not None:
-        # The ledger records metric values, not the name they were read under.
-        print(f"{label}: {best.metric:.6g} (trial {best.index})")
-    return 0
+    # More than one line of inquiry: report each direction's own best,
+    # because comparing them is exactly what the reader is here to do.
+    forks = ledger.forks()
+    for direction in directions:
+        best = ledger.best(Goal(args.goal), direction=direction)
+        forked = f" (forked from trial {forks[direction]})" if direction in forks else ""
+        if best and best.metric is not None:
+            print(f"{direction}: best {label} {best.metric:.6g} (trial {best.index}){forked}")
+        else:
+            print(f"{direction}: nothing kept yet{forked}")
 
 
 if __name__ == "__main__":

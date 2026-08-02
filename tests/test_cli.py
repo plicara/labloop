@@ -15,27 +15,7 @@ import pytest
 
 from labloop.cli import main
 
-
-def git(*args, cwd):
-    return subprocess.run(
-        ["git", *args], cwd=cwd, check=True, capture_output=True, text=True
-    ).stdout
-
-
-@pytest.fixture
-def project(tmp_path, monkeypatch):
-    """A committed git repo whose experiment prints a metric."""
-    (tmp_path / "train.py").write_text('print("val_loss = 2.0")\n')
-    (tmp_path / "eval.py").write_text("threshold = 0.5\n")
-    (tmp_path / ".gitignore").write_text("labloop.jsonl\n__pycache__/\n")
-    git("init", "-q", ".", cwd=tmp_path)
-    git("config", "user.email", "t@t.test", cwd=tmp_path)
-    git("config", "user.name", "t", cwd=tmp_path)
-    git("add", "-A", cwd=tmp_path)
-    git("commit", "-qm", "init", cwd=tmp_path)
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("PYTHONDONTWRITEBYTECODE", "1")
-    return tmp_path
+from .conftest import run_git as git  # noqa: E402
 
 
 def ledger(project):
@@ -243,7 +223,7 @@ def test_noise_on_a_varying_metric_recommends_the_settings(project, capsys):
     )
 
 
-def test_noise_on_a_broken_experiment_says_so(project, capsys):
+def test_noise_on_a_broken_experiment_says_so(project):
     with pytest.raises(RuntimeError, match="usable val_loss"):
         main(["noise", "--run", "exit 1", "--metric", "val_loss"])
 

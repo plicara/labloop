@@ -134,18 +134,7 @@ def _matching(root: Path, patterns: Sequence[str]) -> set[str]:
     """
     names: set[str] = set()
     for pattern in patterns:
-        # Checked rather than left to glob, which raises NotImplementedError
-        # for an absolute pattern — true, and no help at all to someone who
-        # typed a path. `..` is rejected because a match outside the root has
-        # no name relative to it.
-        if Path(pattern).is_absolute() or pattern.startswith("~"):
-            raise UsageError(
-                f"protected pattern {pattern!r} must be relative to the workspace root"
-            )
-        if ".." in Path(pattern).parts:
-            raise UsageError(
-                f"protected pattern {pattern!r} points outside the workspace root"
-            )
+        _check_pattern(pattern)
         for path in root.glob(pattern):
             if path.is_symlink():
                 continue
@@ -158,6 +147,22 @@ def _matching(root: Path, patterns: Sequence[str]) -> set[str]:
             elif path.is_file():
                 names.add(path.relative_to(root).as_posix())
     return names
+
+
+def _check_pattern(pattern: str) -> None:
+    """Reject patterns glob would choke on or that escape the root.
+
+    Checked rather than left to glob, which raises NotImplementedError for an
+    absolute pattern — true, and no help at all to someone who typed a path.
+    `..` is rejected because a match outside the root has no name relative to
+    it.
+    """
+    if Path(pattern).is_absolute() or pattern.startswith("~"):
+        raise UsageError(
+            f"protected pattern {pattern!r} must be relative to the workspace root"
+        )
+    if ".." in Path(pattern).parts:
+        raise UsageError(f"protected pattern {pattern!r} points outside the workspace root")
 
 
 def _digest_file(path: Path) -> bytes:

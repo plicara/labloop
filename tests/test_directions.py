@@ -160,25 +160,6 @@ def test_baseline_is_held_to_the_same_rule(tmp_path):
 # --- the branch command ------------------------------------------------------
 
 
-@pytest.fixture
-def project(tmp_path, monkeypatch):
-    import subprocess
-
-    def git(*args):
-        subprocess.run(["git", *args], cwd=tmp_path, check=True, capture_output=True)
-
-    (tmp_path / "train.py").write_text('print("val_loss = 2.0")\n')
-    (tmp_path / ".gitignore").write_text("labloop.jsonl\n__pycache__/\n")
-    git("init", "-q", ".")
-    git("config", "user.email", "t@t.test")
-    git("config", "user.name", "t")
-    git("add", "-A")
-    git("commit", "-qm", "init")
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("PYTHONDONTWRITEBYTECODE", "1")
-    return tmp_path
-
-
 def kept_trial(project):
     main(["baseline", "--run", "python train.py", "--metric", "val_loss"])
     main(
