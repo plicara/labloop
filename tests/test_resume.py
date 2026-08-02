@@ -169,6 +169,30 @@ def test_resume_without_a_manifest_says_what_to_do(project, capsys):
     assert "no recorded spec" in capsys.readouterr().err
 
 
+def test_resume_finds_the_last_run_spec_even_after_a_later_baseline(project, capsys):
+    # Run trials, re-measure with a baseline, crash. The baseline's manifest
+    # is newer, but it is not a run — refusing to resume here would throw
+    # away a perfectly good run spec because the user re-measured.
+    main(["baseline", "--run", "python train.py", "--metric", "val_loss"])
+    main(
+        [
+            "run",
+            "--run",
+            "python train.py",
+            "--metric",
+            "val_loss",
+            "--propose",
+            "echo 'print(\"val_loss = 1.0\")' > train.py",
+        ]
+    )
+    main(["baseline", "--run", "python train.py", "--metric", "val_loss"])
+    capsys.readouterr()
+
+    assert main(["resume"]) == 0
+    out = capsys.readouterr().out
+    assert "trial   3" in out, "resume picks the last spec that can actually run"
+
+
 def test_resume_of_a_baseline_only_ledger_is_refused(project, capsys):
     main(["baseline", "--run", "python train.py", "--metric", "val_loss"])
     capsys.readouterr()

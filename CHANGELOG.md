@@ -56,15 +56,19 @@ replaced it.
   are discarded, so a checkpoint-per-trial training run does not become a
   repository of hundreds of gigabytes.
 - Every run records its spec as a manifest line; `labloop resume`
-  continues under it — same incumbent, same numbering, nothing retyped.
-  The environment is never recorded.
+  continues under the last spec that can actually run — a baseline
+  re-measurement after the crash does not cost you the run spec. Same
+  incumbent, same numbering, nothing retyped. The environment is never
+  recorded.
 - One loop per ledger, enforced by an OS-released lock; a second run is
   refused with the holder's pid, `--wait` queues. A crashed run cannot
   leave a stale lock.
 - Research directions: fork from any kept trial (`labloop branch`), run
   each in its own worktree against the shared ledger, per-direction
   incumbents seeded from the fork point. `log --compare` refuses across
-  differing harnesses.
+  differing harnesses. A direction the ledger has never heard of is
+  refused with a did-you-mean — a typo'd `--direction` used to create a
+  phantom direction whose first trial, however bad, was kept.
 - Querying without jq: `log --json`, `--outcome`, `--direction`,
   `--since-trial`.
 

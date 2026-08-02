@@ -127,6 +127,50 @@ def test_wait_queues_instead_of_failing(tmp_path):
     assert trial.outcome.value == "kept"
 
 
+def test_wait_actually_waits_out_a_held_lock(tmp_path):
+    # The uncontended path is covered elsewhere; this is the contended one:
+    # a CLI run with --wait must block while the lock is held and complete
+    # once it is released, rather than fail or slip past.
+    import subprocess
+    import time
+
+    (tmp_path / "t.py").write_text('print("val=1.0")\n')
+    subprocess.run(["git", "init", "-q", "."], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.email", "t@t"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.name", "t"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "add", "-A"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", "-qm", "i"], cwd=tmp_path, check=True)
+
+    lock = LedgerLock(tmp_path / "labloop.jsonl")
+    lock.acquire()
+    child = subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "labloop.cli",
+            "baseline",
+            "--run",
+            "python t.py",
+            "--metric",
+            "val",
+            "--wait",
+        ],
+        cwd=tmp_path,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+    )
+    try:
+        time.sleep(1.0)
+        assert child.poll() is None, "--wait must block while the lock is held"
+    finally:
+        lock.release()
+    out, err = child.communicate(timeout=60)
+    assert child.returncode == 0, err
+    assert "best val" in out
+
+
 def test_the_lock_never_touches_the_working_tree(tmp_path):
     # A lock file beside the ledger would be an untracked file, and the
     # dirty-tree interlock would refuse to start because of the lock that

@@ -269,18 +269,21 @@ def _resume(args) -> int:
     if not ledger_path.is_absolute():
         ledger_path = workdir / ledger_path
 
-    spec = Ledger(ledger_path).last_manifest()
-    if spec is None:
+    manifests = Ledger(ledger_path).manifests()
+    if not manifests:
         raise UsageError(
             f"{ledger_path} has no recorded spec to resume — it predates manifests "
             "or no run has started here. Run `labloop run` with the full arguments once."
         )
-    experiment = Experiment.from_spec(spec)
-    if experiment.propose is None:
+    # The last spec that can actually run. A baseline re-measurement after
+    # the crash should not cost the user their run spec.
+    spec = next((m for m in reversed(manifests) if m.get("propose")), None)
+    if spec is None:
         raise UsageError(
-            "the recorded spec has no propose command (it was a baseline); "
+            "every recorded spec is a baseline (no propose command); "
             "there is nothing to resume"
         )
+    experiment = Experiment.from_spec(spec)
 
     loop = Loop(
         experiment,

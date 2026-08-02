@@ -78,6 +78,7 @@ class Loop:
             return self._baseline()
 
     def _baseline(self) -> Trial:
+        self._check_direction()
         self._record_manifest()
         # Digested before the run, so it describes the tree that was measured.
         harness = self._harness()
@@ -164,6 +165,7 @@ class Loop:
             return self._run(trials)
 
     def _run(self, trials: int) -> list[Trial]:
+        self._check_direction()
         if isinstance(self.workspace, GitWorkspace):
             self.workspace.require_clean()
 
@@ -382,6 +384,32 @@ class Loop:
             metric=metric,
             commit=commit,
             stdout_tail=completed.tail,
+        )
+
+    def _check_direction(self) -> None:
+        """Refuse a direction the ledger has never heard of.
+
+        Directions are born by forking, not by typo. Without this, a
+        one-letter slip in --direction silently creates a phantom direction
+        with no incumbent, and its first trial — however bad — is kept and
+        committed as an improvement. Found by exactly that happening.
+        """
+        if self.direction == "main":
+            return
+        known = self.ledger.directions()
+        if self.direction in known:
+            return
+        import difflib
+
+        close = difflib.get_close_matches(self.direction, known, n=1)
+        hint = (
+            f"did you mean {close[0]!r}?"
+            if close
+            else f"create it with `labloop branch {self.direction} --from-trial N`."
+        )
+        raise UsageError(
+            f"direction {self.direction!r} does not exist in this ledger — {hint} "
+            f"Known directions: {', '.join(known) or 'none yet'}."
         )
 
     def _record_manifest(self) -> None:

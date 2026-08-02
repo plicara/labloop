@@ -43,11 +43,11 @@ class Ledger:
         with self.path.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps({"manifest": 1, **spec}, sort_keys=True) + "\n")
 
-    def last_manifest(self) -> dict | None:
-        """The most recent spec recorded, or None on a pre-manifest ledger."""
-        found = None
+    def manifests(self) -> list[dict]:
+        """Every spec recorded, oldest first."""
+        found: list[dict] = []
         if not self.path.exists():
-            return None
+            return found
         with self.path.open(encoding="utf-8") as fh:
             for line in fh:
                 line = line.strip()
@@ -58,8 +58,13 @@ class Ledger:
                 except json.JSONDecodeError:
                     continue
                 if isinstance(record, dict) and record.get("manifest") == 1:
-                    found = {k: v for k, v in record.items() if k != "manifest"}
+                    found.append({k: v for k, v in record.items() if k != "manifest"})
         return found
+
+    def last_manifest(self) -> dict | None:
+        """The most recent spec recorded, or None on a pre-manifest ledger."""
+        manifests = self.manifests()
+        return manifests[-1] if manifests else None
 
     def __iter__(self) -> Iterator[Trial]:
         if not self.path.exists():

@@ -11,7 +11,7 @@ import json
 
 import pytest
 
-from labloop import Experiment, Goal, Ledger, Loop, Outcome
+from labloop import Experiment, Goal, Ledger, Loop, Outcome, UsageError
 from labloop.cli import main
 
 from .conftest import FakeWorkspace
@@ -29,20 +29,28 @@ def direction_loop(tmp_path, run, direction, propose="true"):
 
 
 def test_trials_carry_their_direction(tmp_path):
+    direction_loop(tmp_path, "echo val=2.0", "main").run(trials=1)
+    Ledger(tmp_path / "l.jsonl").append_fork("wide-lr", from_index=0)
+
     (trial,) = direction_loop(tmp_path, "echo val=1.0", "wide-lr").run(trials=1)
     assert trial.direction == "wide-lr"
-    assert Ledger(tmp_path / "l.jsonl").trials()[0].direction == "wide-lr"
+    assert Ledger(tmp_path / "l.jsonl").trials()[-1].direction == "wide-lr"
 
 
 def test_directions_advance_independent_incumbents(tmp_path):
-    # Direction A keeps 1.0. Direction B has no history: its first trial at
-    # 5.0 must be kept, not reverted against A's incumbent — otherwise a
-    # promising direction is strangled by a better sibling before it starts.
-    direction_loop(tmp_path, "echo val=1.0", "a").run(trials=1)
+    # Both fork from a 10.0 baseline. Direction A advances to 1.0; direction
+    # B's 5.0 beats the fork point and must be kept — not reverted against
+    # A's better number, or a promising direction is strangled by a better
+    # sibling before it starts.
+    direction_loop(tmp_path, "echo val=10.0", "main").run(trials=1)
+    ledger = Ledger(tmp_path / "l.jsonl")
+    ledger.append_fork("a", from_index=0)
+    ledger.append_fork("b", from_index=0)
 
+    direction_loop(tmp_path, "echo val=1.0", "a").run(trials=1)
     (trial,) = direction_loop(tmp_path, "echo val=5.0", "b").run(trials=1)
     assert trial.outcome is Outcome.KEPT
-    assert trial.incumbent is None, "direction b has nothing to beat yet"
+    assert trial.incumbent == 10.0, "b competes with its fork point, not with a"
 
     # And a's incumbent is untouched by b's worse number.
     (again,) = direction_loop(tmp_path, "echo val=3.0", "a").run(trials=1)
@@ -78,18 +86,27 @@ def test_the_fork_seed_does_not_leak_later_parent_progress(tmp_path):
 
 
 def test_indices_stay_unique_across_directions(tmp_path):
+    direction_loop(tmp_path, "echo val=9.0", "main").run(trials=1)
+    ledger = Ledger(tmp_path / "l.jsonl")
+    ledger.append_fork("a", from_index=0)
+    ledger.append_fork("b", from_index=0)
+
     direction_loop(tmp_path, "echo val=3.0", "a").run(trials=1)
     direction_loop(tmp_path, "echo val=2.0", "b").run(trials=1)
     direction_loop(tmp_path, "echo val=1.0", "a").run(trials=1)
-    assert [t.index for t in Ledger(tmp_path / "l.jsonl")] == [0, 1, 2]
+    assert [t.index for t in Ledger(tmp_path / "l.jsonl")] == [0, 1, 2, 3]
 
 
 def test_the_brief_tells_the_proposer_its_direction_and_only_its_history(tmp_path):
+    direction_loop(tmp_path, "echo val=9.0", "main").run(trials=1)
+    ledger = Ledger(tmp_path / "l.jsonl")
+    ledger.append_fork("a", from_index=0)
+    ledger.append_fork("b", from_index=0)
     direction_loop(tmp_path, "echo val=1.0", "a").run(trials=1)
 
     seen = tmp_path / "seen.json"
     direction_loop(
-        tmp_path, "echo val=9.0", "b", propose=f'cp "$LABLOOP_BRIEF" {seen}'
+        tmp_path, "echo val=8.0", "b", propose=f'cp "$LABLOOP_BRIEF" {seen}'
     ).run(trials=1)
 
     brief = json.loads(seen.read_text())
@@ -102,6 +119,42 @@ def test_directions_lists_forked_but_unstarted_ones(tmp_path):
     ledger = Ledger(tmp_path / "l.jsonl")
     ledger.append_fork("idea", from_index=0)
     assert set(ledger.directions()) == {"main", "idea"}
+
+
+def test_an_unforked_direction_is_refused_and_the_typo_is_named(tmp_path):
+    # Dogfooding found this: `--direction aneal` for `anneal` silently created
+    # a phantom direction with no incumbent, and its first trial — a 43x
+    # regression — was kept and committed as an improvement. Directions are
+    # born by forking, not by typo.
+    direction_loop(tmp_path, "echo val=2.0", "main").run(trials=1)
+    Ledger(tmp_path / "l.jsonl").append_fork("anneal", from_index=0)
+
+    with pytest.raises(UsageError, match="anneal") as caught:
+        direction_loop(tmp_path, "echo val=9.0", "aneal").run(trials=1)
+    assert "aneal" in str(caught.value), "the refusal names what was typed"
+
+    trials = Ledger(tmp_path / "l.jsonl").trials()
+    assert all(t.direction != "aneal" for t in trials), "nothing was recorded under the typo"
+
+
+def test_the_refusal_lists_known_directions_when_nothing_is_close(tmp_path):
+    direction_loop(tmp_path, "echo val=2.0", "main").run(trials=1)
+    Ledger(tmp_path / "l.jsonl").append_fork("anneal", from_index=0)
+
+    with pytest.raises(UsageError, match="labloop branch"):
+        direction_loop(tmp_path, "echo val=9.0", "zzz").run(trials=1)
+
+
+def test_main_needs_no_fork(tmp_path):
+    (trial,) = direction_loop(tmp_path, "echo val=1.0", "main").run(trials=1)
+    assert trial.outcome is Outcome.KEPT
+
+
+def test_baseline_is_held_to_the_same_rule(tmp_path):
+    direction_loop(tmp_path, "echo val=2.0", "main").run(trials=1)
+    loop = direction_loop(tmp_path, "echo val=1.0", "nowhere")
+    with pytest.raises(UsageError, match="nowhere"):
+        loop.baseline()
 
 
 # --- the branch command ------------------------------------------------------
