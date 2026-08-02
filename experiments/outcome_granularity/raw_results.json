@@ -1,0 +1,6523 @@
+{
+"bare": [
+{
+"best": 1.008983,
+"auc": 1.3597305882352941,
+"outcomes": {
+"reverted": 17,
+"failed": 3,
+"kept": 6,
+"timed_out": 9,
+"no_change": 4,
+"not_finite": 1
+}
+},
+{
+"best": 1.452624,
+"auc": 2.1611190263157893,
+"outcomes": {
+"reverted": 20,
+"kept": 6,
+"timed_out": 7,
+"failed": 1,
+"no_change": 5,
+"not_finite": 1
+}
+},
+{
+"best": 1.358844,
+"auc": 1.599393,
+"outcomes": {
+"reverted": 23,
+"no_change": 5,
+"kept": 6,
+"failed": 5,
+"timed_out": 1
+}
+},
+{
+"best": 1.195254,
+"auc": 1.560748225,
+"outcomes": {
+"kept": 7,
+"reverted": 21,
+"failed": 3,
+"no_change": 6,
+"timed_out": 3
+}
+},
+{
+"best": 1.303674,
+"auc": 1.4108418787878787,
+"outcomes": {
+"reverted": 28,
+"kept": 2,
+"failed": 4,
+"timed_out": 5,
+"no_change": 1
+}
+},
+{
+"best": 1.199301,
+"auc": 1.3196995789473684,
+"outcomes": {
+"reverted": 16,
+"kept": 8,
+"timed_out": 1,
+"failed": 8,
+"no_change": 7
+}
+},
+{
+"best": 1.070072,
+"auc": 1.2523433928571428,
+"outcomes": {
+"reverted": 24,
+"failed": 4,
+"no_change": 5,
+"kept": 6,
+"not_finite": 1
+}
+},
+{
+"best": 1.001627,
+"auc": 1.0645987222222222,
+"outcomes": {
+"reverted": 26,
+"no_change": 3,
+"kept": 6,
+"failed": 5
+}
+},
+{
+"best": 1.180224,
+"auc": 1.3781566666666667,
+"outcomes": {
+"reverted": 26,
+"no_change": 6,
+"kept": 2,
+"timed_out": 4,
+"failed": 2
+}
+},
+{
+"best": 1.00181,
+"auc": 1.2140009736842106,
+"outcomes": {
+"reverted": 21,
+"no_change": 2,
+"kept": 8,
+"failed": 7,
+"timed_out": 2
+}
+},
+{
+"best": 1.204025,
+"auc": 1.357761947368421,
+"outcomes": {
+"no_change": 7,
+"reverted": 19,
+"kept": 7,
+"timed_out": 5,
+"failed": 1,
+"not_finite": 1
+}
+},
+{
+"best": 1.054558,
+"auc": 1.2725276923076922,
+"outcomes": {
+"reverted": 19,
+"kept": 7,
+"failed": 6,
+"no_change": 4,
+"timed_out": 4
+}
+},
+{
+"best": 1.00397,
+"auc": 1.4664956666666666,
+"outcomes": {
+"reverted": 22,
+"kept": 6,
+"timed_out": 6,
+"no_change": 2,
+"failed": 4
+}
+},
+{
+"best": 1.026594,
+"auc": 1.22760135,
+"outcomes": {
+"kept": 9,
+"reverted": 19,
+"no_change": 5,
+"failed": 7
+}
+},
+{
+"best": 1.024158,
+"auc": 1.4190327368421054,
+"outcomes": {
+"reverted": 25,
+"kept": 6,
+"no_change": 5,
+"timed_out": 3,
+"failed": 1
+}
+},
+{
+"best": 1.100812,
+"auc": 1.6084248666666667,
+"outcomes": {
+"reverted": 25,
+"no_change": 4,
+"kept": 8,
+"timed_out": 1,
+"failed": 2
+}
+},
+{
+"best": 1.231802,
+"auc": 1.93180285,
+"outcomes": {
+"kept": 8,
+"reverted": 21,
+"timed_out": 3,
+"failed": 3,
+"no_change": 5
+}
+},
+{
+"best": 1.009156,
+"auc": 1.221101425,
+"outcomes": {
+"kept": 7,
+"reverted": 22,
+"timed_out": 1,
+"no_change": 3,
+"failed": 7
+}
+},
+{
+"best": 1.603438,
+"auc": 1.8907656,
+"outcomes": {
+"reverted": 24,
+"no_change": 5,
+"kept": 5,
+"not_finite": 1,
+"timed_out": 2,
+"failed": 3
+}
+},
+{
+"best": 1.003672,
+"auc": 1.2276652820512821,
+"outcomes": {
+"reverted": 28,
+"kept": 5,
+"failed": 3,
+"timed_out": 1,
+"no_change": 3
+}
+},
+{
+"best": 1.007173,
+"auc": 1.5287850588235294,
+"outcomes": {
+"timed_out": 2,
+"reverted": 21,
+"not_finite": 1,
+"kept": 8,
+"no_change": 3,
+"failed": 5
+}
+},
+{
+"best": 1.214579,
+"auc": 1.390346475,
+"outcomes": {
+"kept": 8,
+"timed_out": 3,
+"reverted": 18,
+"failed": 8,
+"no_change": 3
+}
+},
+{
+"best": 1.166365,
+"auc": 1.4788274285714287,
+"outcomes": {
+"reverted": 23,
+"no_change": 5,
+"kept": 7,
+"failed": 5
+}
+},
+{
+"best": 1.107863,
+"auc": 1.2535074594594595,
+"outcomes": {
+"reverted": 18,
+"no_change": 6,
+"kept": 6,
+"failed": 6,
+"timed_out": 4
+}
+},
+{
+"best": 1.103461,
+"auc": 1.931560105263158,
+"outcomes": {
+"reverted": 28,
+"kept": 4,
+"no_change": 5,
+"failed": 3
+}
+},
+{
+"best": 1.209796,
+"auc": 1.4468968787878789,
+"outcomes": {
+"reverted": 18,
+"not_finite": 1,
+"no_change": 7,
+"kept": 4,
+"timed_out": 3,
+"failed": 7
+}
+},
+{
+"best": 1.171752,
+"auc": 1.535140775,
+"outcomes": {
+"kept": 8,
+"failed": 7,
+"reverted": 20,
+"timed_out": 2,
+"no_change": 1,
+"not_finite": 2
+}
+},
+{
+"best": 1.039918,
+"auc": 1.4453298,
+"outcomes": {
+"kept": 7,
+"no_change": 3,
+"reverted": 21,
+"failed": 5,
+"timed_out": 4
+}
+},
+{
+"best": 1.051752,
+"auc": 1.479351325,
+"outcomes": {
+"kept": 6,
+"reverted": 27,
+"no_change": 3,
+"failed": 1,
+"timed_out": 2,
+"not_finite": 1
+}
+},
+{
+"best": 1.096924,
+"auc": 1.4007443421052632,
+"outcomes": {
+"no_change": 10,
+"reverted": 16,
+"kept": 8,
+"timed_out": 1,
+"failed": 5
+}
+},
+{
+"best": 1.035893,
+"auc": 1.751160157894737,
+"outcomes": {
+"reverted": 27,
+"kept": 10,
+"no_change": 1,
+"timed_out": 1,
+"failed": 1
+}
+},
+{
+"best": 1.060257,
+"auc": 1.3983065925925926,
+"outcomes": {
+"reverted": 22,
+"timed_out": 1,
+"no_change": 7,
+"kept": 9,
+"failed": 1
+}
+},
+{
+"best": 1.008801,
+"auc": 1.2132151794871795,
+"outcomes": {
+"reverted": 26,
+"kept": 7,
+"no_change": 1,
+"timed_out": 1,
+"failed": 5
+}
+},
+{
+"best": 1.287351,
+"auc": 1.4384434594594595,
+"outcomes": {
+"timed_out": 7,
+"reverted": 19,
+"kept": 5,
+"no_change": 5,
+"failed": 3,
+"not_finite": 1
+}
+},
+{
+"best": 1.162656,
+"auc": 1.53147115,
+"outcomes": {
+"kept": 7,
+"reverted": 21,
+"no_change": 6,
+"failed": 6
+}
+},
+{
+"best": 1.412488,
+"auc": 1.879964775,
+"outcomes": {
+"kept": 12,
+"reverted": 19,
+"failed": 6,
+"no_change": 3
+}
+},
+{
+"best": 1.031535,
+"auc": 1.0736028529411765,
+"outcomes": {
+"reverted": 19,
+"kept": 6,
+"no_change": 6,
+"timed_out": 4,
+"failed": 5
+}
+},
+{
+"best": 1.001072,
+"auc": 1.8557891621621623,
+"outcomes": {
+"no_change": 2,
+"reverted": 30,
+"kept": 5,
+"timed_out": 3
+}
+},
+{
+"best": 1.002755,
+"auc": 1.2622518717948719,
+"outcomes": {
+"reverted": 22,
+"kept": 6,
+"timed_out": 5,
+"no_change": 2,
+"failed": 5
+}
+},
+{
+"best": 1.00428,
+"auc": 1.141693575,
+"outcomes": {
+"kept": 8,
+"timed_out": 4,
+"reverted": 22,
+"failed": 4,
+"no_change": 2
+}
+},
+{
+"best": 1.00809,
+"auc": 1.5016419729729729,
+"outcomes": {
+"reverted": 24,
+"kept": 5,
+"timed_out": 5,
+"failed": 1,
+"no_change": 5
+}
+},
+{
+"best": 1.043926,
+"auc": 1.282769925,
+"outcomes": {
+"kept": 8,
+"timed_out": 1,
+"reverted": 25,
+"no_change": 3,
+"failed": 3
+}
+},
+{
+"best": 1.135106,
+"auc": 1.6076331499999998,
+"outcomes": {
+"kept": 5,
+"reverted": 26,
+"no_change": 5,
+"timed_out": 2,
+"failed": 2
+}
+},
+{
+"best": 1.091836,
+"auc": 1.7391086857142857,
+"outcomes": {
+"reverted": 22,
+"no_change": 5,
+"not_finite": 1,
+"kept": 8,
+"timed_out": 2,
+"failed": 2
+}
+},
+{
+"best": 1.047591,
+"auc": 1.364915,
+"outcomes": {
+"timed_out": 3,
+"no_change": 5,
+"reverted": 25,
+"not_finite": 3,
+"kept": 3,
+"failed": 1
+}
+},
+{
+"best": 1.281014,
+"auc": 1.3706904285714285,
+"outcomes": {
+"no_change": 3,
+"reverted": 27,
+"failed": 6,
+"kept": 4
+}
+},
+{
+"best": 1.675931,
+"auc": 1.976118,
+"outcomes": {
+"reverted": 24,
+"kept": 6,
+"no_change": 2,
+"failed": 6,
+"timed_out": 2
+}
+},
+{
+"best": 1.056275,
+"auc": 1.331355675,
+"outcomes": {
+"kept": 6,
+"no_change": 4,
+"reverted": 22,
+"failed": 4,
+"timed_out": 3,
+"not_finite": 1
+}
+},
+{
+"best": 1.6618,
+"auc": 1.6904124102564102,
+"outcomes": {
+"reverted": 12,
+"kept": 3,
+"timed_out": 9,
+"no_change": 8,
+"failed": 8
+}
+},
+{
+"best": 1.017141,
+"auc": 1.183145088235294,
+"outcomes": {
+"no_change": 7,
+"reverted": 15,
+"kept": 9,
+"timed_out": 5,
+"failed": 4
+}
+},
+{
+"best": 1.007667,
+"auc": 1.2314185142857144,
+"outcomes": {
+"reverted": 22,
+"no_change": 4,
+"kept": 8,
+"failed": 4,
+"timed_out": 2
+}
+},
+{
+"best": 1.225771,
+"auc": 1.422034375,
+"outcomes": {
+"kept": 7,
+"reverted": 17,
+"no_change": 5,
+"failed": 10,
+"timed_out": 1
+}
+},
+{
+"best": 1.032651,
+"auc": 1.6497110333333334,
+"outcomes": {
+"reverted": 22,
+"no_change": 6,
+"failed": 1,
+"kept": 8,
+"timed_out": 3
+}
+},
+{
+"best": 1.470852,
+"auc": 1.5110814,
+"outcomes": {
+"kept": 4,
+"no_change": 5,
+"reverted": 23,
+"failed": 7,
+"timed_out": 1
+}
+},
+{
+"best": 1.362831,
+"auc": 1.4759343055555554,
+"outcomes": {
+"no_change": 7,
+"failed": 6,
+"reverted": 20,
+"kept": 4,
+"timed_out": 3
+}
+},
+{
+"best": 1.182599,
+"auc": 1.302123923076923,
+"outcomes": {
+"reverted": 26,
+"kept": 4,
+"no_change": 6,
+"failed": 3,
+"not_finite": 1
+}
+},
+{
+"best": 1.194097,
+"auc": 1.3209407,
+"outcomes": {
+"kept": 4,
+"no_change": 5,
+"reverted": 27,
+"timed_out": 2,
+"failed": 2
+}
+},
+{
+"best": 1.177051,
+"auc": 1.9710625789473684,
+"outcomes": {
+"reverted": 17,
+"kept": 6,
+"timed_out": 11,
+"no_change": 4,
+"failed": 2
+}
+},
+{
+"best": 1.062582,
+"auc": 1.4728477435897436,
+"outcomes": {
+"no_change": 5,
+"kept": 6,
+"reverted": 17,
+"failed": 4,
+"timed_out": 8
+}
+},
+{
+"best": 0.996007,
+"auc": 1.164875487179487,
+"outcomes": {
+"reverted": 29,
+"kept": 6,
+"no_change": 2,
+"not_finite": 1,
+"failed": 2
+}
+},
+{
+"best": 1.161838,
+"auc": 1.464666564102564,
+"outcomes": {
+"timed_out": 1,
+"kept": 7,
+"reverted": 22,
+"no_change": 2,
+"failed": 8
+}
+},
+{
+"best": 1.010124,
+"auc": 1.2570505789473685,
+"outcomes": {
+"reverted": 21,
+"kept": 9,
+"failed": 4,
+"no_change": 2,
+"timed_out": 4
+}
+},
+{
+"best": 1.019289,
+"auc": 1.0779011724137932,
+"outcomes": {
+"reverted": 23,
+"no_change": 4,
+"not_finite": 1,
+"failed": 5,
+"kept": 4,
+"timed_out": 3
+}
+},
+{
+"best": 1.008824,
+"auc": 1.2850028684210526,
+"outcomes": {
+"reverted": 26,
+"kept": 7,
+"timed_out": 1,
+"no_change": 3,
+"failed": 2,
+"not_finite": 1
+}
+},
+{
+"best": 1.001412,
+"auc": 1.135254525,
+"outcomes": {
+"kept": 7,
+"reverted": 26,
+"failed": 4,
+"no_change": 3
+}
+},
+{
+"best": 1.022508,
+"auc": 1.620984025,
+"outcomes": {
+"kept": 10,
+"reverted": 24,
+"not_finite": 1,
+"timed_out": 1,
+"no_change": 3,
+"failed": 1
+}
+},
+{
+"best": 1.055388,
+"auc": 1.392371588235294,
+"outcomes": {
+"no_change": 3,
+"reverted": 21,
+"kept": 8,
+"timed_out": 1,
+"failed": 7
+}
+},
+{
+"best": 1.534617,
+"auc": 1.5596115757575757,
+"outcomes": {
+"no_change": 5,
+"reverted": 23,
+"kept": 4,
+"failed": 7,
+"not_finite": 1
+}
+},
+{
+"best": 1.63172,
+"auc": 2.175594972972973,
+"outcomes": {
+"no_change": 7,
+"reverted": 22,
+"kept": 5,
+"timed_out": 4,
+"failed": 1,
+"not_finite": 1
+}
+},
+{
+"best": 1.007712,
+"auc": 1.128718175,
+"outcomes": {
+"kept": 6,
+"no_change": 7,
+"timed_out": 3,
+"reverted": 20,
+"failed": 4
+}
+},
+{
+"best": 1.00665,
+"auc": 1.8343064871794872,
+"outcomes": {
+"reverted": 27,
+"kept": 7,
+"timed_out": 1,
+"no_change": 5
+}
+},
+{
+"best": 1.061654,
+"auc": 1.1732815789473685,
+"outcomes": {
+"no_change": 8,
+"reverted": 15,
+"kept": 8,
+"failed": 3,
+"timed_out": 6
+}
+},
+{
+"best": 1.009122,
+"auc": 1.98272385,
+"outcomes": {
+"kept": 8,
+"reverted": 17,
+"timed_out": 9,
+"no_change": 2,
+"failed": 3,
+"not_finite": 1
+}
+},
+{
+"best": 1.001991,
+"auc": 1.25341995,
+"outcomes": {
+"kept": 7,
+"reverted": 20,
+"no_change": 5,
+"timed_out": 3,
+"failed": 4,
+"not_finite": 1
+}
+},
+{
+"best": 1.003716,
+"auc": 1.1395225641025641,
+"outcomes": {
+"no_change": 4,
+"kept": 6,
+"reverted": 17,
+"failed": 12,
+"not_finite": 1
+}
+},
+{
+"best": 1.02389,
+"auc": 1.2727154857142857,
+"outcomes": {
+"reverted": 24,
+"no_change": 4,
+"kept": 9,
+"timed_out": 2,
+"failed": 1
+}
+},
+{
+"best": 1.097121,
+"auc": 1.2987585428571429,
+"outcomes": {
+"timed_out": 1,
+"reverted": 21,
+"failed": 7,
+"no_change": 5,
+"kept": 6
+}
+},
+{
+"best": 1.35827,
+"auc": 1.5496428500000001,
+"outcomes": {
+"kept": 4,
+"reverted": 29,
+"failed": 4,
+"no_change": 3
+}
+},
+{
+"best": 1.083448,
+"auc": 1.4845074054054055,
+"outcomes": {
+"reverted": 20,
+"kept": 9,
+"no_change": 5,
+"timed_out": 2,
+"failed": 4
+}
+},
+{
+"best": 1.064058,
+"auc": 1.1703013142857144,
+"outcomes": {
+"reverted": 24,
+"no_change": 5,
+"kept": 5,
+"failed": 5,
+"not_finite": 1
+}
+},
+{
+"best": 1.095645,
+"auc": 1.538886325,
+"outcomes": {
+"kept": 10,
+"reverted": 22,
+"no_change": 3,
+"failed": 4,
+"timed_out": 1
+}
+},
+{
+"best": 1.372208,
+"auc": 1.48339135,
+"outcomes": {
+"kept": 5,
+"reverted": 13,
+"failed": 9,
+"no_change": 8,
+"timed_out": 2,
+"not_finite": 3
+}
+},
+{
+"best": 1.365049,
+"auc": 1.610021117647059,
+"outcomes": {
+"reverted": 28,
+"kept": 5,
+"failed": 3,
+"no_change": 2,
+"timed_out": 2
+}
+},
+{
+"best": 1.144324,
+"auc": 1.340602525,
+"outcomes": {
+"kept": 6,
+"reverted": 23,
+"no_change": 5,
+"failed": 4,
+"timed_out": 2
+}
+},
+{
+"best": 1.563436,
+"auc": 1.837363675,
+"outcomes": {
+"kept": 5,
+"no_change": 6,
+"reverted": 17,
+"timed_out": 8,
+"failed": 4
+}
+},
+{
+"best": 0.995858,
+"auc": 1.231020125,
+"outcomes": {
+"kept": 6,
+"no_change": 6,
+"reverted": 22,
+"timed_out": 2,
+"failed": 4
+}
+},
+{
+"best": 1.006964,
+"auc": 1.06944615,
+"outcomes": {
+"kept": 5,
+"no_change": 4,
+"reverted": 19,
+"failed": 10,
+"timed_out": 2
+}
+},
+{
+"best": 1.006642,
+"auc": 1.18539255,
+"outcomes": {
+"kept": 8,
+"reverted": 27,
+"timed_out": 2,
+"failed": 1,
+"no_change": 2
+}
+},
+{
+"best": 1.174006,
+"auc": 1.40452305,
+"outcomes": {
+"kept": 6,
+"reverted": 24,
+"not_finite": 1,
+"failed": 7,
+"no_change": 1,
+"timed_out": 1
+}
+},
+{
+"best": 1.010771,
+"auc": 1.2773388378378379,
+"outcomes": {
+"no_change": 2,
+"reverted": 22,
+"timed_out": 7,
+"kept": 7,
+"failed": 2
+}
+},
+{
+"best": 1.012895,
+"auc": 1.1133522,
+"outcomes": {
+"kept": 7,
+"reverted": 26,
+"failed": 5,
+"timed_out": 2
+}
+},
+{
+"best": 1.140813,
+"auc": 1.5316868,
+"outcomes": {
+"kept": 7,
+"reverted": 22,
+"timed_out": 2,
+"no_change": 4,
+"failed": 5
+}
+},
+{
+"best": 1.000906,
+"auc": 1.051081175,
+"outcomes": {
+"kept": 5,
+"reverted": 18,
+"failed": 8,
+"timed_out": 5,
+"no_change": 4
+}
+},
+{
+"best": 1.313223,
+"auc": 1.403874794117647,
+"outcomes": {
+"no_change": 3,
+"reverted": 24,
+"timed_out": 1,
+"kept": 6,
+"failed": 6
+}
+},
+{
+"best": 1.078672,
+"auc": 1.3445948,
+"outcomes": {
+"no_change": 4,
+"reverted": 24,
+"kept": 6,
+"failed": 4,
+"not_finite": 1,
+"timed_out": 1
+}
+},
+{
+"best": 1.123159,
+"auc": 1.4270611025641027,
+"outcomes": {
+"reverted": 27,
+"kept": 5,
+"failed": 5,
+"no_change": 3
+}
+},
+{
+"best": 1.008027,
+"auc": 1.1112927435897435,
+"outcomes": {
+"reverted": 18,
+"kept": 9,
+"failed": 7,
+"no_change": 4,
+"timed_out": 2
+}
+},
+{
+"best": 1.011035,
+"auc": 1.208626025,
+"outcomes": {
+"kept": 7,
+"timed_out": 5,
+"reverted": 21,
+"failed": 4,
+"no_change": 3
+}
+},
+{
+"best": 1.34175,
+"auc": 1.779024717948718,
+"outcomes": {
+"no_change": 3,
+"kept": 8,
+"reverted": 23,
+"failed": 5,
+"timed_out": 1
+}
+},
+{
+"best": 1.009713,
+"auc": 1.1973745526315789,
+"outcomes": {
+"reverted": 18,
+"kept": 10,
+"failed": 7,
+"timed_out": 2,
+"no_change": 1,
+"not_finite": 2
+}
+},
+{
+"best": 0.99857,
+"auc": 1.34101195,
+"outcomes": {
+"kept": 7,
+"reverted": 20,
+"failed": 6,
+"no_change": 4,
+"timed_out": 3
+}
+},
+{
+"best": 1.080637,
+"auc": 1.2112971515151516,
+"outcomes": {
+"reverted": 25,
+"timed_out": 1,
+"no_change": 3,
+"kept": 6,
+"failed": 5
+}
+},
+{
+"best": 1.004013,
+"auc": 1.2660982250000001,
+"outcomes": {
+"kept": 9,
+"reverted": 17,
+"no_change": 4,
+"timed_out": 5,
+"failed": 4,
+"not_finite": 1
+}
+},
+{
+"best": 0.993139,
+"auc": 1.268580925,
+"outcomes": {
+"kept": 7,
+"reverted": 25,
+"no_change": 4,
+"failed": 1,
+"timed_out": 2,
+"not_finite": 1
+}
+},
+{
+"best": 1.010522,
+"auc": 1.196565325,
+"outcomes": {
+"kept": 9,
+"no_change": 3,
+"reverted": 21,
+"failed": 3,
+"timed_out": 4
+}
+},
+{
+"best": 1.028328,
+"auc": 1.3211724571428571,
+"outcomes": {
+"reverted": 23,
+"no_change": 6,
+"kept": 8,
+"failed": 3
+}
+},
+{
+"best": 1.065973,
+"auc": 1.5093499210526315,
+"outcomes": {
+"reverted": 19,
+"kept": 7,
+"no_change": 4,
+"failed": 9,
+"timed_out": 1
+}
+},
+{
+"best": 1.008853,
+"auc": 1.0947786470588234,
+"outcomes": {
+"reverted": 25,
+"no_change": 2,
+"kept": 8,
+"failed": 5
+}
+},
+{
+"best": 1.141254,
+"auc": 1.260684125,
+"outcomes": {
+"kept": 5,
+"no_change": 6,
+"reverted": 20,
+"failed": 7,
+"timed_out": 1,
+"not_finite": 1
+}
+},
+{
+"best": 1.083034,
+"auc": 1.1980239750000001,
+"outcomes": {
+"kept": 4,
+"reverted": 22,
+"timed_out": 8,
+"failed": 4,
+"no_change": 2
+}
+},
+{
+"best": 1.016598,
+"auc": 1.1748850499999999,
+"outcomes": {
+"kept": 7,
+"reverted": 27,
+"timed_out": 3,
+"failed": 2,
+"no_change": 1
+}
+},
+{
+"best": 1.205794,
+"auc": 1.4530385,
+"outcomes": {
+"reverted": 22,
+"kept": 6,
+"no_change": 3,
+"timed_out": 4,
+"failed": 5
+}
+},
+{
+"best": 1.108715,
+"auc": 1.3558657666666667,
+"outcomes": {
+"reverted": 21,
+"no_change": 3,
+"kept": 7,
+"timed_out": 6,
+"failed": 2,
+"not_finite": 1
+}
+},
+{
+"best": 1.002792,
+"auc": 1.22068759375,
+"outcomes": {
+"reverted": 21,
+"no_change": 3,
+"not_finite": 3,
+"kept": 6,
+"failed": 4,
+"timed_out": 3
+}
+},
+{
+"best": 1.007224,
+"auc": 2.36842895,
+"outcomes": {
+"kept": 5,
+"reverted": 18,
+"timed_out": 14,
+"no_change": 2,
+"failed": 1
+}
+},
+{
+"best": 1.015383,
+"auc": 1.31907185,
+"outcomes": {
+"kept": 7,
+"reverted": 22,
+"failed": 5,
+"timed_out": 4,
+"no_change": 2
+}
+},
+{
+"best": 1.215752,
+"auc": 1.2770453783783784,
+"outcomes": {
+"reverted": 18,
+"timed_out": 5,
+"kept": 5,
+"failed": 6,
+"no_change": 6
+}
+},
+{
+"best": 1.017314,
+"auc": 1.0719935263157894,
+"outcomes": {
+"no_change": 4,
+"reverted": 21,
+"kept": 8,
+"failed": 6,
+"not_finite": 1
+}
+},
+{
+"best": 1.015926,
+"auc": 1.3747480250000002,
+"outcomes": {
+"kept": 8,
+"reverted": 19,
+"failed": 10,
+"no_change": 3
+}
+},
+{
+"best": 1.076568,
+"auc": 1.1353979487179486,
+"outcomes": {
+"no_change": 6,
+"kept": 3,
+"reverted": 20,
+"failed": 7,
+"timed_out": 4
+}
+},
+{
+"best": 1.190067,
+"auc": 1.618754,
+"outcomes": {
+"reverted": 23,
+"kept": 8,
+"timed_out": 1,
+"no_change": 6,
+"not_finite": 2
+}
+},
+{
+"best": 1.00934,
+"auc": 1.41442185,
+"outcomes": {
+"kept": 8,
+"reverted": 20,
+"no_change": 4,
+"failed": 6,
+"timed_out": 2
+}
+},
+{
+"best": 1.003571,
+"auc": 1.4214504736842104,
+"outcomes": {
+"reverted": 20,
+"kept": 8,
+"failed": 2,
+"no_change": 3,
+"timed_out": 7
+}
+},
+{
+"best": 1.041493,
+"auc": 1.159333117647059,
+"outcomes": {
+"reverted": 19,
+"failed": 6,
+"no_change": 5,
+"kept": 7,
+"timed_out": 3
+}
+},
+{
+"best": 1.078548,
+"auc": 1.3486864,
+"outcomes": {
+"reverted": 27,
+"kept": 6,
+"no_change": 3,
+"not_finite": 1,
+"failed": 2,
+"timed_out": 1
+}
+},
+{
+"best": 1.072106,
+"auc": 1.6893005151515152,
+"outcomes": {
+"reverted": 22,
+"no_change": 6,
+"not_finite": 1,
+"kept": 6,
+"failed": 2,
+"timed_out": 3
+}
+},
+{
+"best": 1.288756,
+"auc": 1.6579636999999998,
+"outcomes": {
+"kept": 3,
+"reverted": 26,
+"not_finite": 1,
+"no_change": 5,
+"timed_out": 5
+}
+},
+{
+"best": 1.18176,
+"auc": 1.371162675,
+"outcomes": {
+"kept": 4,
+"reverted": 26,
+"no_change": 4,
+"not_finite": 1,
+"failed": 4,
+"timed_out": 1
+}
+},
+{
+"best": 1.043163,
+"auc": 1.209141925,
+"outcomes": {
+"kept": 7,
+"no_change": 1,
+"reverted": 21,
+"failed": 8,
+"timed_out": 3
+}
+},
+{
+"best": 1.122692,
+"auc": 1.22267735,
+"outcomes": {
+"kept": 5,
+"failed": 7,
+"reverted": 18,
+"timed_out": 5,
+"no_change": 5
+}
+},
+{
+"best": 1.176343,
+"auc": 1.388848111111111,
+"outcomes": {
+"reverted": 27,
+"kept": 6,
+"no_change": 2,
+"failed": 4,
+"not_finite": 1
+}
+},
+{
+"best": 1.108815,
+"auc": 1.4499369615384616,
+"outcomes": {
+"reverted": 24,
+"failed": 3,
+"no_change": 2,
+"kept": 5,
+"timed_out": 5,
+"not_finite": 1
+}
+},
+{
+"best": 1.010342,
+"auc": 1.2147559743589744,
+"outcomes": {
+"reverted": 18,
+"kept": 9,
+"no_change": 5,
+"timed_out": 4,
+"failed": 4
+}
+},
+{
+"best": 1.026644,
+"auc": 1.45461075,
+"outcomes": {
+"kept": 10,
+"reverted": 16,
+"failed": 8,
+"timed_out": 2,
+"no_change": 4
+}
+},
+{
+"best": 1.077636,
+"auc": 1.2785355384615384,
+"outcomes": {
+"no_change": 9,
+"kept": 5,
+"reverted": 18,
+"failed": 8
+}
+},
+{
+"best": 1.003976,
+"auc": 1.087585875,
+"outcomes": {
+"kept": 7,
+"no_change": 5,
+"reverted": 15,
+"failed": 10,
+"timed_out": 2,
+"not_finite": 1
+}
+},
+{
+"best": 1.622591,
+"auc": 2.5852603,
+"outcomes": {
+"kept": 8,
+"no_change": 9,
+"reverted": 20,
+"timed_out": 3
+}
+},
+{
+"best": 1.204522,
+"auc": 1.3745577027027027,
+"outcomes": {
+"reverted": 24,
+"kept": 4,
+"failed": 7,
+"timed_out": 3,
+"no_change": 2
+}
+},
+{
+"best": 1.006935,
+"auc": 1.296112175,
+"outcomes": {
+"kept": 8,
+"reverted": 24,
+"timed_out": 2,
+"no_change": 3,
+"failed": 3
+}
+},
+{
+"best": 1.023942,
+"auc": 1.1607048823529411,
+"outcomes": {
+"reverted": 19,
+"no_change": 4,
+"kept": 5,
+"failed": 5,
+"timed_out": 7
+}
+},
+{
+"best": 1.005193,
+"auc": 2.05922741025641,
+"outcomes": {
+"reverted": 23,
+"kept": 6,
+"no_change": 7,
+"timed_out": 3,
+"failed": 1
+}
+},
+{
+"best": 1.208822,
+"auc": 1.3225172,
+"outcomes": {
+"kept": 4,
+"reverted": 23,
+"failed": 4,
+"not_finite": 1,
+"timed_out": 6,
+"no_change": 2
+}
+},
+{
+"best": 1.1553,
+"auc": 1.651067475,
+"outcomes": {
+"kept": 9,
+"reverted": 19,
+"no_change": 3,
+"timed_out": 7,
+"failed": 2
+}
+},
+{
+"best": 0.997376,
+"auc": 1.0965603823529413,
+"outcomes": {
+"reverted": 22,
+"no_change": 5,
+"kept": 5,
+"failed": 6,
+"timed_out": 2
+}
+},
+{
+"best": 1.003518,
+"auc": 1.1058475945945945,
+"outcomes": {
+"reverted": 19,
+"no_change": 2,
+"kept": 8,
+"timed_out": 3,
+"failed": 7,
+"not_finite": 1
+}
+},
+{
+"best": 1.315921,
+"auc": 1.5238163235294118,
+"outcomes": {
+"reverted": 22,
+"no_change": 8,
+"kept": 6,
+"failed": 4
+}
+},
+{
+"best": 1.001927,
+"auc": 1.2176580750000001,
+"outcomes": {
+"kept": 7,
+"no_change": 5,
+"reverted": 17,
+"failed": 9,
+"timed_out": 2
+}
+},
+{
+"best": 0.999777,
+"auc": 1.39116745,
+"outcomes": {
+"kept": 11,
+"reverted": 20,
+"no_change": 2,
+"failed": 7
+}
+},
+{
+"best": 1.432948,
+"auc": 1.5125199615384615,
+"outcomes": {
+"reverted": 30,
+"no_change": 4,
+"kept": 4,
+"failed": 1,
+"not_finite": 1
+}
+},
+{
+"best": 1.414551,
+"auc": 1.6778165999999999,
+"outcomes": {
+"kept": 6,
+"reverted": 25,
+"no_change": 6,
+"timed_out": 3
+}
+},
+{
+"best": 1.008637,
+"auc": 1.240712,
+"outcomes": {
+"reverted": 21,
+"no_change": 4,
+"failed": 3,
+"kept": 9,
+"timed_out": 3
+}
+},
+{
+"best": 1.10185,
+"auc": 2.0517814615384617,
+"outcomes": {
+"reverted": 23,
+"kept": 9,
+"no_change": 7,
+"failed": 1
+}
+},
+{
+"best": 1.013352,
+"auc": 1.2054862564102564,
+"outcomes": {
+"no_change": 3,
+"kept": 6,
+"reverted": 21,
+"failed": 5,
+"timed_out": 5
+}
+},
+{
+"best": 1.040277,
+"auc": 1.194574375,
+"outcomes": {
+"kept": 8,
+"reverted": 23,
+"no_change": 3,
+"failed": 4,
+"timed_out": 2
+}
+},
+{
+"best": 1.167829,
+"auc": 1.4753013888888888,
+"outcomes": {
+"reverted": 21,
+"kept": 6,
+"no_change": 7,
+"failed": 3,
+"timed_out": 3
+}
+},
+{
+"best": 1.015493,
+"auc": 1.0536730606060607,
+"outcomes": {
+"reverted": 17,
+"no_change": 12,
+"timed_out": 2,
+"kept": 4,
+"failed": 5
+}
+},
+{
+"best": 1.016038,
+"auc": 1.2230829230769231,
+"outcomes": {
+"no_change": 7,
+"kept": 9,
+"reverted": 19,
+"failed": 4,
+"not_finite": 1
+}
+},
+{
+"best": 1.028372,
+"auc": 1.0491193846153846,
+"outcomes": {
+"reverted": 19,
+"kept": 5,
+"failed": 8,
+"no_change": 4,
+"timed_out": 1,
+"not_finite": 3
+}
+},
+{
+"best": 1.005151,
+"auc": 1.4688196571428571,
+"outcomes": {
+"reverted": 24,
+"kept": 7,
+"no_change": 2,
+"failed": 5,
+"not_finite": 2
+}
+},
+{
+"best": 1.087408,
+"auc": 1.9770507,
+"outcomes": {
+"kept": 10,
+"reverted": 24,
+"timed_out": 2,
+"no_change": 4
+}
+},
+{
+"best": 1.041438,
+"auc": 1.2309444871794872,
+"outcomes": {
+"reverted": 23,
+"kept": 5,
+"failed": 6,
+"no_change": 4,
+"timed_out": 1,
+"not_finite": 1
+}
+},
+{
+"best": 0.999384,
+"auc": 1.258144358974359,
+"outcomes": {
+"reverted": 18,
+"kept": 9,
+"not_finite": 1,
+"no_change": 4,
+"timed_out": 4,
+"failed": 4
+}
+},
+{
+"best": 1.44889,
+"auc": 1.4768462,
+"outcomes": {
+"kept": 5,
+"no_change": 4,
+"reverted": 24,
+"failed": 6,
+"not_finite": 1
+}
+},
+{
+"best": 1.15567,
+"auc": 1.3904029062499998,
+"outcomes": {
+"reverted": 26,
+"no_change": 2,
+"kept": 6,
+"timed_out": 2,
+"failed": 4
+}
+},
+{
+"best": 1.016893,
+"auc": 1.3187894857142857,
+"outcomes": {
+"reverted": 17,
+"no_change": 3,
+"kept": 7,
+"timed_out": 6,
+"failed": 7
+}
+},
+{
+"best": 1.00114,
+"auc": 1.2101981,
+"outcomes": {
+"kept": 7,
+"reverted": 20,
+"no_change": 4,
+"failed": 9
+}
+},
+{
+"best": 1.334155,
+"auc": 1.554632375,
+"outcomes": {
+"kept": 6,
+"reverted": 23,
+"no_change": 4,
+"failed": 5,
+"timed_out": 2
+}
+},
+{
+"best": 1.017237,
+"auc": 1.187204,
+"outcomes": {
+"reverted": 23,
+"no_change": 3,
+"kept": 8,
+"failed": 3,
+"timed_out": 3
+}
+},
+{
+"best": 1.223968,
+"auc": 1.431419875,
+"outcomes": {
+"kept": 8,
+"reverted": 23,
+"failed": 7,
+"not_finite": 1,
+"no_change": 1
+}
+},
+{
+"best": 1.411259,
+"auc": 1.859426625,
+"outcomes": {
+"kept": 8,
+"no_change": 2,
+"reverted": 25,
+"failed": 4,
+"timed_out": 1
+}
+},
+{
+"best": 1.128364,
+"auc": 1.5162206410256411,
+"outcomes": {
+"no_change": 3,
+"kept": 8,
+"reverted": 25,
+"failed": 4
+}
+},
+{
+"best": 1.001166,
+"auc": 1.1465467105263158,
+"outcomes": {
+"reverted": 23,
+"kept": 9,
+"failed": 3,
+"no_change": 3,
+"timed_out": 2
+}
+},
+{
+"best": 0.998366,
+"auc": 1.3036887750000001,
+"outcomes": {
+"kept": 10,
+"reverted": 20,
+"failed": 3,
+"timed_out": 4,
+"no_change": 3
+}
+},
+{
+"best": 1.049817,
+"auc": 1.5189779166666666,
+"outcomes": {
+"no_change": 7,
+"reverted": 22,
+"kept": 8,
+"timed_out": 1,
+"failed": 2
+}
+},
+{
+"best": 1.054389,
+"auc": 1.4798274,
+"outcomes": {
+"kept": 7,
+"no_change": 7,
+"reverted": 13,
+"timed_out": 7,
+"failed": 6
+}
+},
+{
+"best": 1.006738,
+"auc": 1.4006748,
+"outcomes": {
+"kept": 8,
+"reverted": 22,
+"no_change": 5,
+"failed": 4,
+"timed_out": 1
+}
+},
+{
+"best": 1.187503,
+"auc": 1.425015375,
+"outcomes": {
+"kept": 7,
+"reverted": 23,
+"no_change": 6,
+"timed_out": 2,
+"failed": 2
+}
+},
+{
+"best": 1.114797,
+"auc": 1.29341375,
+"outcomes": {
+"kept": 7,
+"reverted": 22,
+"not_finite": 1,
+"no_change": 5,
+"failed": 5
+}
+},
+{
+"best": 1.121746,
+"auc": 1.7968406315789474,
+"outcomes": {
+"reverted": 24,
+"kept": 5,
+"no_change": 5,
+"failed": 2,
+"timed_out": 4
+}
+},
+{
+"best": 1.032284,
+"auc": 1.3420201470588236,
+"outcomes": {
+"reverted": 27,
+"kept": 6,
+"no_change": 3,
+"timed_out": 2,
+"failed": 2
+}
+},
+{
+"best": 1.202949,
+"auc": 1.3179366750000001,
+"outcomes": {
+"kept": 4,
+"reverted": 21,
+"timed_out": 6,
+"failed": 5,
+"no_change": 4
+}
+},
+{
+"best": 1.160392,
+"auc": 1.26085178125,
+"outcomes": {
+"reverted": 27,
+"timed_out": 1,
+"kept": 3,
+"no_change": 7,
+"failed": 2
+}
+},
+{
+"best": 1.180095,
+"auc": 1.3481932941176469,
+"outcomes": {
+"reverted": 30,
+"kept": 6,
+"failed": 2,
+"no_change": 1,
+"timed_out": 1
+}
+},
+{
+"best": 1.005984,
+"auc": 1.1244536111111112,
+"outcomes": {
+"reverted": 21,
+"kept": 3,
+"no_change": 6,
+"timed_out": 7,
+"not_finite": 1,
+"failed": 2
+}
+},
+{
+"best": 1.183045,
+"auc": 1.8613055250000001,
+"outcomes": {
+"kept": 6,
+"reverted": 18,
+"no_change": 6,
+"failed": 6,
+"timed_out": 4
+}
+},
+{
+"best": 1.029485,
+"auc": 1.2116214166666666,
+"outcomes": {
+"no_change": 6,
+"reverted": 23,
+"kept": 6,
+"failed": 5
+}
+},
+{
+"best": 1.002042,
+"auc": 1.199617162162162,
+"outcomes": {
+"reverted": 21,
+"no_change": 4,
+"kept": 6,
+"not_finite": 1,
+"timed_out": 4,
+"failed": 4
+}
+},
+{
+"best": 1.005859,
+"auc": 1.0741487297297299,
+"outcomes": {
+"reverted": 23,
+"no_change": 7,
+"kept": 7,
+"timed_out": 1,
+"failed": 2
+}
+},
+{
+"best": 1.086186,
+"auc": 1.6264328333333333,
+"outcomes": {
+"reverted": 29,
+"no_change": 1,
+"kept": 6,
+"failed": 4
+}
+},
+{
+"best": 0.996132,
+"auc": 1.4051842571428572,
+"outcomes": {
+"reverted": 21,
+"timed_out": 6,
+"kept": 6,
+"no_change": 3,
+"failed": 4
+}
+},
+{
+"best": 1.033002,
+"auc": 1.20384709375,
+"outcomes": {
+"reverted": 20,
+"timed_out": 3,
+"no_change": 3,
+"kept": 6,
+"failed": 8
+}
+},
+{
+"best": 1.071934,
+"auc": 1.15478965,
+"outcomes": {
+"kept": 2,
+"reverted": 29,
+"no_change": 4,
+"failed": 4,
+"timed_out": 1
+}
+},
+{
+"best": 1.049512,
+"auc": 1.32634285,
+"outcomes": {
+"kept": 7,
+"timed_out": 5,
+"reverted": 18,
+"no_change": 5,
+"failed": 5
+}
+},
+{
+"best": 1.005861,
+"auc": 1.116703075,
+"outcomes": {
+"kept": 11,
+"reverted": 22,
+"timed_out": 5,
+"failed": 1,
+"no_change": 1
+}
+},
+{
+"best": 0.996929,
+"auc": 1.068968175,
+"outcomes": {
+"kept": 6,
+"failed": 8,
+"reverted": 21,
+"no_change": 3,
+"timed_out": 2
+}
+},
+{
+"best": 1.279583,
+"auc": 1.3972747692307692,
+"outcomes": {
+"reverted": 24,
+"kept": 6,
+"failed": 7,
+"no_change": 2,
+"timed_out": 1
+}
+},
+{
+"best": 1.415317,
+"auc": 2.1859279166666665,
+"outcomes": {
+"no_change": 5,
+"reverted": 22,
+"kept": 5,
+"timed_out": 5,
+"failed": 3
+}
+},
+{
+"best": 1.122019,
+"auc": 1.2878408974358975,
+"outcomes": {
+"reverted": 20,
+"kept": 7,
+"no_change": 5,
+"not_finite": 1,
+"failed": 6,
+"timed_out": 1
+}
+},
+{
+"best": 1.174317,
+"auc": 1.687377125,
+"outcomes": {
+"kept": 8,
+"reverted": 22,
+"no_change": 5,
+"failed": 4,
+"not_finite": 1
+}
+},
+{
+"best": 1.327769,
+"auc": 1.725089564102564,
+"outcomes": {
+"reverted": 24,
+"kept": 7,
+"failed": 7,
+"no_change": 1,
+"timed_out": 1
+}
+}
+],
+"five": [
+{
+"best": 1.02489,
+"auc": 1.7026654358974358,
+"outcomes": {
+"reverted": 22,
+"kept": 9,
+"timed_out": 3,
+"no_change": 4,
+"failed": 1,
+"not_finite": 1
+}
+},
+{
+"best": 1.018936,
+"auc": 1.7769803684210526,
+"outcomes": {
+"reverted": 22,
+"kept": 7,
+"timed_out": 5,
+"no_change": 4,
+"failed": 2
+}
+},
+{
+"best": 1.089309,
+"auc": 1.3471584736842104,
+"outcomes": {
+"reverted": 20,
+"no_change": 4,
+"kept": 6,
+"failed": 8,
+"timed_out": 2
+}
+},
+{
+"best": 1.505746,
+"auc": 1.585636475,
+"outcomes": {
+"kept": 5,
+"reverted": 22,
+"failed": 4,
+"no_change": 5,
+"timed_out": 4
+}
+},
+{
+"best": 1.276616,
+"auc": 1.4159187692307693,
+"outcomes": {
+"reverted": 17,
+"kept": 6,
+"timed_out": 6,
+"failed": 6,
+"no_change": 5
+}
+},
+{
+"best": 0.999421,
+"auc": 1.1802957631578948,
+"outcomes": {
+"reverted": 19,
+"kept": 9,
+"failed": 5,
+"no_change": 6,
+"timed_out": 1
+}
+},
+{
+"best": 1.275163,
+"auc": 1.7128037297297298,
+"outcomes": {
+"reverted": 20,
+"kept": 5,
+"timed_out": 10,
+"no_change": 5
+}
+},
+{
+"best": 1.03148,
+"auc": 1.106553142857143,
+"outcomes": {
+"reverted": 19,
+"no_change": 2,
+"kept": 6,
+"failed": 12,
+"timed_out": 1
+}
+},
+{
+"best": 1.208278,
+"auc": 1.386452205128205,
+"outcomes": {
+"reverted": 23,
+"kept": 7,
+"no_change": 6,
+"failed": 4
+}
+},
+{
+"best": 1.039618,
+"auc": 1.2319266285714285,
+"outcomes": {
+"reverted": 21,
+"no_change": 5,
+"kept": 6,
+"failed": 8
+}
+},
+{
+"best": 1.008755,
+"auc": 1.2171785945945945,
+"outcomes": {
+"no_change": 6,
+"reverted": 22,
+"kept": 10,
+"failed": 2
+}
+},
+{
+"best": 1.012408,
+"auc": 1.3410108717948719,
+"outcomes": {
+"reverted": 21,
+"kept": 10,
+"no_change": 4,
+"failed": 5
+}
+},
+{
+"best": 1.004194,
+"auc": 1.136465918918919,
+"outcomes": {
+"reverted": 20,
+"kept": 6,
+"timed_out": 8,
+"no_change": 2,
+"failed": 4
+}
+},
+{
+"best": 1.048278,
+"auc": 1.2406002,
+"outcomes": {
+"kept": 9,
+"reverted": 19,
+"no_change": 3,
+"failed": 9
+}
+},
+{
+"best": 1.105418,
+"auc": 1.7352738285714286,
+"outcomes": {
+"reverted": 25,
+"kept": 8,
+"no_change": 3,
+"timed_out": 1,
+"failed": 3
+}
+},
+{
+"best": 1.081409,
+"auc": 1.2094094615384616,
+"outcomes": {
+"reverted": 18,
+"kept": 6,
+"timed_out": 7,
+"no_change": 5,
+"failed": 4
+}
+},
+{
+"best": 1.297937,
+"auc": 1.762181975,
+"outcomes": {
+"kept": 9,
+"reverted": 22,
+"no_change": 4,
+"failed": 5
+}
+},
+{
+"best": 1.046098,
+"auc": 1.35374425,
+"outcomes": {
+"kept": 8,
+"reverted": 18,
+"no_change": 5,
+"timed_out": 7,
+"failed": 2
+}
+},
+{
+"best": 1.085126,
+"auc": 1.5371055128205129,
+"outcomes": {
+"reverted": 23,
+"kept": 8,
+"no_change": 5,
+"failed": 4
+}
+},
+{
+"best": 1.051161,
+"auc": 1.145531392857143,
+"outcomes": {
+"reverted": 25,
+"no_change": 5,
+"kept": 5,
+"failed": 3,
+"timed_out": 2
+}
+},
+{
+"best": 1.012475,
+"auc": 1.3304161351351351,
+"outcomes": {
+"timed_out": 3,
+"reverted": 24,
+"kept": 7,
+"no_change": 4,
+"failed": 2
+}
+},
+{
+"best": 1.144054,
+"auc": 1.352093875,
+"outcomes": {
+"kept": 5,
+"timed_out": 8,
+"reverted": 22,
+"no_change": 1,
+"failed": 4
+}
+},
+{
+"best": 1.013363,
+"auc": 1.2810526923076924,
+"outcomes": {
+"reverted": 22,
+"kept": 8,
+"no_change": 2,
+"failed": 6,
+"timed_out": 2
+}
+},
+{
+"best": 1.032917,
+"auc": 1.3130188974358974,
+"outcomes": {
+"reverted": 20,
+"kept": 5,
+"no_change": 7,
+"failed": 7,
+"timed_out": 1
+}
+},
+{
+"best": 1.049213,
+"auc": 1.6006433076923077,
+"outcomes": {
+"reverted": 23,
+"kept": 6,
+"timed_out": 2,
+"no_change": 2,
+"failed": 7
+}
+},
+{
+"best": 1.024046,
+"auc": 1.4933224615384615,
+"outcomes": {
+"reverted": 26,
+"kept": 4,
+"no_change": 6,
+"failed": 4
+}
+},
+{
+"best": 1.275009,
+"auc": 1.535003275,
+"outcomes": {
+"kept": 8,
+"failed": 9,
+"reverted": 18,
+"no_change": 3,
+"timed_out": 2
+}
+},
+{
+"best": 1.002572,
+"auc": 1.0830950750000001,
+"outcomes": {
+"kept": 8,
+"no_change": 3,
+"reverted": 18,
+"failed": 10,
+"timed_out": 1
+}
+},
+{
+"best": 1.024576,
+"auc": 1.36713475,
+"outcomes": {
+"kept": 12,
+"reverted": 16,
+"failed": 6,
+"no_change": 4,
+"timed_out": 2
+}
+},
+{
+"best": 0.999749,
+"auc": 1.578820794871795,
+"outcomes": {
+"no_change": 7,
+"kept": 8,
+"reverted": 21,
+"timed_out": 2,
+"failed": 2
+}
+},
+{
+"best": 1.001747,
+"auc": 1.2882451428571429,
+"outcomes": {
+"reverted": 23,
+"kept": 8,
+"no_change": 4,
+"failed": 4,
+"timed_out": 1
+}
+},
+{
+"best": 1.070114,
+"auc": 1.1164033783783784,
+"outcomes": {
+"reverted": 20,
+"kept": 4,
+"failed": 5,
+"timed_out": 9,
+"no_change": 2
+}
+},
+{
+"best": 1.275271,
+"auc": 1.847702947368421,
+"outcomes": {
+"reverted": 25,
+"kept": 6,
+"no_change": 3,
+"timed_out": 1,
+"failed": 5
+}
+},
+{
+"best": 1.056843,
+"auc": 1.3134254736842106,
+"outcomes": {
+"timed_out": 4,
+"reverted": 20,
+"kept": 7,
+"no_change": 5,
+"failed": 4
+}
+},
+{
+"best": 1.044202,
+"auc": 1.7959070750000001,
+"outcomes": {
+"kept": 9,
+"reverted": 26,
+"no_change": 3,
+"failed": 2
+}
+},
+{
+"best": 1.024991,
+"auc": 1.3480753,
+"outcomes": {
+"kept": 10,
+"reverted": 21,
+"failed": 7,
+"no_change": 1,
+"timed_out": 1
+}
+},
+{
+"best": 1.151665,
+"auc": 1.3602515714285714,
+"outcomes": {
+"reverted": 21,
+"kept": 6,
+"timed_out": 3,
+"no_change": 6,
+"failed": 4
+}
+},
+{
+"best": 1.001593,
+"auc": 1.2684930512820514,
+"outcomes": {
+"no_change": 3,
+"kept": 13,
+"reverted": 20,
+"timed_out": 1,
+"failed": 3
+}
+},
+{
+"best": 1.032169,
+"auc": 1.2348792051282051,
+"outcomes": {
+"reverted": 23,
+"kept": 5,
+"timed_out": 5,
+"no_change": 3,
+"failed": 4
+}
+},
+{
+"best": 1.009776,
+"auc": 1.1378833,
+"outcomes": {
+"kept": 8,
+"timed_out": 3,
+"reverted": 22,
+"no_change": 3,
+"failed": 4
+}
+},
+{
+"best": 1.715117,
+"auc": 1.8227277105263158,
+"outcomes": {
+"reverted": 19,
+"kept": 4,
+"timed_out": 8,
+"no_change": 6,
+"failed": 3
+}
+},
+{
+"best": 1.112085,
+"auc": 1.44663455,
+"outcomes": {
+"kept": 8,
+"timed_out": 3,
+"reverted": 17,
+"no_change": 5,
+"failed": 7
+}
+},
+{
+"best": 1.005441,
+"auc": 1.26745025,
+"outcomes": {
+"kept": 8,
+"reverted": 20,
+"no_change": 4,
+"failed": 8
+}
+},
+{
+"best": 0.993583,
+"auc": 1.2322784054054055,
+"outcomes": {
+"reverted": 24,
+"no_change": 3,
+"kept": 7,
+"failed": 5,
+"timed_out": 1
+}
+},
+{
+"best": 1.02255,
+"auc": 1.1267295405405406,
+"outcomes": {
+"timed_out": 2,
+"no_change": 4,
+"reverted": 20,
+"kept": 9,
+"failed": 5
+}
+},
+{
+"best": 1.000052,
+"auc": 1.2385868974358976,
+"outcomes": {
+"no_change": 6,
+"kept": 10,
+"reverted": 17,
+"failed": 6,
+"timed_out": 1
+}
+},
+{
+"best": 1.007899,
+"auc": 1.2001737435897435,
+"outcomes": {
+"reverted": 22,
+"kept": 7,
+"timed_out": 2,
+"no_change": 3,
+"failed": 6
+}
+},
+{
+"best": 1.001443,
+"auc": 1.25871845,
+"outcomes": {
+"kept": 8,
+"no_change": 4,
+"reverted": 18,
+"timed_out": 5,
+"failed": 5
+}
+},
+{
+"best": 1.042191,
+"auc": 1.2181773157894737,
+"outcomes": {
+"reverted": 20,
+"kept": 9,
+"no_change": 4,
+"failed": 7
+}
+},
+{
+"best": 1.094925,
+"auc": 1.590538,
+"outcomes": {
+"no_change": 6,
+"reverted": 17,
+"kept": 9,
+"timed_out": 2,
+"failed": 6
+}
+},
+{
+"best": 1.020564,
+"auc": 1.2869565135135135,
+"outcomes": {
+"reverted": 19,
+"no_change": 6,
+"kept": 8,
+"failed": 5,
+"timed_out": 2
+}
+},
+{
+"best": 1.238129,
+"auc": 1.51804685,
+"outcomes": {
+"kept": 8,
+"reverted": 22,
+"failed": 7,
+"no_change": 3
+}
+},
+{
+"best": 1.012495,
+"auc": 1.9374646944444445,
+"outcomes": {
+"reverted": 22,
+"no_change": 5,
+"kept": 7,
+"timed_out": 4,
+"failed": 2
+}
+},
+{
+"best": 1.319361,
+"auc": 1.5361809,
+"outcomes": {
+"kept": 8,
+"no_change": 5,
+"reverted": 18,
+"failed": 9
+}
+},
+{
+"best": 1.180338,
+"auc": 2.162483696969697,
+"outcomes": {
+"no_change": 4,
+"reverted": 25,
+"kept": 5,
+"timed_out": 5,
+"failed": 1
+}
+},
+{
+"best": 1.129105,
+"auc": 1.6066574615384617,
+"outcomes": {
+"reverted": 19,
+"kept": 9,
+"no_change": 7,
+"timed_out": 2,
+"failed": 3
+}
+},
+{
+"best": 0.995955,
+"auc": 1.111421875,
+"outcomes": {
+"kept": 6,
+"no_change": 6,
+"reverted": 18,
+"failed": 2,
+"timed_out": 8
+}
+},
+{
+"best": 0.996818,
+"auc": 1.3545778421052632,
+"outcomes": {
+"reverted": 21,
+"kept": 10,
+"no_change": 5,
+"timed_out": 2,
+"failed": 2
+}
+},
+{
+"best": 1.036835,
+"auc": 1.1955857894736843,
+"outcomes": {
+"no_change": 9,
+"reverted": 19,
+"kept": 8,
+"failed": 3,
+"timed_out": 1
+}
+},
+{
+"best": 1.007153,
+"auc": 1.1692398684210525,
+"outcomes": {
+"reverted": 19,
+"kept": 8,
+"no_change": 3,
+"failed": 5,
+"timed_out": 5
+}
+},
+{
+"best": 1.125571,
+"auc": 1.511321705882353,
+"outcomes": {
+"timed_out": 1,
+"reverted": 22,
+"no_change": 6,
+"kept": 8,
+"failed": 3
+}
+},
+{
+"best": 1.037899,
+"auc": 1.1219603055555556,
+"outcomes": {
+"reverted": 22,
+"no_change": 1,
+"kept": 3,
+"failed": 8,
+"timed_out": 6
+}
+},
+{
+"best": 1.011645,
+"auc": 1.1160234210526316,
+"outcomes": {
+"reverted": 25,
+"kept": 5,
+"failed": 7,
+"timed_out": 2,
+"no_change": 1
+}
+},
+{
+"best": 1.347633,
+"auc": 1.7811401842105263,
+"outcomes": {
+"reverted": 26,
+"kept": 8,
+"no_change": 4,
+"timed_out": 2
+}
+},
+{
+"best": 1.231901,
+"auc": 1.303862475,
+"outcomes": {
+"kept": 6,
+"reverted": 20,
+"failed": 10,
+"no_change": 4
+}
+},
+{
+"best": 1.00195,
+"auc": 1.161532775,
+"outcomes": {
+"kept": 7,
+"reverted": 22,
+"failed": 6,
+"timed_out": 2,
+"no_change": 3
+}
+},
+{
+"best": 1.02324,
+"auc": 1.369669512820513,
+"outcomes": {
+"no_change": 5,
+"kept": 7,
+"reverted": 19,
+"timed_out": 2,
+"failed": 7
+}
+},
+{
+"best": 1.084742,
+"auc": 1.5537773333333333,
+"outcomes": {
+"no_change": 5,
+"kept": 12,
+"reverted": 19,
+"timed_out": 2,
+"failed": 2
+}
+},
+{
+"best": 1.073393,
+"auc": 1.2690691025641025,
+"outcomes": {
+"no_change": 3,
+"kept": 9,
+"timed_out": 4,
+"reverted": 17,
+"failed": 7
+}
+},
+{
+"best": 0.998898,
+"auc": 1.380058775,
+"outcomes": {
+"kept": 6,
+"no_change": 6,
+"reverted": 21,
+"timed_out": 4,
+"failed": 3
+}
+},
+{
+"best": 1.006815,
+"auc": 1.7241518974358974,
+"outcomes": {
+"reverted": 20,
+"kept": 7,
+"timed_out": 4,
+"no_change": 7,
+"failed": 2
+}
+},
+{
+"best": 0.992188,
+"auc": 1.0865811315789473,
+"outcomes": {
+"no_change": 4,
+"reverted": 20,
+"kept": 8,
+"failed": 2,
+"timed_out": 6
+}
+},
+{
+"best": 1.004318,
+"auc": 1.214050125,
+"outcomes": {
+"kept": 8,
+"reverted": 21,
+"no_change": 4,
+"failed": 3,
+"timed_out": 4
+}
+},
+{
+"best": 0.99967,
+"auc": 1.31929675,
+"outcomes": {
+"kept": 8,
+"reverted": 19,
+"no_change": 4,
+"failed": 5,
+"timed_out": 4
+}
+},
+{
+"best": 1.075623,
+"auc": 1.2588881315789473,
+"outcomes": {
+"no_change": 5,
+"reverted": 18,
+"kept": 6,
+"timed_out": 1,
+"failed": 10
+}
+},
+{
+"best": 1.485672,
+"auc": 1.5592755,
+"outcomes": {
+"reverted": 24,
+"no_change": 7,
+"kept": 3,
+"failed": 6
+}
+},
+{
+"best": 1.192122,
+"auc": 1.6739701842105263,
+"outcomes": {
+"timed_out": 2,
+"reverted": 19,
+"kept": 10,
+"no_change": 5,
+"failed": 4
+}
+},
+{
+"best": 1.318231,
+"auc": 1.465820775,
+"outcomes": {
+"kept": 5,
+"reverted": 26,
+"no_change": 2,
+"failed": 5,
+"timed_out": 2
+}
+},
+{
+"best": 1.022892,
+"auc": 1.9128848205128206,
+"outcomes": {
+"reverted": 22,
+"kept": 8,
+"timed_out": 1,
+"no_change": 7,
+"failed": 2
+}
+},
+{
+"best": 1.351484,
+"auc": 1.54439,
+"outcomes": {
+"reverted": 20,
+"kept": 7,
+"failed": 9,
+"no_change": 4
+}
+},
+{
+"best": 1.04697,
+"auc": 1.4495519749999999,
+"outcomes": {
+"kept": 9,
+"reverted": 22,
+"no_change": 4,
+"failed": 4,
+"timed_out": 1
+}
+},
+{
+"best": 1.280633,
+"auc": 1.5304100250000001,
+"outcomes": {
+"kept": 8,
+"reverted": 23,
+"failed": 8,
+"no_change": 1
+}
+},
+{
+"best": 1.010947,
+"auc": 1.1989189487179488,
+"outcomes": {
+"reverted": 25,
+"kept": 9,
+"failed": 6
+}
+},
+{
+"best": 1.099576,
+"auc": 1.290742925,
+"outcomes": {
+"kept": 6,
+"reverted": 20,
+"timed_out": 9,
+"no_change": 4,
+"failed": 1
+}
+},
+{
+"best": 1.005931,
+"auc": 1.545899675,
+"outcomes": {
+"kept": 10,
+"no_change": 2,
+"reverted": 18,
+"timed_out": 5,
+"failed": 5
+}
+},
+{
+"best": 1.003614,
+"auc": 1.834419025,
+"outcomes": {
+"kept": 8,
+"no_change": 7,
+"reverted": 21,
+"failed": 4
+}
+},
+{
+"best": 1.012161,
+"auc": 1.05878955,
+"outcomes": {
+"kept": 6,
+"no_change": 4,
+"reverted": 22,
+"timed_out": 6,
+"failed": 2
+}
+},
+{
+"best": 1.003904,
+"auc": 1.176470825,
+"outcomes": {
+"kept": 8,
+"reverted": 25,
+"no_change": 1,
+"failed": 6
+}
+},
+{
+"best": 1.038636,
+"auc": 1.1740835,
+"outcomes": {
+"kept": 6,
+"reverted": 18,
+"no_change": 5,
+"failed": 11
+}
+},
+{
+"best": 0.99739,
+"auc": 1.2023396470588237,
+"outcomes": {
+"no_change": 7,
+"reverted": 16,
+"kept": 9,
+"failed": 6,
+"timed_out": 2
+}
+},
+{
+"best": 1.084501,
+"auc": 1.23120715,
+"outcomes": {
+"kept": 8,
+"reverted": 18,
+"failed": 5,
+"no_change": 4,
+"timed_out": 5
+}
+},
+{
+"best": 1.002307,
+"auc": 1.341405325,
+"outcomes": {
+"kept": 12,
+"reverted": 22,
+"timed_out": 2,
+"no_change": 3,
+"failed": 1
+}
+},
+{
+"best": 1.12163,
+"auc": 1.3127751,
+"outcomes": {
+"kept": 7,
+"reverted": 22,
+"failed": 7,
+"no_change": 2,
+"timed_out": 2
+}
+},
+{
+"best": 1.084437,
+"auc": 1.2647763714285716,
+"outcomes": {
+"no_change": 4,
+"reverted": 25,
+"kept": 5,
+"failed": 5,
+"timed_out": 1
+}
+},
+{
+"best": 1.048697,
+"auc": 1.2181093157894736,
+"outcomes": {
+"no_change": 5,
+"reverted": 19,
+"kept": 10,
+"failed": 6
+}
+},
+{
+"best": 1.09656,
+"auc": 1.2062609473684212,
+"outcomes": {
+"reverted": 18,
+"kept": 6,
+"failed": 10,
+"no_change": 6
+}
+},
+{
+"best": 1.000139,
+"auc": 1.199963947368421,
+"outcomes": {
+"reverted": 16,
+"kept": 11,
+"failed": 6,
+"no_change": 6,
+"timed_out": 1
+}
+},
+{
+"best": 1.237422,
+"auc": 1.2886176,
+"outcomes": {
+"kept": 4,
+"timed_out": 7,
+"reverted": 21,
+"failed": 4,
+"no_change": 4
+}
+},
+{
+"best": 1.51293,
+"auc": 1.6903187368421053,
+"outcomes": {
+"no_change": 4,
+"reverted": 22,
+"kept": 9,
+"failed": 4,
+"timed_out": 1
+}
+},
+{
+"best": 1.030202,
+"auc": 1.3719162105263158,
+"outcomes": {
+"reverted": 23,
+"kept": 13,
+"timed_out": 3,
+"no_change": 1
+}
+},
+{
+"best": 1.034306,
+"auc": 1.2988889000000001,
+"outcomes": {
+"kept": 8,
+"reverted": 21,
+"failed": 9,
+"no_change": 2
+}
+},
+{
+"best": 0.998764,
+"auc": 1.1330438378378378,
+"outcomes": {
+"reverted": 24,
+"kept": 10,
+"timed_out": 2,
+"failed": 2,
+"no_change": 2
+}
+},
+{
+"best": 1.048165,
+"auc": 1.27105125,
+"outcomes": {
+"kept": 10,
+"reverted": 20,
+"no_change": 5,
+"failed": 5
+}
+},
+{
+"best": 1.040328,
+"auc": 1.4408465,
+"outcomes": {
+"kept": 7,
+"reverted": 21,
+"no_change": 7,
+"timed_out": 4,
+"failed": 1
+}
+},
+{
+"best": 1.050414,
+"auc": 1.279655625,
+"outcomes": {
+"kept": 10,
+"no_change": 5,
+"reverted": 16,
+"failed": 6,
+"timed_out": 3
+}
+},
+{
+"best": 1.107778,
+"auc": 1.2955931578947368,
+"outcomes": {
+"reverted": 26,
+"kept": 5,
+"failed": 4,
+"no_change": 5
+}
+},
+{
+"best": 1.282757,
+"auc": 1.5881769230769232,
+"outcomes": {
+"reverted": 20,
+"kept": 7,
+"timed_out": 3,
+"failed": 6,
+"no_change": 4
+}
+},
+{
+"best": 1.022494,
+"auc": 1.3353117894736843,
+"outcomes": {
+"reverted": 21,
+"no_change": 4,
+"kept": 7,
+"failed": 8
+}
+},
+{
+"best": 1.058956,
+"auc": 1.339989625,
+"outcomes": {
+"kept": 8,
+"no_change": 2,
+"timed_out": 4,
+"reverted": 22,
+"failed": 4
+}
+},
+{
+"best": 1.018459,
+"auc": 1.358609375,
+"outcomes": {
+"kept": 13,
+"reverted": 18,
+"timed_out": 3,
+"no_change": 4,
+"failed": 2
+}
+},
+{
+"best": 1.049577,
+"auc": 1.325603925,
+"outcomes": {
+"kept": 10,
+"reverted": 20,
+"failed": 6,
+"timed_out": 1,
+"no_change": 3
+}
+},
+{
+"best": 1.001938,
+"auc": 1.1620196842105264,
+"outcomes": {
+"reverted": 22,
+"kept": 6,
+"no_change": 4,
+"failed": 7,
+"timed_out": 1
+}
+},
+{
+"best": 1.194478,
+"auc": 1.3840241025641025,
+"outcomes": {
+"reverted": 20,
+"kept": 6,
+"no_change": 6,
+"failed": 7,
+"timed_out": 1
+}
+},
+{
+"best": 1.011572,
+"auc": 1.707020657894737,
+"outcomes": {
+"reverted": 17,
+"no_change": 7,
+"kept": 6,
+"timed_out": 4,
+"failed": 6
+}
+},
+{
+"best": 1.058536,
+"auc": 1.251519825,
+"outcomes": {
+"kept": 7,
+"reverted": 18,
+"no_change": 6,
+"timed_out": 3,
+"failed": 6
+}
+},
+{
+"best": 1.000951,
+"auc": 1.3734681,
+"outcomes": {
+"kept": 8,
+"reverted": 23,
+"timed_out": 3,
+"no_change": 4,
+"failed": 2
+}
+},
+{
+"best": 1.004531,
+"auc": 1.1596423846153845,
+"outcomes": {
+"reverted": 19,
+"kept": 7,
+"no_change": 7,
+"timed_out": 5,
+"failed": 2
+}
+},
+{
+"best": 1.016748,
+"auc": 1.5605771891891893,
+"outcomes": {
+"no_change": 5,
+"reverted": 21,
+"kept": 7,
+"timed_out": 6,
+"failed": 1
+}
+},
+{
+"best": 1.223649,
+"auc": 1.4403097999999999,
+"outcomes": {
+"kept": 8,
+"reverted": 20,
+"failed": 8,
+"no_change": 2,
+"timed_out": 2
+}
+},
+{
+"best": 1.009134,
+"auc": 1.124649717948718,
+"outcomes": {
+"no_change": 2,
+"kept": 8,
+"reverted": 20,
+"failed": 6,
+"timed_out": 4
+}
+},
+{
+"best": 1.002848,
+"auc": 1.2213058684210527,
+"outcomes": {
+"reverted": 19,
+"kept": 8,
+"no_change": 5,
+"failed": 7,
+"timed_out": 1
+}
+},
+{
+"best": 1.061203,
+"auc": 1.459745,
+"outcomes": {
+"kept": 11,
+"reverted": 21,
+"no_change": 3,
+"failed": 5
+}
+},
+{
+"best": 1.005737,
+"auc": 1.2304762972972974,
+"outcomes": {
+"reverted": 18,
+"kept": 9,
+"failed": 9,
+"no_change": 3,
+"timed_out": 1
+}
+},
+{
+"best": 0.996233,
+"auc": 1.110873135135135,
+"outcomes": {
+"reverted": 23,
+"timed_out": 4,
+"kept": 6,
+"no_change": 3,
+"failed": 4
+}
+},
+{
+"best": 1.176363,
+"auc": 1.3639356578947368,
+"outcomes": {
+"reverted": 23,
+"kept": 7,
+"no_change": 4,
+"failed": 6
+}
+},
+{
+"best": 1.1335,
+"auc": 1.5794021282051283,
+"outcomes": {
+"reverted": 24,
+"kept": 7,
+"no_change": 3,
+"failed": 4,
+"timed_out": 2
+}
+},
+{
+"best": 1.008979,
+"auc": 1.19965275,
+"outcomes": {
+"kept": 12,
+"reverted": 19,
+"failed": 5,
+"no_change": 4
+}
+},
+{
+"best": 1.000129,
+"auc": 1.1602079,
+"outcomes": {
+"kept": 10,
+"reverted": 19,
+"no_change": 5,
+"failed": 5,
+"timed_out": 1
+}
+},
+{
+"best": 1.006377,
+"auc": 1.1481178,
+"outcomes": {
+"kept": 9,
+"no_change": 2,
+"reverted": 18,
+"failed": 7,
+"timed_out": 4
+}
+},
+{
+"best": 1.08995,
+"auc": 1.432755325,
+"outcomes": {
+"kept": 5,
+"failed": 10,
+"reverted": 22,
+"no_change": 3
+}
+},
+{
+"best": 1.004307,
+"auc": 1.406319205882353,
+"outcomes": {
+"reverted": 20,
+"no_change": 3,
+"kept": 8,
+"timed_out": 5,
+"failed": 4
+}
+},
+{
+"best": 1.081971,
+"auc": 1.3429475135135136,
+"outcomes": {
+"reverted": 24,
+"kept": 9,
+"no_change": 2,
+"failed": 4,
+"timed_out": 1
+}
+},
+{
+"best": 1.021936,
+"auc": 1.145983435897436,
+"outcomes": {
+"reverted": 19,
+"kept": 10,
+"no_change": 5,
+"failed": 6
+}
+},
+{
+"best": 1.040458,
+"auc": 1.3392205750000001,
+"outcomes": {
+"kept": 6,
+"reverted": 23,
+"timed_out": 2,
+"failed": 6,
+"no_change": 3
+}
+},
+{
+"best": 1.11449,
+"auc": 1.2491798055555554,
+"outcomes": {
+"no_change": 8,
+"reverted": 21,
+"kept": 5,
+"failed": 5,
+"timed_out": 1
+}
+},
+{
+"best": 1.051114,
+"auc": 1.1082035749999999,
+"outcomes": {
+"kept": 7,
+"no_change": 3,
+"reverted": 19,
+"failed": 10,
+"timed_out": 1
+}
+},
+{
+"best": 0.998215,
+"auc": 1.1800939499999998,
+"outcomes": {
+"kept": 6,
+"no_change": 6,
+"reverted": 22,
+"timed_out": 4,
+"failed": 2
+}
+},
+{
+"best": 1.13071,
+"auc": 1.3751144210526316,
+"outcomes": {
+"reverted": 23,
+"kept": 6,
+"failed": 7,
+"no_change": 4
+}
+},
+{
+"best": 1.01492,
+"auc": 1.210627925,
+"outcomes": {
+"kept": 11,
+"reverted": 20,
+"no_change": 2,
+"failed": 7
+}
+},
+{
+"best": 1.102727,
+"auc": 1.4029350833333334,
+"outcomes": {
+"reverted": 23,
+"no_change": 6,
+"kept": 6,
+"timed_out": 1,
+"failed": 4
+}
+},
+{
+"best": 1.000352,
+"auc": 1.227213605263158,
+"outcomes": {
+"reverted": 22,
+"kept": 8,
+"no_change": 7,
+"failed": 3
+}
+},
+{
+"best": 1.001937,
+"auc": 1.26122865,
+"outcomes": {
+"kept": 5,
+"reverted": 21,
+"timed_out": 5,
+"failed": 3,
+"no_change": 6
+}
+},
+{
+"best": 1.057047,
+"auc": 1.4521704,
+"outcomes": {
+"kept": 10,
+"reverted": 20,
+"no_change": 4,
+"failed": 2,
+"timed_out": 4
+}
+},
+{
+"best": 1.008765,
+"auc": 1.3762964864864864,
+"outcomes": {
+"reverted": 19,
+"no_change": 6,
+"kept": 6,
+"failed": 7,
+"timed_out": 2
+}
+},
+{
+"best": 1.143199,
+"auc": 1.348278111111111,
+"outcomes": {
+"reverted": 21,
+"no_change": 4,
+"kept": 6,
+"failed": 7,
+"timed_out": 2
+}
+},
+{
+"best": 1.02749,
+"auc": 1.296406923076923,
+"outcomes": {
+"reverted": 21,
+"kept": 7,
+"timed_out": 6,
+"failed": 2,
+"no_change": 4
+}
+},
+{
+"best": 1.003813,
+"auc": 1.2068550500000002,
+"outcomes": {
+"kept": 13,
+"no_change": 4,
+"reverted": 13,
+"failed": 7,
+"timed_out": 3
+}
+},
+{
+"best": 1.122436,
+"auc": 1.3776112999999999,
+"outcomes": {
+"kept": 8,
+"reverted": 18,
+"no_change": 6,
+"failed": 4,
+"timed_out": 4
+}
+},
+{
+"best": 1.013423,
+"auc": 1.2521909743589743,
+"outcomes": {
+"reverted": 20,
+"kept": 9,
+"no_change": 4,
+"failed": 7
+}
+},
+{
+"best": 1.029962,
+"auc": 1.2462886,
+"outcomes": {
+"kept": 6,
+"reverted": 19,
+"timed_out": 4,
+"no_change": 4,
+"failed": 7
+}
+},
+{
+"best": 1.092438,
+"auc": 1.3082798378378377,
+"outcomes": {
+"reverted": 21,
+"no_change": 5,
+"kept": 8,
+"failed": 6
+}
+},
+{
+"best": 1.002121,
+"auc": 1.8567039743589744,
+"outcomes": {
+"reverted": 24,
+"kept": 11,
+"timed_out": 2,
+"no_change": 3
+}
+},
+{
+"best": 0.999524,
+"auc": 1.1541205135135135,
+"outcomes": {
+"no_change": 7,
+"reverted": 21,
+"kept": 9,
+"failed": 2,
+"timed_out": 1
+}
+},
+{
+"best": 1.010717,
+"auc": 1.208159575,
+"outcomes": {
+"kept": 9,
+"reverted": 20,
+"no_change": 5,
+"failed": 4,
+"timed_out": 2
+}
+},
+{
+"best": 1.233015,
+"auc": 1.373684394736842,
+"outcomes": {
+"reverted": 22,
+"kept": 5,
+"no_change": 4,
+"failed": 8,
+"timed_out": 1
+}
+},
+{
+"best": 1.030733,
+"auc": 1.2239035161290324,
+"outcomes": {
+"reverted": 28,
+"no_change": 4,
+"kept": 6,
+"failed": 2
+}
+},
+{
+"best": 1.061134,
+"auc": 1.4683434722222222,
+"outcomes": {
+"no_change": 7,
+"reverted": 16,
+"kept": 11,
+"failed": 5,
+"timed_out": 1
+}
+},
+{
+"best": 1.000996,
+"auc": 1.1487802162162162,
+"outcomes": {
+"reverted": 23,
+"timed_out": 3,
+"kept": 8,
+"failed": 5,
+"no_change": 1
+}
+},
+{
+"best": 1.007575,
+"auc": 1.123397282051282,
+"outcomes": {
+"reverted": 25,
+"kept": 7,
+"failed": 5,
+"no_change": 3
+}
+},
+{
+"best": 1.001011,
+"auc": 1.7315457,
+"outcomes": {
+"kept": 9,
+"reverted": 22,
+"no_change": 6,
+"failed": 3
+}
+},
+{
+"best": 1.065523,
+"auc": 1.3498740285714286,
+"outcomes": {
+"reverted": 19,
+"no_change": 4,
+"kept": 6,
+"timed_out": 2,
+"failed": 9
+}
+},
+{
+"best": 0.999774,
+"auc": 1.2629404358974359,
+"outcomes": {
+"reverted": 19,
+"kept": 9,
+"timed_out": 2,
+"failed": 7,
+"no_change": 3
+}
+},
+{
+"best": 1.280391,
+"auc": 1.3855893000000001,
+"outcomes": {
+"kept": 5,
+"no_change": 4,
+"reverted": 24,
+"failed": 7
+}
+},
+{
+"best": 1.003257,
+"auc": 1.122997641025641,
+"outcomes": {
+"reverted": 20,
+"kept": 8,
+"failed": 6,
+"timed_out": 2,
+"no_change": 4
+}
+},
+{
+"best": 1.104327,
+"auc": 1.2411460789473685,
+"outcomes": {
+"reverted": 23,
+"no_change": 3,
+"kept": 6,
+"failed": 6,
+"timed_out": 2
+}
+},
+{
+"best": 2.42645,
+"auc": 2.461276825,
+"outcomes": {
+"kept": 4,
+"reverted": 25,
+"no_change": 4,
+"timed_out": 7
+}
+},
+{
+"best": 1.013066,
+"auc": 1.4230039,
+"outcomes": {
+"kept": 9,
+"reverted": 22,
+"failed": 4,
+"timed_out": 1,
+"no_change": 4
+}
+},
+{
+"best": 1.08763,
+"auc": 1.2578091282051282,
+"outcomes": {
+"reverted": 19,
+"kept": 7,
+"failed": 8,
+"no_change": 6
+}
+},
+{
+"best": 1.017365,
+"auc": 1.21338545,
+"outcomes": {
+"kept": 9,
+"reverted": 26,
+"no_change": 1,
+"failed": 4
+}
+},
+{
+"best": 1.078766,
+"auc": 1.388664525,
+"outcomes": {
+"kept": 11,
+"no_change": 3,
+"reverted": 20,
+"failed": 5,
+"timed_out": 1
+}
+},
+{
+"best": 1.009342,
+"auc": 1.4317546052631578,
+"outcomes": {
+"no_change": 2,
+"reverted": 23,
+"kept": 8,
+"timed_out": 3,
+"failed": 4
+}
+},
+{
+"best": 0.991953,
+"auc": 1.7551618157894737,
+"outcomes": {
+"reverted": 20,
+"kept": 9,
+"timed_out": 4,
+"no_change": 5,
+"failed": 2
+}
+},
+{
+"best": 1.025286,
+"auc": 1.255789225,
+"outcomes": {
+"kept": 8,
+"reverted": 24,
+"failed": 6,
+"no_change": 1,
+"timed_out": 1
+}
+},
+{
+"best": 1.002597,
+"auc": 1.3616116756756758,
+"outcomes": {
+"no_change": 3,
+"reverted": 20,
+"kept": 8,
+"failed": 8,
+"timed_out": 1
+}
+},
+{
+"best": 1.133155,
+"auc": 1.615099525,
+"outcomes": {
+"kept": 5,
+"no_change": 7,
+"reverted": 23,
+"timed_out": 4,
+"failed": 1
+}
+},
+{
+"best": 0.998249,
+"auc": 1.4218008,
+"outcomes": {
+"kept": 7,
+"reverted": 23,
+"no_change": 4,
+"timed_out": 4,
+"failed": 2
+}
+},
+{
+"best": 1.139746,
+"auc": 1.4060317,
+"outcomes": {
+"kept": 7,
+"reverted": 17,
+"no_change": 7,
+"timed_out": 7,
+"failed": 2
+}
+},
+{
+"best": 1.06322,
+"auc": 1.33630465,
+"outcomes": {
+"kept": 6,
+"reverted": 24,
+"no_change": 6,
+"failed": 3,
+"timed_out": 1
+}
+},
+{
+"best": 1.270952,
+"auc": 1.4399423846153847,
+"outcomes": {
+"reverted": 20,
+"kept": 7,
+"timed_out": 2,
+"failed": 7,
+"no_change": 4
+}
+},
+{
+"best": 1.118769,
+"auc": 1.3445982352941177,
+"outcomes": {
+"reverted": 23,
+"timed_out": 2,
+"no_change": 3,
+"kept": 10,
+"failed": 2
+}
+},
+{
+"best": 1.078367,
+"auc": 1.27976435,
+"outcomes": {
+"kept": 6,
+"reverted": 18,
+"failed": 6,
+"no_change": 6,
+"timed_out": 4
+}
+},
+{
+"best": 1.110095,
+"auc": 1.5832126486486486,
+"outcomes": {
+"reverted": 21,
+"kept": 6,
+"no_change": 5,
+"timed_out": 5,
+"failed": 3
+}
+},
+{
+"best": 1.008549,
+"auc": 1.420725564102564,
+"outcomes": {
+"reverted": 20,
+"kept": 9,
+"no_change": 2,
+"failed": 8,
+"timed_out": 1
+}
+},
+{
+"best": 1.200866,
+"auc": 1.3193078235294118,
+"outcomes": {
+"reverted": 22,
+"no_change": 7,
+"kept": 5,
+"failed": 4,
+"timed_out": 2
+}
+},
+{
+"best": 1.006582,
+"auc": 1.4619732,
+"outcomes": {
+"kept": 9,
+"reverted": 16,
+"timed_out": 3,
+"no_change": 6,
+"failed": 6
+}
+},
+{
+"best": 1.065671,
+"auc": 1.2341895789473685,
+"outcomes": {
+"no_change": 5,
+"reverted": 16,
+"kept": 10,
+"failed": 9
+}
+},
+{
+"best": 1.006228,
+"auc": 1.0806134864864865,
+"outcomes": {
+"reverted": 22,
+"kept": 6,
+"failed": 4,
+"no_change": 4,
+"timed_out": 4
+}
+},
+{
+"best": 0.992685,
+"auc": 1.141217717948718,
+"outcomes": {
+"reverted": 19,
+"kept": 8,
+"no_change": 5,
+"failed": 5,
+"timed_out": 3
+}
+},
+{
+"best": 1.018017,
+"auc": 1.4667591666666666,
+"outcomes": {
+"reverted": 24,
+"no_change": 3,
+"kept": 10,
+"failed": 2,
+"timed_out": 1
+}
+},
+{
+"best": 1.009113,
+"auc": 1.2453075142857142,
+"outcomes": {
+"reverted": 24,
+"kept": 7,
+"no_change": 5,
+"failed": 4
+}
+},
+{
+"best": 1.001539,
+"auc": 1.2530673076923078,
+"outcomes": {
+"reverted": 19,
+"kept": 8,
+"no_change": 2,
+"timed_out": 2,
+"failed": 9
+}
+},
+{
+"best": 1.001574,
+"auc": 1.178030125,
+"outcomes": {
+"kept": 8,
+"reverted": 19,
+"no_change": 5,
+"timed_out": 3,
+"failed": 5
+}
+},
+{
+"best": 1.030572,
+"auc": 1.19310945,
+"outcomes": {
+"kept": 7,
+"timed_out": 4,
+"reverted": 21,
+"failed": 5,
+"no_change": 3
+}
+},
+{
+"best": 1.323812,
+"auc": 1.34132705,
+"outcomes": {
+"kept": 2,
+"reverted": 24,
+"failed": 7,
+"no_change": 2,
+"timed_out": 5
+}
+},
+{
+"best": 1.00535,
+"auc": 1.0682577999999998,
+"outcomes": {
+"kept": 5,
+"failed": 8,
+"reverted": 16,
+"timed_out": 7,
+"no_change": 4
+}
+},
+{
+"best": 1.036935,
+"auc": 1.1450405128205128,
+"outcomes": {
+"reverted": 23,
+"kept": 7,
+"failed": 7,
+"no_change": 3
+}
+},
+{
+"best": 1.166657,
+"auc": 1.3076971081081081,
+"outcomes": {
+"no_change": 4,
+"reverted": 21,
+"kept": 5,
+"timed_out": 2,
+"failed": 8
+}
+},
+{
+"best": 1.428286,
+"auc": 1.5806045128205128,
+"outcomes": {
+"reverted": 22,
+"kept": 5,
+"no_change": 6,
+"timed_out": 3,
+"failed": 4
+}
+},
+{
+"best": 0.994076,
+"auc": 1.2292410249999999,
+"outcomes": {
+"kept": 5,
+"reverted": 23,
+"no_change": 5,
+"failed": 6,
+"timed_out": 1
+}
+},
+{
+"best": 1.272148,
+"auc": 1.441859,
+"outcomes": {
+"reverted": 18,
+"no_change": 6,
+"timed_out": 2,
+"kept": 6,
+"failed": 8
+}
+}
+],
+"nine": [
+{
+"best": 1.008629,
+"auc": 1.7359607948717948,
+"outcomes": {
+"reverted": 22,
+"kept": 8,
+"timed_out": 6,
+"no_change": 3,
+"failed": 1
+}
+},
+{
+"best": 1.003661,
+"auc": 1.7263924210526316,
+"outcomes": {
+"reverted": 21,
+"kept": 7,
+"timed_out": 7,
+"no_change": 4,
+"failed": 1
+}
+},
+{
+"best": 1.042701,
+"auc": 1.2679390571428573,
+"outcomes": {
+"reverted": 22,
+"no_change": 3,
+"kept": 6,
+"failed": 5,
+"timed_out": 4
+}
+},
+{
+"best": 1.267659,
+"auc": 1.457747525,
+"outcomes": {
+"kept": 6,
+"reverted": 22,
+"failed": 3,
+"no_change": 3,
+"timed_out": 6
+}
+},
+{
+"best": 1.423119,
+"auc": 1.461924,
+"outcomes": {
+"reverted": 21,
+"kept": 4,
+"timed_out": 5,
+"failed": 6,
+"no_change": 4
+}
+},
+{
+"best": 1.004125,
+"auc": 1.1379561578947368,
+"outcomes": {
+"reverted": 18,
+"kept": 7,
+"failed": 6,
+"no_change": 8,
+"timed_out": 1
+}
+},
+{
+"best": 1.146164,
+"auc": 1.5511125675675677,
+"outcomes": {
+"reverted": 21,
+"kept": 11,
+"timed_out": 3,
+"no_change": 5
+}
+},
+{
+"best": 1.000149,
+"auc": 1.710147294117647,
+"outcomes": {
+"reverted": 21,
+"no_change": 2,
+"kept": 8,
+"timed_out": 8,
+"failed": 1
+}
+},
+{
+"best": 0.999973,
+"auc": 1.1653676923076923,
+"outcomes": {
+"reverted": 19,
+"kept": 7,
+"no_change": 6,
+"failed": 7,
+"timed_out": 1
+}
+},
+{
+"best": 1.128819,
+"auc": 1.2244336,
+"outcomes": {
+"reverted": 26,
+"no_change": 2,
+"kept": 7,
+"failed": 5
+}
+},
+{
+"best": 1.158,
+"auc": 1.5789494102564103,
+"outcomes": {
+"no_change": 6,
+"kept": 7,
+"timed_out": 8,
+"reverted": 19
+}
+},
+{
+"best": 0.999871,
+"auc": 1.1972194102564102,
+"outcomes": {
+"reverted": 18,
+"kept": 6,
+"no_change": 5,
+"failed": 5,
+"timed_out": 6
+}
+},
+{
+"best": 1.000541,
+"auc": 1.135676081081081,
+"outcomes": {
+"reverted": 22,
+"kept": 7,
+"timed_out": 7,
+"no_change": 1,
+"failed": 3
+}
+},
+{
+"best": 1.199142,
+"auc": 1.3204867,
+"outcomes": {
+"kept": 7,
+"reverted": 22,
+"no_change": 2,
+"failed": 9
+}
+},
+{
+"best": 1.046005,
+"auc": 1.6351385142857142,
+"outcomes": {
+"reverted": 22,
+"kept": 8,
+"no_change": 5,
+"failed": 5
+}
+},
+{
+"best": 1.023316,
+"auc": 1.1905471025641026,
+"outcomes": {
+"reverted": 19,
+"kept": 9,
+"timed_out": 3,
+"no_change": 3,
+"failed": 6
+}
+},
+{
+"best": 1.025019,
+"auc": 1.2926457,
+"outcomes": {
+"kept": 7,
+"reverted": 17,
+"no_change": 8,
+"failed": 5,
+"timed_out": 3
+}
+},
+{
+"best": 1.145269,
+"auc": 1.234003975,
+"outcomes": {
+"kept": 7,
+"reverted": 17,
+"no_change": 5,
+"failed": 9,
+"timed_out": 2
+}
+},
+{
+"best": 1.002917,
+"auc": 1.3982576923076924,
+"outcomes": {
+"reverted": 18,
+"kept": 9,
+"no_change": 6,
+"failed": 4,
+"timed_out": 3
+}
+},
+{
+"best": 1.022538,
+"auc": 1.1496755,
+"outcomes": {
+"reverted": 21,
+"no_change": 7,
+"kept": 6,
+"failed": 4,
+"timed_out": 2
+}
+},
+{
+"best": 1.010179,
+"auc": 1.2409402432432433,
+"outcomes": {
+"timed_out": 3,
+"reverted": 21,
+"kept": 9,
+"no_change": 3,
+"failed": 4
+}
+},
+{
+"best": 1.144758,
+"auc": 1.365249075,
+"outcomes": {
+"kept": 5,
+"timed_out": 9,
+"reverted": 21,
+"no_change": 1,
+"failed": 4
+}
+},
+{
+"best": 1.123349,
+"auc": 1.5489835384615385,
+"outcomes": {
+"reverted": 24,
+"kept": 8,
+"no_change": 2,
+"timed_out": 2,
+"failed": 4
+}
+},
+{
+"best": 1.089974,
+"auc": 1.5667400512820513,
+"outcomes": {
+"reverted": 23,
+"kept": 6,
+"no_change": 6,
+"failed": 4,
+"timed_out": 1
+}
+},
+{
+"best": 1.04011,
+"auc": 1.599735923076923,
+"outcomes": {
+"reverted": 21,
+"kept": 7,
+"timed_out": 5,
+"no_change": 3,
+"failed": 4
+}
+},
+{
+"best": 1.007724,
+"auc": 1.215532641025641,
+"outcomes": {
+"reverted": 18,
+"kept": 7,
+"no_change": 7,
+"failed": 7,
+"timed_out": 1
+}
+},
+{
+"best": 1.239637,
+"auc": 1.534547525,
+"outcomes": {
+"kept": 8,
+"failed": 5,
+"reverted": 23,
+"no_change": 2,
+"timed_out": 2
+}
+},
+{
+"best": 1.045141,
+"auc": 1.324660825,
+"outcomes": {
+"kept": 7,
+"no_change": 3,
+"reverted": 23,
+"timed_out": 3,
+"failed": 4
+}
+},
+{
+"best": 1.033787,
+"auc": 1.38272305,
+"outcomes": {
+"kept": 11,
+"reverted": 19,
+"failed": 6,
+"no_change": 4
+}
+},
+{
+"best": 1.020387,
+"auc": 1.1827693333333333,
+"outcomes": {
+"no_change": 6,
+"reverted": 22,
+"kept": 7,
+"failed": 4,
+"timed_out": 1
+}
+},
+{
+"best": 0.996978,
+"auc": 1.1872552285714286,
+"outcomes": {
+"reverted": 19,
+"kept": 10,
+"no_change": 4,
+"timed_out": 3,
+"failed": 4
+}
+},
+{
+"best": 1.007231,
+"auc": 1.0779478918918919,
+"outcomes": {
+"reverted": 18,
+"kept": 6,
+"failed": 8,
+"timed_out": 4,
+"no_change": 4
+}
+},
+{
+"best": 1.169527,
+"auc": 1.437921,
+"outcomes": {
+"reverted": 24,
+"kept": 8,
+"no_change": 3,
+"failed": 5
+}
+},
+{
+"best": 1.001591,
+"auc": 1.1507511315789474,
+"outcomes": {
+"timed_out": 3,
+"reverted": 19,
+"kept": 8,
+"no_change": 4,
+"failed": 6
+}
+},
+{
+"best": 0.997401,
+"auc": 1.377369375,
+"outcomes": {
+"kept": 7,
+"reverted": 24,
+"no_change": 3,
+"failed": 5,
+"timed_out": 1
+}
+},
+{
+"best": 1.037468,
+"auc": 1.3290686,
+"outcomes": {
+"kept": 10,
+"reverted": 17,
+"failed": 8,
+"timed_out": 3,
+"no_change": 2
+}
+},
+{
+"best": 1.443116,
+"auc": 1.4682301142857144,
+"outcomes": {
+"reverted": 20,
+"kept": 3,
+"timed_out": 6,
+"no_change": 9,
+"failed": 2
+}
+},
+{
+"best": 1.036448,
+"auc": 1.7262810526315788,
+"outcomes": {
+"no_change": 2,
+"reverted": 26,
+"kept": 8,
+"timed_out": 1,
+"failed": 3
+}
+},
+{
+"best": 1.233918,
+"auc": 1.3579323333333333,
+"outcomes": {
+"reverted": 23,
+"kept": 5,
+"timed_out": 3,
+"no_change": 4,
+"failed": 5
+}
+},
+{
+"best": 0.997925,
+"auc": 1.145608725,
+"outcomes": {
+"kept": 8,
+"timed_out": 4,
+"reverted": 19,
+"no_change": 5,
+"failed": 4
+}
+},
+{
+"best": 1.757865,
+"auc": 1.840031842105263,
+"outcomes": {
+"reverted": 24,
+"kept": 4,
+"timed_out": 4,
+"no_change": 3,
+"failed": 5
+}
+},
+{
+"best": 1.140903,
+"auc": 1.50943865,
+"outcomes": {
+"kept": 4,
+"timed_out": 6,
+"reverted": 22,
+"no_change": 3,
+"failed": 5
+}
+},
+{
+"best": 1.012103,
+"auc": 1.3688235,
+"outcomes": {
+"kept": 9,
+"reverted": 18,
+"no_change": 5,
+"timed_out": 3,
+"failed": 5
+}
+},
+{
+"best": 1.00076,
+"auc": 1.268161054054054,
+"outcomes": {
+"reverted": 23,
+"no_change": 3,
+"kept": 8,
+"timed_out": 3,
+"failed": 3
+}
+},
+{
+"best": 1.08842,
+"auc": 1.1659655263157895,
+"outcomes": {
+"timed_out": 1,
+"no_change": 6,
+"kept": 5,
+"reverted": 23,
+"failed": 5
+}
+},
+{
+"best": 1.025052,
+"auc": 1.1983078717948719,
+"outcomes": {
+"no_change": 7,
+"kept": 7,
+"reverted": 17,
+"failed": 9
+}
+},
+{
+"best": 1.112876,
+"auc": 1.3148786923076923,
+"outcomes": {
+"reverted": 18,
+"kept": 7,
+"timed_out": 2,
+"no_change": 4,
+"failed": 9
+}
+},
+{
+"best": 1.014755,
+"auc": 1.32628305,
+"outcomes": {
+"kept": 11,
+"no_change": 2,
+"reverted": 18,
+"failed": 6,
+"timed_out": 3
+}
+},
+{
+"best": 1.053623,
+"auc": 1.180486605263158,
+"outcomes": {
+"reverted": 22,
+"kept": 6,
+"no_change": 6,
+"failed": 6
+}
+},
+{
+"best": 1.03694,
+"auc": 1.480990435897436,
+"outcomes": {
+"no_change": 5,
+"kept": 9,
+"reverted": 20,
+"timed_out": 3,
+"failed": 3
+}
+},
+{
+"best": 1.009978,
+"auc": 1.1931574285714286,
+"outcomes": {
+"reverted": 19,
+"no_change": 6,
+"kept": 8,
+"failed": 5,
+"timed_out": 2
+}
+},
+{
+"best": 1.282825,
+"auc": 1.543275675,
+"outcomes": {
+"kept": 8,
+"reverted": 22,
+"failed": 7,
+"no_change": 3
+}
+},
+{
+"best": 1.004675,
+"auc": 1.2344002631578948,
+"outcomes": {
+"reverted": 18,
+"no_change": 6,
+"kept": 9,
+"failed": 4,
+"timed_out": 3
+}
+},
+{
+"best": 1.277632,
+"auc": 1.4369214,
+"outcomes": {
+"kept": 5,
+"no_change": 4,
+"reverted": 22,
+"failed": 9
+}
+},
+{
+"best": 1.057055,
+"auc": 1.1472968974358975,
+"outcomes": {
+"no_change": 3,
+"kept": 6,
+"reverted": 22,
+"timed_out": 4,
+"failed": 5
+}
+},
+{
+"best": 1.164827,
+"auc": 1.520723435897436,
+"outcomes": {
+"reverted": 22,
+"kept": 5,
+"no_change": 2,
+"timed_out": 9,
+"failed": 2
+}
+},
+{
+"best": 1.017208,
+"auc": 1.29669,
+"outcomes": {
+"kept": 10,
+"no_change": 9,
+"reverted": 17,
+"failed": 3,
+"timed_out": 1
+}
+},
+{
+"best": 1.006025,
+"auc": 1.4564769210526316,
+"outcomes": {
+"reverted": 17,
+"kept": 9,
+"no_change": 4,
+"timed_out": 8,
+"failed": 2
+}
+},
+{
+"best": 1.416648,
+"auc": 1.5995550256410256,
+"outcomes": {
+"no_change": 7,
+"kept": 7,
+"reverted": 21,
+"failed": 5
+}
+},
+{
+"best": 0.999376,
+"auc": 1.2005318157894738,
+"outcomes": {
+"reverted": 24,
+"kept": 9,
+"no_change": 3,
+"failed": 2,
+"timed_out": 2
+}
+},
+{
+"best": 1.062177,
+"auc": 1.466972945945946,
+"outcomes": {
+"timed_out": 1,
+"reverted": 20,
+"no_change": 8,
+"kept": 8,
+"failed": 3
+}
+},
+{
+"best": 1.016762,
+"auc": 1.4258297027027027,
+"outcomes": {
+"reverted": 20,
+"no_change": 4,
+"kept": 7,
+"timed_out": 5,
+"failed": 4
+}
+},
+{
+"best": 1.002758,
+"auc": 1.119296157894737,
+"outcomes": {
+"reverted": 25,
+"kept": 6,
+"failed": 6,
+"no_change": 2,
+"timed_out": 1
+}
+},
+{
+"best": 0.995494,
+"auc": 1.6937475,
+"outcomes": {
+"reverted": 27,
+"kept": 9,
+"no_change": 2,
+"timed_out": 1,
+"failed": 1
+}
+},
+{
+"best": 1.139337,
+"auc": 1.2630807750000002,
+"outcomes": {
+"kept": 6,
+"reverted": 23,
+"failed": 8,
+"no_change": 3
+}
+},
+{
+"best": 1.002803,
+"auc": 1.1665623250000001,
+"outcomes": {
+"kept": 7,
+"reverted": 20,
+"failed": 6,
+"timed_out": 4,
+"no_change": 3
+}
+},
+{
+"best": 1.011277,
+"auc": 1.1652524848484849,
+"outcomes": {
+"no_change": 2,
+"reverted": 22,
+"timed_out": 7,
+"kept": 6,
+"failed": 3
+}
+},
+{
+"best": 1.003525,
+"auc": 1.1790613888888888,
+"outcomes": {
+"no_change": 8,
+"reverted": 20,
+"kept": 7,
+"timed_out": 1,
+"failed": 4
+}
+},
+{
+"best": 1.074481,
+"auc": 1.4899582368421054,
+"outcomes": {
+"no_change": 5,
+"reverted": 20,
+"kept": 8,
+"timed_out": 4,
+"failed": 3
+}
+},
+{
+"best": 0.993365,
+"auc": 1.28248895,
+"outcomes": {
+"kept": 9,
+"no_change": 7,
+"reverted": 19,
+"failed": 3,
+"timed_out": 2
+}
+},
+{
+"best": 1.002891,
+"auc": 1.7182003589743589,
+"outcomes": {
+"reverted": 17,
+"kept": 9,
+"timed_out": 4,
+"no_change": 7,
+"failed": 3
+}
+},
+{
+"best": 1.010275,
+"auc": 1.2428407222222222,
+"outcomes": {
+"no_change": 4,
+"reverted": 22,
+"kept": 10,
+"failed": 4
+}
+},
+{
+"best": 1.007524,
+"auc": 1.2156641,
+"outcomes": {
+"kept": 6,
+"reverted": 20,
+"no_change": 5,
+"failed": 4,
+"timed_out": 5
+}
+},
+{
+"best": 1.011183,
+"auc": 1.249072225,
+"outcomes": {
+"kept": 5,
+"reverted": 20,
+"no_change": 6,
+"failed": 6,
+"timed_out": 3
+}
+},
+{
+"best": 1.005765,
+"auc": 1.1938212820512821,
+"outcomes": {
+"no_change": 7,
+"kept": 7,
+"failed": 9,
+"reverted": 16,
+"timed_out": 1
+}
+},
+{
+"best": 1.001101,
+"auc": 1.9635294848484848,
+"outcomes": {
+"reverted": 20,
+"no_change": 6,
+"kept": 12,
+"timed_out": 2
+}
+},
+{
+"best": 1.417536,
+"auc": 1.7929111315789474,
+"outcomes": {
+"timed_out": 3,
+"reverted": 24,
+"kept": 6,
+"no_change": 4,
+"failed": 3
+}
+},
+{
+"best": 1.302553,
+"auc": 1.426312475,
+"outcomes": {
+"kept": 5,
+"reverted": 30,
+"no_change": 2,
+"failed": 3
+}
+},
+{
+"best": 1.138089,
+"auc": 1.4869915641025642,
+"outcomes": {
+"reverted": 22,
+"kept": 5,
+"timed_out": 4,
+"no_change": 5,
+"failed": 4
+}
+},
+{
+"best": 1.004746,
+"auc": 1.3149656153846154,
+"outcomes": {
+"reverted": 21,
+"kept": 9,
+"failed": 6,
+"no_change": 4
+}
+},
+{
+"best": 1.079838,
+"auc": 1.4232503250000001,
+"outcomes": {
+"kept": 8,
+"reverted": 22,
+"no_change": 3,
+"timed_out": 3,
+"failed": 4
+}
+},
+{
+"best": 1.317995,
+"auc": 1.568782125,
+"outcomes": {
+"kept": 7,
+"reverted": 24,
+"failed": 8,
+"no_change": 1
+}
+},
+{
+"best": 1.033139,
+"auc": 1.2880687692307693,
+"outcomes": {
+"reverted": 24,
+"kept": 7,
+"failed": 6,
+"no_change": 3
+}
+},
+{
+"best": 1.304815,
+"auc": 1.49016025,
+"outcomes": {
+"kept": 7,
+"reverted": 21,
+"timed_out": 2,
+"no_change": 3,
+"failed": 7
+}
+},
+{
+"best": 1.010269,
+"auc": 1.4131877,
+"outcomes": {
+"kept": 10,
+"no_change": 2,
+"reverted": 22,
+"timed_out": 3,
+"failed": 3
+}
+},
+{
+"best": 1.000733,
+"auc": 1.1927898000000001,
+"outcomes": {
+"kept": 7,
+"no_change": 5,
+"timed_out": 4,
+"reverted": 20,
+"failed": 4
+}
+},
+{
+"best": 1.006642,
+"auc": 1.0591098,
+"outcomes": {
+"kept": 6,
+"no_change": 3,
+"reverted": 22,
+"timed_out": 4,
+"failed": 5
+}
+},
+{
+"best": 1.007728,
+"auc": 1.1845853,
+"outcomes": {
+"kept": 8,
+"reverted": 23,
+"no_change": 2,
+"failed": 7
+}
+},
+{
+"best": 1.027284,
+"auc": 1.2225164,
+"outcomes": {
+"kept": 7,
+"reverted": 17,
+"no_change": 5,
+"failed": 11
+}
+},
+{
+"best": 1.005366,
+"auc": 1.2120004411764704,
+"outcomes": {
+"no_change": 7,
+"reverted": 20,
+"kept": 7,
+"failed": 5,
+"timed_out": 1
+}
+},
+{
+"best": 1.010194,
+"auc": 1.2150132,
+"outcomes": {
+"kept": 10,
+"reverted": 18,
+"failed": 6,
+"no_change": 3,
+"timed_out": 3
+}
+},
+{
+"best": 1.004213,
+"auc": 1.371294625,
+"outcomes": {
+"kept": 9,
+"reverted": 21,
+"timed_out": 4,
+"no_change": 4,
+"failed": 2
+}
+},
+{
+"best": 1.351372,
+"auc": 1.436156075,
+"outcomes": {
+"kept": 4,
+"reverted": 25,
+"failed": 8,
+"no_change": 3
+}
+},
+{
+"best": 1.00184,
+"auc": 1.2118663157894738,
+"outcomes": {
+"no_change": 4,
+"reverted": 20,
+"kept": 6,
+"timed_out": 6,
+"failed": 4
+}
+},
+{
+"best": 1.008449,
+"auc": 1.498881358974359,
+"outcomes": {
+"no_change": 6,
+"kept": 9,
+"timed_out": 2,
+"reverted": 19,
+"failed": 4
+}
+},
+{
+"best": 0.995481,
+"auc": 1.1842083421052632,
+"outcomes": {
+"reverted": 20,
+"kept": 9,
+"failed": 8,
+"no_change": 2,
+"timed_out": 1
+}
+},
+{
+"best": 1.014531,
+"auc": 1.197767657894737,
+"outcomes": {
+"reverted": 17,
+"kept": 11,
+"failed": 7,
+"no_change": 4,
+"timed_out": 1
+}
+},
+{
+"best": 1.06554,
+"auc": 1.19316755,
+"outcomes": {
+"kept": 7,
+"timed_out": 7,
+"reverted": 18,
+"failed": 4,
+"no_change": 4
+}
+},
+{
+"best": 1.007174,
+"auc": 1.252149641025641,
+"outcomes": {
+"no_change": 2,
+"kept": 10,
+"reverted": 22,
+"failed": 5,
+"timed_out": 1
+}
+},
+{
+"best": 1.030202,
+"auc": 1.3719162105263158,
+"outcomes": {
+"reverted": 22,
+"kept": 13,
+"timed_out": 3,
+"no_change": 1,
+"failed": 1
+}
+},
+{
+"best": 1.119935,
+"auc": 1.361613775,
+"outcomes": {
+"kept": 9,
+"reverted": 19,
+"failed": 9,
+"no_change": 3
+}
+},
+{
+"best": 1.006822,
+"auc": 1.1358996486486488,
+"outcomes": {
+"reverted": 26,
+"kept": 8,
+"timed_out": 5,
+"failed": 1
+}
+},
+{
+"best": 1.00197,
+"auc": 1.33339135,
+"outcomes": {
+"kept": 10,
+"reverted": 20,
+"no_change": 4,
+"failed": 6
+}
+},
+{
+"best": 1.028277,
+"auc": 1.1916777,
+"outcomes": {
+"kept": 6,
+"reverted": 17,
+"no_change": 8,
+"timed_out": 3,
+"failed": 4,
+"not_finite": 2
+}
+},
+{
+"best": 1.047626,
+"auc": 1.2866406750000001,
+"outcomes": {
+"kept": 8,
+"no_change": 3,
+"timed_out": 1,
+"reverted": 21,
+"failed": 7
+}
+},
+{
+"best": 1.009158,
+"auc": 1.2440431052631578,
+"outcomes": {
+"reverted": 20,
+"kept": 10,
+"failed": 3,
+"no_change": 6,
+"timed_out": 1
+}
+},
+{
+"best": 1.271977,
+"auc": 1.581175,
+"outcomes": {
+"reverted": 22,
+"kept": 7,
+"timed_out": 2,
+"failed": 4,
+"no_change": 5
+}
+},
+{
+"best": 1.204637,
+"auc": 1.6974879210526315,
+"outcomes": {
+"reverted": 21,
+"no_change": 4,
+"kept": 8,
+"failed": 7
+}
+},
+{
+"best": 1.234843,
+"auc": 1.4069696,
+"outcomes": {
+"kept": 5,
+"no_change": 3,
+"reverted": 25,
+"timed_out": 2,
+"failed": 5
+}
+},
+{
+"best": 1.007361,
+"auc": 1.345592875,
+"outcomes": {
+"kept": 11,
+"reverted": 19,
+"timed_out": 4,
+"no_change": 4,
+"failed": 2
+}
+},
+{
+"best": 1.231735,
+"auc": 1.368578525,
+"outcomes": {
+"kept": 8,
+"reverted": 20,
+"failed": 8,
+"timed_out": 1,
+"no_change": 3
+}
+},
+{
+"best": 1.003328,
+"auc": 1.1818643947368421,
+"outcomes": {
+"reverted": 23,
+"kept": 6,
+"no_change": 3,
+"failed": 7,
+"timed_out": 1
+}
+},
+{
+"best": 1.063598,
+"auc": 1.2068974615384616,
+"outcomes": {
+"reverted": 21,
+"kept": 7,
+"no_change": 4,
+"failed": 8
+}
+},
+{
+"best": 1.131653,
+"auc": 1.2275525,
+"outcomes": {
+"reverted": 20,
+"no_change": 3,
+"kept": 7,
+"failed": 7,
+"timed_out": 3
+}
+},
+{
+"best": 1.055336,
+"auc": 1.2655388,
+"outcomes": {
+"kept": 6,
+"reverted": 20,
+"no_change": 7,
+"timed_out": 2,
+"failed": 5
+}
+},
+{
+"best": 1.029244,
+"auc": 1.389424525,
+"outcomes": {
+"kept": 7,
+"reverted": 21,
+"timed_out": 5,
+"no_change": 5,
+"failed": 2
+}
+},
+{
+"best": 1.006603,
+"auc": 1.155794282051282,
+"outcomes": {
+"reverted": 22,
+"kept": 7,
+"no_change": 4,
+"failed": 5,
+"timed_out": 2
+}
+},
+{
+"best": 1.003389,
+"auc": 1.196805717948718,
+"outcomes": {
+"no_change": 6,
+"kept": 10,
+"reverted": 18,
+"failed": 4,
+"timed_out": 2
+}
+},
+{
+"best": 1.179871,
+"auc": 1.364991025,
+"outcomes": {
+"kept": 7,
+"reverted": 22,
+"failed": 6,
+"no_change": 5
+}
+},
+{
+"best": 1.025159,
+"auc": 1.1696529714285715,
+"outcomes": {
+"no_change": 3,
+"reverted": 25,
+"kept": 7,
+"failed": 5
+}
+},
+{
+"best": 1.002347,
+"auc": 1.345460605263158,
+"outcomes": {
+"reverted": 22,
+"kept": 9,
+"no_change": 4,
+"failed": 5
+}
+},
+{
+"best": 0.990835,
+"auc": 1.438758675,
+"outcomes": {
+"kept": 13,
+"reverted": 20,
+"no_change": 1,
+"failed": 4,
+"timed_out": 2
+}
+},
+{
+"best": 0.992805,
+"auc": 1.2788023513513513,
+"outcomes": {
+"reverted": 19,
+"kept": 9,
+"failed": 7,
+"timed_out": 2,
+"no_change": 3
+}
+},
+{
+"best": 1.006767,
+"auc": 1.1183007837837837,
+"outcomes": {
+"reverted": 23,
+"timed_out": 4,
+"kept": 7,
+"no_change": 2,
+"failed": 4
+}
+},
+{
+"best": 1.090956,
+"auc": 1.3626524473684212,
+"outcomes": {
+"reverted": 23,
+"kept": 7,
+"no_change": 6,
+"timed_out": 2,
+"failed": 2
+}
+},
+{
+"best": 0.996531,
+"auc": 1.3694697179487179,
+"outcomes": {
+"reverted": 24,
+"kept": 7,
+"no_change": 3,
+"failed": 4,
+"timed_out": 2
+}
+},
+{
+"best": 1.041808,
+"auc": 1.261482125,
+"outcomes": {
+"kept": 9,
+"reverted": 25,
+"failed": 4,
+"no_change": 2
+}
+},
+{
+"best": 1.001189,
+"auc": 1.16032215,
+"outcomes": {
+"kept": 10,
+"reverted": 16,
+"no_change": 6,
+"failed": 5,
+"timed_out": 3
+}
+},
+{
+"best": 1.019636,
+"auc": 1.246421775,
+"outcomes": {
+"kept": 7,
+"no_change": 2,
+"reverted": 24,
+"failed": 5,
+"timed_out": 2
+}
+},
+{
+"best": 1.286187,
+"auc": 1.422684775,
+"outcomes": {
+"kept": 6,
+"failed": 11,
+"reverted": 20,
+"no_change": 3
+}
+},
+{
+"best": 1.02582,
+"auc": 1.5980053055555554,
+"outcomes": {
+"reverted": 28,
+"no_change": 3,
+"kept": 8,
+"timed_out": 1
+}
+},
+{
+"best": 1.183856,
+"auc": 1.4177884864864865,
+"outcomes": {
+"reverted": 21,
+"kept": 7,
+"no_change": 4,
+"failed": 5,
+"timed_out": 3
+}
+},
+{
+"best": 1.002455,
+"auc": 1.202219717948718,
+"outcomes": {
+"reverted": 19,
+"kept": 10,
+"no_change": 6,
+"failed": 5
+}
+},
+{
+"best": 1.116067,
+"auc": 1.423369875,
+"outcomes": {
+"kept": 5,
+"reverted": 21,
+"timed_out": 2,
+"failed": 7,
+"no_change": 5
+}
+},
+{
+"best": 1.127933,
+"auc": 1.3086822631578947,
+"outcomes": {
+"no_change": 5,
+"reverted": 19,
+"kept": 8,
+"failed": 8
+}
+},
+{
+"best": 1.070428,
+"auc": 1.1282372999999999,
+"outcomes": {
+"kept": 4,
+"no_change": 5,
+"reverted": 18,
+"failed": 9,
+"timed_out": 4
+}
+},
+{
+"best": 1.014205,
+"auc": 1.20565675,
+"outcomes": {
+"kept": 5,
+"no_change": 7,
+"reverted": 18,
+"failed": 8,
+"timed_out": 2
+}
+},
+{
+"best": 1.138526,
+"auc": 1.3393693947368421,
+"outcomes": {
+"reverted": 24,
+"kept": 6,
+"failed": 7,
+"no_change": 2,
+"timed_out": 1
+}
+},
+{
+"best": 1.008648,
+"auc": 1.182716125,
+"outcomes": {
+"kept": 8,
+"reverted": 21,
+"no_change": 4,
+"failed": 6,
+"timed_out": 1
+}
+},
+{
+"best": 1.218232,
+"auc": 1.4025414999999999,
+"outcomes": {
+"reverted": 25,
+"no_change": 4,
+"kept": 6,
+"timed_out": 2,
+"failed": 3
+}
+},
+{
+"best": 1.00072,
+"auc": 1.1359302105263158,
+"outcomes": {
+"reverted": 22,
+"kept": 7,
+"no_change": 8,
+"timed_out": 2,
+"failed": 1
+}
+},
+{
+"best": 1.001937,
+"auc": 1.26122865,
+"outcomes": {
+"kept": 5,
+"reverted": 22,
+"timed_out": 5,
+"failed": 3,
+"no_change": 5
+}
+},
+{
+"best": 1.032727,
+"auc": 1.4620674999999999,
+"outcomes": {
+"kept": 10,
+"reverted": 19,
+"no_change": 3,
+"failed": 5,
+"timed_out": 3
+}
+},
+{
+"best": 1.353973,
+"auc": 1.775543052631579,
+"outcomes": {
+"reverted": 21,
+"no_change": 5,
+"kept": 8,
+"timed_out": 3,
+"failed": 3
+}
+},
+{
+"best": 1.006831,
+"auc": 1.362260081081081,
+"outcomes": {
+"reverted": 18,
+"no_change": 7,
+"kept": 9,
+"failed": 6
+}
+},
+{
+"best": 1.206636,
+"auc": 1.393439153846154,
+"outcomes": {
+"reverted": 23,
+"kept": 5,
+"timed_out": 7,
+"failed": 3,
+"no_change": 2
+}
+},
+{
+"best": 1.067447,
+"auc": 1.261866875,
+"outcomes": {
+"kept": 13,
+"no_change": 3,
+"reverted": 16,
+"failed": 7,
+"timed_out": 1
+}
+},
+{
+"best": 1.003884,
+"auc": 1.311460975,
+"outcomes": {
+"kept": 8,
+"reverted": 22,
+"no_change": 3,
+"failed": 5,
+"timed_out": 2
+}
+},
+{
+"best": 1.007111,
+"auc": 1.2381096410256411,
+"outcomes": {
+"reverted": 21,
+"kept": 7,
+"no_change": 3,
+"failed": 6,
+"timed_out": 3
+}
+},
+{
+"best": 1.027703,
+"auc": 1.22880975,
+"outcomes": {
+"kept": 4,
+"reverted": 23,
+"timed_out": 3,
+"no_change": 4,
+"failed": 6
+}
+},
+{
+"best": 0.99904,
+"auc": 1.064926027027027,
+"outcomes": {
+"reverted": 22,
+"no_change": 5,
+"kept": 5,
+"timed_out": 2,
+"failed": 6
+}
+},
+{
+"best": 1.061182,
+"auc": 1.5298823076923078,
+"outcomes": {
+"reverted": 19,
+"kept": 8,
+"timed_out": 4,
+"no_change": 5,
+"failed": 4
+}
+},
+{
+"best": 1.002997,
+"auc": 1.0660712564102564,
+"outcomes": {
+"no_change": 6,
+"kept": 5,
+"reverted": 23,
+"failed": 6
+}
+},
+{
+"best": 0.996926,
+"auc": 1.314796075,
+"outcomes": {
+"kept": 9,
+"reverted": 18,
+"no_change": 7,
+"failed": 5,
+"timed_out": 1
+}
+},
+{
+"best": 1.040446,
+"auc": 1.2996309736842107,
+"outcomes": {
+"reverted": 19,
+"kept": 9,
+"no_change": 4,
+"failed": 5,
+"timed_out": 3
+}
+},
+{
+"best": 1.225375,
+"auc": 1.3486821764705883,
+"outcomes": {
+"reverted": 24,
+"no_change": 7,
+"kept": 5,
+"failed": 4
+}
+},
+{
+"best": 1.284833,
+"auc": 1.4013063846153846,
+"outcomes": {
+"no_change": 4,
+"kept": 6,
+"reverted": 20,
+"timed_out": 4,
+"failed": 6
+}
+},
+{
+"best": 1.007856,
+"auc": 1.1501342702702704,
+"outcomes": {
+"reverted": 23,
+"timed_out": 3,
+"kept": 6,
+"failed": 5,
+"no_change": 3
+}
+},
+{
+"best": 1.010646,
+"auc": 1.1222787692307692,
+"outcomes": {
+"reverted": 25,
+"kept": 8,
+"failed": 5,
+"no_change": 2
+}
+},
+{
+"best": 1.010037,
+"auc": 1.58515985,
+"outcomes": {
+"kept": 9,
+"reverted": 21,
+"no_change": 5,
+"failed": 5
+}
+},
+{
+"best": 1.135206,
+"auc": 1.5620389444444445,
+"outcomes": {
+"reverted": 21,
+"no_change": 4,
+"kept": 7,
+"failed": 7,
+"timed_out": 1
+}
+},
+{
+"best": 1.130967,
+"auc": 1.3308316666666666,
+"outcomes": {
+"reverted": 16,
+"kept": 7,
+"timed_out": 5,
+"failed": 7,
+"no_change": 5
+}
+},
+{
+"best": 1.077301,
+"auc": 1.25385595,
+"outcomes": {
+"kept": 9,
+"no_change": 4,
+"reverted": 20,
+"failed": 4,
+"timed_out": 3
+}
+},
+{
+"best": 0.99911,
+"auc": 1.1226304102564102,
+"outcomes": {
+"reverted": 18,
+"kept": 8,
+"failed": 5,
+"timed_out": 3,
+"no_change": 5,
+"not_finite": 1
+}
+},
+{
+"best": 1.149865,
+"auc": 1.4866126486486486,
+"outcomes": {
+"reverted": 21,
+"no_change": 4,
+"kept": 8,
+"failed": 4,
+"timed_out": 3
+}
+},
+{
+"best": 1.000467,
+"auc": 1.4498047250000001,
+"outcomes": {
+"kept": 5,
+"reverted": 24,
+"no_change": 5,
+"timed_out": 3,
+"failed": 3
+}
+},
+{
+"best": 1.099026,
+"auc": 1.4497410750000002,
+"outcomes": {
+"kept": 6,
+"reverted": 20,
+"failed": 6,
+"timed_out": 1,
+"no_change": 7
+}
+},
+{
+"best": 1.028591,
+"auc": 1.2250426666666667,
+"outcomes": {
+"reverted": 22,
+"kept": 7,
+"failed": 7,
+"no_change": 4
+}
+},
+{
+"best": 1.069766,
+"auc": 1.2181012,
+"outcomes": {
+"kept": 6,
+"reverted": 28,
+"no_change": 1,
+"failed": 5
+}
+},
+{
+"best": 1.000864,
+"auc": 1.3323160250000001,
+"outcomes": {
+"kept": 12,
+"no_change": 7,
+"reverted": 16,
+"failed": 5
+}
+},
+{
+"best": 1.106657,
+"auc": 1.516312487179487,
+"outcomes": {
+"no_change": 6,
+"kept": 4,
+"reverted": 22,
+"timed_out": 5,
+"failed": 3
+}
+},
+{
+"best": 0.998073,
+"auc": 1.7292344473684211,
+"outcomes": {
+"reverted": 16,
+"kept": 13,
+"timed_out": 3,
+"no_change": 5,
+"failed": 3
+}
+},
+{
+"best": 1.014869,
+"auc": 1.24767665,
+"outcomes": {
+"kept": 7,
+"reverted": 26,
+"failed": 5,
+"no_change": 2
+}
+},
+{
+"best": 1.023063,
+"auc": 1.3745027692307692,
+"outcomes": {
+"no_change": 3,
+"kept": 7,
+"reverted": 23,
+"failed": 5,
+"timed_out": 2
+}
+},
+{
+"best": 1.190754,
+"auc": 1.4861641,
+"outcomes": {
+"kept": 6,
+"no_change": 6,
+"reverted": 18,
+"timed_out": 6,
+"failed": 4
+}
+},
+{
+"best": 1.007623,
+"auc": 1.235113675,
+"outcomes": {
+"kept": 10,
+"reverted": 17,
+"no_change": 6,
+"failed": 5,
+"timed_out": 2
+}
+},
+{
+"best": 1.018466,
+"auc": 1.380434525,
+"outcomes": {
+"kept": 10,
+"reverted": 18,
+"no_change": 5,
+"timed_out": 5,
+"failed": 2
+}
+},
+{
+"best": 1.06766,
+"auc": 1.35074325,
+"outcomes": {
+"kept": 6,
+"reverted": 24,
+"no_change": 6,
+"failed": 3,
+"timed_out": 1
+}
+},
+{
+"best": 1.40445,
+"auc": 1.4896202564102565,
+"outcomes": {
+"reverted": 21,
+"kept": 5,
+"timed_out": 3,
+"failed": 7,
+"no_change": 4
+}
+},
+{
+"best": 1.102319,
+"auc": 1.2787102941176471,
+"outcomes": {
+"reverted": 21,
+"timed_out": 3,
+"no_change": 6,
+"kept": 8,
+"failed": 2
+}
+},
+{
+"best": 1.17162,
+"auc": 1.311288125,
+"outcomes": {
+"kept": 4,
+"reverted": 19,
+"failed": 7,
+"no_change": 6,
+"timed_out": 4
+}
+},
+{
+"best": 1.068154,
+"auc": 1.6910942162162164,
+"outcomes": {
+"reverted": 19,
+"kept": 4,
+"no_change": 10,
+"timed_out": 4,
+"failed": 3
+}
+},
+{
+"best": 1.213955,
+"auc": 1.506571153846154,
+"outcomes": {
+"reverted": 22,
+"kept": 7,
+"no_change": 3,
+"failed": 8
+}
+},
+{
+"best": 1.005284,
+"auc": 1.2036142352941177,
+"outcomes": {
+"reverted": 18,
+"no_change": 6,
+"kept": 9,
+"failed": 5,
+"timed_out": 2
+}
+},
+{
+"best": 1.004332,
+"auc": 1.275971825,
+"outcomes": {
+"kept": 6,
+"reverted": 19,
+"timed_out": 3,
+"no_change": 4,
+"failed": 8
+}
+},
+{
+"best": 1.079109,
+"auc": 1.2437148421052633,
+"outcomes": {
+"no_change": 4,
+"reverted": 19,
+"kept": 9,
+"failed": 8
+}
+},
+{
+"best": 1.002079,
+"auc": 1.0687545405405405,
+"outcomes": {
+"reverted": 22,
+"kept": 5,
+"failed": 6,
+"no_change": 4,
+"timed_out": 3
+}
+},
+{
+"best": 1.005549,
+"auc": 1.1565197692307694,
+"outcomes": {
+"reverted": 22,
+"kept": 9,
+"no_change": 4,
+"failed": 5
+}
+},
+{
+"best": 1.007944,
+"auc": 1.2052152222222223,
+"outcomes": {
+"reverted": 22,
+"no_change": 3,
+"kept": 10,
+"failed": 3,
+"timed_out": 2
+}
+},
+{
+"best": 1.002614,
+"auc": 1.2022452571428572,
+"outcomes": {
+"reverted": 23,
+"kept": 10,
+"no_change": 3,
+"failed": 4
+}
+},
+{
+"best": 1.004046,
+"auc": 1.769407076923077,
+"outcomes": {
+"reverted": 21,
+"kept": 8,
+"no_change": 4,
+"timed_out": 4,
+"failed": 3
+}
+},
+{
+"best": 1.013205,
+"auc": 1.18978925,
+"outcomes": {
+"kept": 7,
+"reverted": 23,
+"no_change": 3,
+"timed_out": 3,
+"failed": 4
+}
+},
+{
+"best": 1.103616,
+"auc": 1.225490725,
+"outcomes": {
+"kept": 7,
+"timed_out": 2,
+"reverted": 22,
+"failed": 6,
+"no_change": 3
+}
+},
+{
+"best": 1.094999,
+"auc": 1.202336175,
+"outcomes": {
+"kept": 7,
+"reverted": 18,
+"failed": 3,
+"no_change": 6,
+"timed_out": 6
+}
+},
+{
+"best": 1.008824,
+"auc": 1.0702064249999999,
+"outcomes": {
+"kept": 4,
+"failed": 6,
+"reverted": 20,
+"timed_out": 7,
+"no_change": 3
+}
+},
+{
+"best": 1.145576,
+"auc": 1.2144284358974358,
+"outcomes": {
+"reverted": 24,
+"kept": 5,
+"failed": 8,
+"no_change": 3
+}
+},
+{
+"best": 1.372291,
+"auc": 1.456799657142857,
+"outcomes": {
+"no_change": 4,
+"reverted": 23,
+"kept": 4,
+"timed_out": 2,
+"failed": 7
+}
+},
+{
+"best": 1.041683,
+"auc": 1.2322364102564103,
+"outcomes": {
+"reverted": 22,
+"kept": 6,
+"no_change": 5,
+"failed": 6,
+"timed_out": 1
+}
+},
+{
+"best": 1.045671,
+"auc": 1.2689478,
+"outcomes": {
+"kept": 6,
+"reverted": 17,
+"no_change": 8,
+"failed": 5,
+"timed_out": 4
+}
+},
+{
+"best": 1.007879,
+"auc": 1.1558102222222222,
+"outcomes": {
+"reverted": 19,
+"no_change": 2,
+"kept": 9,
+"failed": 9,
+"timed_out": 1
+}
+}
+]
+}
