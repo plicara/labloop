@@ -14,7 +14,7 @@ from .ledger import Ledger
 from .lock import LedgerLockedError
 from .loop import Loop, StalledError
 from .types import Experiment, Goal, Outcome, Trial, UsageError
-from .workspace import DirtyTreeError
+from .workspace import DirtyTreeError, NotAGitRepositoryError
 
 _MARKS = {
     Outcome.KEPT: "+",
@@ -237,6 +237,7 @@ def main(argv: list[str] | None = None) -> int:
         HarnessMismatchError,
         LedgerLockedError,
         NoProtectedFilesError,
+        NotAGitRepositoryError,
         StalledError,
         UsageError,
     ) as exc:

@@ -25,7 +25,7 @@ from .loop import Loop, StalledError
 from .metrics import MetricNotFound, extract_metric
 from .runner import Completed, run_command
 from .types import Experiment, Goal, Outcome, Trial, UsageError
-from .workspace import DirtyTreeError, GitWorkspace, Workspace
+from .workspace import DirtyTreeError, GitWorkspace, NotAGitRepositoryError, Workspace
 
 __version__ = "0.1.0"
 
@@ -41,6 +41,7 @@ __all__ = [
     "LedgerLockedError",
     "Loop",
     "MetricNotFound",
+    "NotAGitRepositoryError",
     "NoProtectedFilesError",
     "Outcome",
     "StalledError",

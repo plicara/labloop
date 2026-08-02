@@ -13,11 +13,19 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Protocol
 
-__all__ = ["Workspace", "GitWorkspace", "DirtyTreeError"]
+__all__ = ["Workspace", "GitWorkspace", "DirtyTreeError", "NotAGitRepositoryError"]
 
 
 class DirtyTreeError(RuntimeError):
     """The working tree had uncommitted changes when the loop started."""
+
+
+class NotAGitRepositoryError(RuntimeError):
+    """The working directory is not inside a git repository.
+
+    Its own type so the CLI can state the fix, rather than surfacing a
+    traceback from a git invocation nobody asked about.
+    """
 
 
 class Workspace(Protocol):
@@ -39,7 +47,13 @@ class GitWorkspace:
             text=True,
         )
         if result.returncode != 0:
-            raise RuntimeError(f"git {' '.join(args)} failed: {result.stderr.strip()}")
+            stderr = result.stderr.strip()
+            if "not a git repository" in stderr.lower():
+                raise NotAGitRepositoryError(
+                    f"{self.root} is not inside a git repository, and the loop keeps "
+                    f"and reverts trials as commits — run `git init` first"
+                )
+            raise RuntimeError(f"git {' '.join(args)} failed: {stderr}")
         return result.stdout.strip()
 
     def is_dirty(self) -> bool:

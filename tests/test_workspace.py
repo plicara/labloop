@@ -145,3 +145,11 @@ def test_a_refused_commit_can_still_be_reverted(repo):
     workspace.revert()
     assert workspace.is_dirty() is False
     assert (repo / "train.py").read_text() == "original\n"
+
+
+def test_missing_git_repo_names_the_fix(tmp_path):
+    """A first run in a scratch directory must state the fix, not traceback."""
+    from labloop.workspace import GitWorkspace, NotAGitRepositoryError
+
+    with pytest.raises(NotAGitRepositoryError, match="git init"):
+        GitWorkspace(tmp_path).is_dirty()
