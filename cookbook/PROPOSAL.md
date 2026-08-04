@@ -1,255 +1,252 @@
 # Proposal: a labloop cookbook
 
-**Status: proposal.** Nothing here is built yet. This document argues for a
-`cookbook/` directory, says what goes in it, and — the part that matters —
-says how it stays true.
+**Status: proposal, with one recipe built.**
+[`01-first-loop/tune-a-classifier/`](01-first-loop/tune-a-classifier/) is
+finished and runs — read that first. It is what every entry in the catalog
+below should look like. The rest of this document is the catalog and the
+argument.
 
-## Why this repo needs one
+## What a recipe is here
 
-The README teaches the loop. It is good at that and it is nearly full. What
-it cannot do is answer the questions a user actually arrives with, which are
-never about concepts:
+A worked example: a real scenario, the real commands, the real output, and
+the judgement calls in between. Not a feature tour.
+
+The one that exists tunes a spam classifier over six trials. Two survive.
+The proposer tries something plausible and is wrong (stripping punctuation
+makes the model worse), crashes once, and then — after crashing — rewrites
+the file that grades it and gets caught. Every number and every line of
+terminal output in that recipe came from running it, and CI reruns it.
+
+That is the shape: **a user watches the loop do its job on something real,
+including the parts where the loop says no.**
+
+## Why the repo needs a shelf of them
+
+The README teaches the loop and is nearly full. What it cannot do is answer
+the questions users actually arrive with, which are never about concepts:
 
 - *I have a `train.py` that prints nothing. Where do I start?*
 - *How do I make Claude Code the proposer?*
 - *My metric moves ±0.25 between identical runs. Is labloop useless to me?*
-- *I have two ideas and one baseline. How do I run both and compare them
-  without fooling myself?*
+- *I have two ideas and one baseline. How do I run both without fooling myself?*
 
 Those are how-to questions — [Diátaxis](https://diataxis.fr/tutorials-how-to/)
-calls this the user *at work*, as opposed to the user *at study* — and a
-recipe is the canonical form for them. Answering them inside the README means
-either doubling its length or thinning what it already does well.
+calls this the user *at work* rather than *at study* — and a worked example is
+the canonical form. Answering them in the README means doubling its length or
+thinning what it already does well.
 
-There is also a gap the roadmap has already named and reserved. From
-`ROADMAP.md`, under *Not doing, and why*:
+One gap is already reserved. From `ROADMAP.md`, under *Not doing, and why*:
 
 > **A bundled agent.** `propose` stays any command. The brief/env contract is
 > the integration surface; adapters belong in examples, not the core.
 
-"Examples" is a directory that does not exist. Every user wiring up an agent
-is rediscovering the same twenty lines of brief-reading glue in private. The
+"Examples" is a directory that does not exist. Everyone wiring up an agent is
+rediscovering the same ten lines of brief-reading glue in private. The
 cookbook is where that decision lands.
+
+## The catalog
+
+Roughly twenty recipes across six sections. Each is a scenario, not a topic.
+
+### 1. The first loop
+
+- **Tune a classifier and watch the loop throw most of it away** — *built.*
+  The end-to-end tour: noise check, baseline, six trials, two commits.
+- **Your script prints nothing, or prints the wrong thing** — a `train.py`
+  that writes `metrics.json` and logs to stderr. Three ways to bridge it
+  (a one-line shim, a `--run` that pipes, editing the script), why the
+  last-occurrence rule means printing every epoch is fine, and what
+  `no_metric` looks like when you get it wrong.
+- **Deciding what `--run` covers** — the same experiment wired three ways:
+  training only, training plus eval, and a Makefile target. Shows the trap of
+  putting the eval outside `--run`, where the loop scores a stale number.
+- **Budgets that don't lie** — a proposer that thinks for 90s wrapped around a
+  40s experiment. Shows why `--propose-budget` exists, and a training script
+  that spawns workers, so the process-group kill is visible in `ps` rather
+  than asserted.
+- **Running in a repo that isn't fresh** — an existing project with build
+  artifacts, a virtualenv, and a warm dataset cache. What to `.gitignore` so
+  it survives reverts, and what the dirty-tree refusal is protecting.
+
+### 2. Wiring a proposer
+
+The reserved gap. One recipe per adapter, each ending with the same loop
+running for real.
+
+- **Claude Code as the proposer** — headless invocation, the prompt built from
+  `$LABLOOP_BRIEF`, keeping the agent scoped to the file it should edit, and
+  what its `harness_changed` trials look like when it wanders.
+- **aider as the proposer** · **Codex CLI as the proposer** · **A plain API
+  script as the proposer** — the same experiment, three wirings, so the
+  contract is visibly tool-agnostic.
+- **The ten lines that read a brief** — the reference adapter: brief JSON to
+  prompt, including `why` and `output_tail`, which are the fields an agent
+  cannot reconstruct for itself. Copy-paste sized on purpose.
+- **Prove your harness before you spend tokens** — a deterministic stub
+  proposer that makes a known-good and a known-bad edit. Run this first; if
+  the ledger doesn't show one kept and one reverted, the bug is in your wiring,
+  not your agent.
+
+### 3. Trusting the number
+
+- **Your metric is noisy: what the numbers actually cost you** — a training
+  script with a real seed, run under `noise`, then the same loop with and
+  without `--min-delta` and `--confirm`, showing false keeps in the ledger.
+  Reproduces the README's table on a live experiment instead of a simulation.
+- **Make a stochastic experiment hold still** — seed, fixed split, averaged
+  runs; the before-and-after `noise` output as the evidence.
+- **Choosing `--protect` for a real evaluator** — a project where the eval
+  writes a cache inside its own directory, which breaks the digest. Shows the
+  refusal, then the fix, and why "protect the measurement, not the directory"
+  is a rule with teeth.
+- **What the classic cheats look like in a ledger** — three staged proposals:
+  overwrite the test, memorise the holdout by adding a file, print the metric
+  without computing it. The third is the interesting one, because `--protect`
+  does not catch it and the recipe says so.
+
+### 4. More than one thread
+
+- **Two ideas, one baseline** — fork two directions into worktrees over a
+  shared ledger, run both, read `log --compare`. The differentiator, worked.
+- **Comparing directions that aren't comparable** — deliberately drift one
+  direction's harness, watch `--compare` refuse, and fix it.
+- **An overnight run on a box you'll close the laptop on** — tmux, budgets,
+  `--give-up-after`, and what the morning looks like.
+- **Your run died at trial 34** — kill it mid-trial, `labloop resume`, verify
+  the ledger is contiguous. Then change `--metric` and watch the refusal name
+  the field.
+
+### 5. The ledger as an artifact
+
+- **Turn a ledger into a report** — a stdlib-only script over `log --json`
+  producing a convergence plot and a table of what was tried.
+- **Write up what the agent tried and why it failed** — mining reverted trials
+  for the negative results, in the shape `experiments/` already publishes.
+- **The research record that ships with the repo** — using
+  `labloop-history.jsonl` in review, months later.
+
+### 6. Loops not worth running
+
+Anti-recipes. Each names the tool that is actually right instead.
+
+- **A metric that takes six hours** — the arithmetic on how many trials an
+  overnight budget buys, and when to build a proxy metric first.
+- **Two things you care about** — keep-or-revert has no defined answer for a
+  tie-break between accuracy and latency. What to do instead.
+- **A hyperparameter sweep** — this wants a sweeper, not an agent.
+- **A metric too noisy for any setting to save** — the honest exit.
+
+## Keeping them true
+
+This is the supporting machinery, and the reason it matters is empirical:
+four of the five cookbooks surveyed below do not execute their recipes, and
+their recipes have drifted.
+
+**Layout.** `cookbook/` at the root, beside `experiments/` — not `docs/`,
+because there is no docs site and starting one at alpha is a second project.
+One directory per recipe, self-contained, because labloop recipes are
+multi-file by nature: an experiment, a proposer, a protect set, and prose.
+
+```
+cookbook/01-first-loop/tune-a-classifier/
+  recipe.json      # metadata and expected outcomes
+  README.md        # the recipe
+  run.sh           # exactly the commands the README shows
+  files/           # train.py, evaluate.py, data.py, propose.py
+```
+
+`recipe.json`, not YAML frontmatter: the package is stdlib-only and means to
+stay that way, `tomllib` is 3.11+ while we support 3.10, and JSON Lines is
+already the house format.
+
+**The ledger is the test oracle.** `recipe.json` declares what the run should
+produce, and CI checks the ledger against it:
+
+```json
+"expect": { "kept": 3, "reverted": 2, "failed": 1,
+            "harness_changed": 1, "best_metric": 0.2651227330068643 }
+```
+
+This already works. Running the built recipe's `run.sh` in a clean directory
+and diffing against its `expect` block matches exactly. A recipe claiming to
+demonstrate a caught cheat has to actually produce one.
+
+**Three tiers, because honesty beats coverage.** The best recipes need a real
+agent or a real GPU and cannot run in CI. Rather than a dishonest badge or a
+cookbook missing its best material, every recipe declares one:
+
+- `verified` — runs end-to-end in CI in seconds, no network. Most recipes,
+  and the bar is: if it can be, it must be.
+- `structural` — the real agent is swapped for a stub honouring the same
+  contract. CI proves the wiring — flags, quoting, protect set, brief path.
+  It proves nothing about whether the agent is any good, and the recipe says
+  so in those words. This is how section 2 gets tested without an API key.
+- `narrative` — a real run on real hardware, reported not re-run. Carries the
+  date, version, model and hardware, and a visible not-run-in-CI line. The
+  standard `experiments/` already holds itself to.
+
+`tier` is required and has no default, so a recipe cannot quietly skip it.
+
+**No drift between prose and commands.** The README shows commands; `run.sh`
+contains them; CI executes `run.sh` and asserts every ```` ```bash ```` block
+in the README appears in it. A command shown to a reader that is not the
+command CI ran is a build failure.
+
+**A generated index.** CI regenerates `cookbook/README.md` from the
+`recipe.json` files and fails if it differs from what is committed — no
+hand-maintained table of contents to forget, which is how the Hugging Face
+cookbook's TOC drifts from its directory.
 
 ## What the good ones do
 
-Five that are worth stealing from, and what each one is actually good at:
-
-| Cookbook | The idea worth taking | The failure worth avoiding |
+| Cookbook | Worth taking | Worth avoiding |
 | --- | --- | --- |
-| [Rust Cookbook](https://github.com/rust-lang-nursery/rust-cookbook) | **Every snippet is executed in CI** (via [skeptic](https://github.com/budziq/rust-skeptic)), plus link and spell checks. A written rubric names what a *bad* recipe looks like, not only a good one. | Prose can drift from the included code if the include is dropped. |
-| [Modal examples](https://github.com/modal-labs/modal-examples) | Each example is a runnable file with **YAML frontmatter that drives CI** — per-example opt-in/opt-out of testing. "Continuously tested for correctness" is a claim they can make. | Requires an account and cloud spend to run, so the reader can't verify locally. |
-| [OpenAI Cookbook](https://github.com/openai/openai-cookbook) | A `registry.yaml` giving every recipe a **title, slug, description, date, authors, tags** — the index is data, and the site is generated from it. | Contributions are reviewed "on a best-effort basis" and nothing is executed. Recipes rot silently. |
-| [Anthropic Claude Cookbooks](https://github.com/anthropics/claude-cookbooks) | ~15 categories keyed to *capabilities* (tool use, evals, agents, observability), so a reader navigates by what they're trying to do. | Notebook-shaped, which suits an API and not a tool that drives git. |
-| [Hugging Face Cookbook](https://github.com/huggingface/cookbook) | Low-friction community authorship: add the notebook, add two lines to `_toctree.yml`, put your name under the first header. | The index is hand-maintained, so it drifts from the directory. |
-
-The pattern across all five: **the index should be generated from per-recipe
-metadata, and the recipes should be executed.** The ones that skip the second
-half are the ones with rotted recipes.
-
-One thing none of them do, which this repo should: publish the recipes that
-say *don't*. `experiments/outcome_granularity/RESULTS.md` exists because a
-negative result was worth writing down. The same instinct applies to loops
-that shouldn't be run.
-
-## Shape
-
-`cookbook/` at the repo root, sibling to `experiments/` — not `docs/`. There
-is no docs site and starting one at alpha is a second project.
-
-One directory per recipe, self-contained, because labloop recipes are
-multi-file by nature: an experiment script, a proposer, a protect set, and
-prose tying them together. A reader copies the directory and it runs.
-
-```
-cookbook/
-  README.md                      # generated index — do not hand-edit
-  CONTRIBUTING.md                # the rubric
-  build_index.py                 # regenerates README.md from recipe.json files
-  01-first-loop/
-    metric-from-a-script-that-prints-nothing/
-      recipe.json                # metadata (below)
-      README.md                  # the recipe
-      train.py                   # the files it needs
-      run.sh                     # exactly the commands the README shows
-```
-
-`recipe.json`, not YAML or TOML frontmatter: the package is stdlib-only and
-intends to stay that way, `tomllib` is 3.11+ while we support 3.10, and JSON
-Lines is already the house data format. No parser to write, nothing to add to
-`dev`.
-
-```json
-{
-  "title": "Read a metric from a script that prints nothing",
-  "question": "My train.py writes a JSON file and prints nothing. How do I run it under labloop?",
-  "tier": "verified",
-  "section": "01-first-loop",
-  "runtime_seconds": 3,
-  "needs": [],
-  "expect": { "kept": 1, "reverted": 1 },
-  "labloop": "0.1.0"
-}
-```
-
-## The part that makes it work: three tiers of verification
-
-Every cookbook that rots, rots because nothing runs it. But labloop's most
-valuable recipes involve a real coding agent and a real training run, and
-neither belongs in CI — one costs money and needs network, the other needs a
-GPU and forty minutes. Pretending otherwise gets you either a dishonest
-badge or a cookbook that omits its best material.
-
-So the tier is declared per recipe, in the metadata, and shown in the index:
-
-- **`verified`** — runs end-to-end in CI in a temp git repo, under a few
-  seconds, no network. The proposer is a shell command. This is most recipes,
-  and the bar is: if it can be `verified`, it must be.
-
-- **`structural`** — runs in CI with the real agent replaced by a stub that
-  honors the same contract: reads `$LABLOOP_BRIEF`, edits a file, exits. CI
-  proves the wiring — flags, quoting, protect set, file layout, that the
-  brief is where the recipe says it is. It proves nothing about whether the
-  agent is any good. The recipe says so, in those words. This is how the
-  agent-adapter recipes get tested without an API key.
-
-- **`narrative`** — a real run on real hardware, reported and not re-run.
-  Must carry the date, the labloop version, the model and hardware, and a
-  visible line saying it is not executed in CI. This is the same standard
-  `experiments/` already holds itself to.
-
-CI enforces the tiers rather than trusting them: `verified` and `structural`
-recipes are executed, and the run's ledger is checked against the `expect`
-block in `recipe.json`. That assertion is pleasingly native — **the ledger is
-the test oracle.** A recipe claiming it demonstrates a `harness_changed`
-trial has to actually produce one.
-
-`narrative` recipes are checked for their required metadata and their banner,
-so the one tier that cannot be executed cannot quietly omit the fact.
-
-## Keeping prose and commands from drifting
-
-Rust Cookbook's answer is mdBook `{{#include}}`; ours can be simpler. The
-recipe's README shows commands, and `run.sh` contains them. The test executes
-`run.sh` and separately asserts that every ```` ```bash ```` block in the
-README appears in `run.sh`. A command shown to the reader that is not the
-command CI ran is a build failure.
-
-The index is generated the same way `CHANGELOG` discipline works here: CI
-regenerates `cookbook/README.md` from the `recipe.json` files and fails if it
-differs from what is committed. No hand-maintained table of contents to
-forget.
-
-## What goes in it
-
-Six sections. Ordered the way the roadmap is: trust the number, don't lose
-the work, run more than one thread, be easy to start — plus the two the
-README can't hold.
-
-**1. The first loop.** Turning something you already have into an experiment.
-Reading a metric out of a script that prints nothing or prints the wrong
-shape. Choosing what `--run` covers and what it must not. Budgets that don't
-lie — why `--propose-budget` exists and what the process-group kill saves you
-from. Running in a repo that isn't fresh: dirty trees, ignored artifacts,
-warm caches that survive a revert.
-
-**2. Wiring a proposer.** The reserved gap, one recipe per adapter. Claude
-Code headless as the proposer. aider. Codex CLI. A plain API script. A
-twenty-line reference adapter that turns the brief JSON into a prompt —
-including the `why` field, which is the part the agent cannot work out for
-itself. And a deterministic stub proposer, so you can prove your harness
-works before spending a single token on it. Every one of these is
-`structural`.
-
-**3. Trusting the number.** `labloop noise` on a real experiment and how to
-read spread against standard deviation. Making a stochastic experiment
-deterministic — seed, split, averaging — and what to do with `--min-delta`
-and `--confirm` when you can't. Choosing a `--protect` set for a real
-evaluator, including the trap the README names: a cache written inside a
-protected path. And a recipe that stages the classic cheats — overwritten
-eval, memorized holdout, a metric printed without being computed — so a
-reader can see what each one looks like in the ledger before it happens to
-them for real.
-
-**4. More than one thread.** Forking two directions from one baseline in
-worktrees over a shared ledger. Comparing them honestly, and what
-`--compare` refuses when the harness digests differ. Overnight runs on a
-remote box: `--give-up-after`, what survives a reboot, and resuming under the
-recorded spec.
-
-**5. The ledger as an artifact.** A stdlib-only script that turns `log
---json` into a report or a plot. Extracting "what was tried and why it
-failed" for a write-up. Using `labloop-history.jsonl` as the research record
-that travels with the repository.
-
-**6. Loops not worth running.** The anti-recipes, and the section I'd argue
-hardest for. A metric that takes six hours to measure. A multi-objective
-goal, where keep-or-revert has no defined answer. Hyperparameter sweeps,
-which want a sweeper and not an agent. A metric so noisy that no setting
-makes it safe. Each one names the tool that is actually right for it. Rust
-Cookbook publishes what a bad recipe looks like; the labloop version is
-publishing what a bad *loop* looks like, and it fits how this project already
-talks about its own limits.
+| [Rust Cookbook](https://github.com/rust-lang-nursery/rust-cookbook) | Every snippet executed in CI via [skeptic](https://github.com/budziq/rust-skeptic). A written rubric naming what a *bad* recipe looks like. | Prose drifts from code if an include is dropped. |
+| [Modal examples](https://github.com/modal-labs/modal-examples) | Runnable files with frontmatter driving CI. "Continuously tested for correctness" is earned. | Needs an account and cloud spend, so readers can't verify locally. |
+| [OpenAI Cookbook](https://github.com/openai/openai-cookbook) | `registry.yaml` — the index is data, the site generated from it. | Reviewed "best-effort", nothing executed, recipes rot. |
+| [Claude Cookbooks](https://github.com/anthropics/claude-cookbooks) | ~15 categories keyed to what you're trying to do. | Notebook-shaped, which suits an API, not a tool whose unit of work is a commit. |
+| [HF Cookbook](https://github.com/huggingface/cookbook) | Low-friction contribution; authors credited inline. | Hand-maintained TOC drifts from the directory. |
 
 ## Rules for a recipe
 
-To go in `cookbook/CONTRIBUTING.md`, in the shape the root one already uses:
+For `cookbook/CONTRIBUTING.md`, in the shape the root one already uses:
 
-- **One question, asked by a person.** The title is the goal, not the
-  feature. "Run two ideas from one baseline", not "Using `--direction`."
-- **The README explains; the cookbook does.** If a concept is explained in
-  the README, link to it. Do not re-explain it. A cookbook that restates the
-  README is a second README that will disagree with the first one by winter.
-- **Prose says why, code says what.** Inline comments are not explanation —
-  the same rule Rust Cookbook enforces.
-- **Say what it doesn't do.** Every recipe ends with its limits. A
-  `structural` recipe says outright that CI checked the wiring and not the
-  agent.
-- **Measured or dated.** A number in a recipe is either produced by the
-  `run.sh` CI executes, or it carries the date and hardware it came from.
-  House style is already numbers over adjectives.
-- **Minimal.** No extra files, no framing, nothing the question didn't ask
-  for.
+- **One question, asked by a person.** The title is the goal, not the feature:
+  "Two ideas, one baseline", never "Using `--direction`".
+- **Show the run.** Real commands, real output, pasted from an execution. A
+  recipe with no terminal output in it is an essay.
+- **Show the loop saying no.** The reverts are the product. A recipe where
+  everything works teaches nothing about a tool whose job is rejection.
+- **The README explains; the cookbook does.** Link to the concept, don't
+  restate it. A cookbook that restates the README is a second README that will
+  disagree with the first by winter.
+- **Prose says why, code says what.** Inline comments are not explanation.
+- **End with limits.** Every recipe says what it did not prove. The built one
+  says outright that its proposer is scripted and its holdout is too small.
+- **Measured or dated.** A number is either produced by the `run.sh` CI
+  executes, or it carries the date and hardware it came from.
 
 ## Build order
 
-Not thirty recipes. The harness first, then enough recipes to prove all three
-tiers exist, then growth.
-
-- **Wave 0 — the harness.** `cookbook/`, `build_index.py`,
-  `tests/test_cookbook.py`, the CI job, the rubric. Three recipes, one per
-  tier, chosen to exercise the machinery rather than to be the most useful:
-  a `verified` first-loop recipe, a `structural` stub-proposer recipe, a
-  `narrative` placeholder. Deliverable: `pytest -q` fails if a recipe lies.
-- **Wave 1 — proposers.** The adapter recipes. This is the roadmap's reserved
-  gap and the most-asked question; it should ship first among the content.
-- **Wave 2 — trusting the number.** Noise, protect sets, staged cheats. The
-  differentiator that most needs a worked example rather than a paragraph.
+- **Wave 0 — the harness.** `build_index.py`, `tests/test_cookbook.py`, the CI
+  job, `CONTRIBUTING.md`. One recipe exists to test it against; add a
+  `structural` and a `narrative` one so all three paths are exercised.
+  Deliverable: `pytest -q` fails if a recipe lies. ~1 day.
+- **Wave 1 — proposers (section 2).** The reserved gap, the most-asked
+  question, and the reason people bounce off the tool.
+- **Wave 2 — trusting the number (section 3).**
 - **Wave 3 — directions, ledger reporting, anti-recipes.**
 
-Cost of wave 0 is roughly a day. CI cost is a few seconds per run: recipes
-are small commands against a stub experiment, and anything slower than that
-belongs in `narrative` by definition.
+CI cost stays under a few seconds per recipe; anything slower is `narrative`
+by definition.
 
 ## Deliberately not doing
 
-- **Notebooks.** Wrong medium for a tool whose unit of work is a git commit
-  and whose output is a ledger. The two AI cookbooks use them because they
-  document an API.
-- **A documentation site.** Premature. The index is markdown in the repo; if
-  the cookbook earns a site later, the metadata is already there to generate
-  one from — that is exactly what `registry.yaml` buys OpenAI.
-- **Open community contribution before wave 0.** Every rotted cookbook found
-  in this search rotted because recipes arrived faster than verification. The
-  harness is what makes contributions safe to accept.
-- **Shipping recipes in the wheel.** `cookbook/` belongs in the sdist
-  alongside `experiments/`, since the sdist is the archival artifact, but
-  nothing in it is importable.
-
-## The one risk
-
-Cookbook rot, and it is not hypothetical: it is the failure mode of four of
-the five examples above. The mitigation is the whole reason wave 0 is
-verification machinery and not content. If the harness ever gets skipped "just
-for this recipe," the cookbook has started dying — so `tier` is required, has
-no default, and CI rejects a recipe without one.
+- **Notebooks.** Wrong medium for a tool whose unit of work is a git commit.
+- **A documentation site.** Premature. The metadata is there to generate one
+  from if the cookbook earns it.
+- **Open contribution before wave 0.** Every rotted cookbook above rotted
+  because recipes arrived faster than verification.
+- **Shipping recipes in the wheel.** `cookbook/` belongs in the sdist beside
+  `experiments/`, since that is the archival artifact. Nothing in it is
+  importable.
