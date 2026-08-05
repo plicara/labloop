@@ -1,0 +1,13 @@
+{
+  "title": "Speed up a test suite without shrinking it",
+  "question": "How do I let an agent make my tests faster without letting it delete the slow ones?",
+  "tier": "narrative",
+  "section": "03-real-tasks",
+  "needs": ["claude-cli", "network", "pytest"],
+  "teaches": [
+    "protecting a property of the run (test count) instead of hashing files",
+    "an acceptance check the agent cannot edit, behind editable unit tests",
+    "wall-clock is not inherently noisy: this suite measured 0.1% spread"
+  ],
+  "labloop": "0.1.0"
+}

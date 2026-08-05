@@ -1,0 +1,13 @@
+{
+  "title": "Optimize a prompt against a held-out eval set",
+  "question": "How do I let an agent rewrite a prompt without it learning the answer key?",
+  "tier": "narrative",
+  "section": "03-real-tasks",
+  "needs": ["claude-cli", "network"],
+  "teaches": [
+    "mean field accuracy over whole-case accuracy, to avoid ties",
+    "protecting the eval set when the optimiser can read files",
+    "a metric that is noisy because the system under test is a model"
+  ],
+  "labloop": "0.1.0"
+}

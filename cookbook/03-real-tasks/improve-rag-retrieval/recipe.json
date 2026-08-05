@@ -1,0 +1,13 @@
+{
+  "title": "Improve retrieval quality on a real corpus",
+  "question": "How do I tune a retriever against a real query set without tuning it to the answers?",
+  "tier": "narrative",
+  "section": "03-real-tasks",
+  "needs": ["claude-cli", "network"],
+  "teaches": [
+    "nDCG over recall@k, because a coarse metric ties and a tie reverts",
+    "protecting queries and judgments, not the retriever",
+    "a corpus built by importing so C modules are not silently missing"
+  ],
+  "labloop": "0.1.0"
+}
