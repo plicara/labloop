@@ -3,11 +3,53 @@
   "question": "How do I let an agent rewrite a prompt without it learning the answer key?",
   "tier": "narrative",
   "section": "03-real-tasks",
-  "needs": ["claude-cli", "network"],
-  "teaches": [
-    "mean field accuracy over whole-case accuracy, to avoid ties",
-    "protecting the eval set when the optimiser can read files",
-    "a metric that is noisy because the system under test is a model"
+  "needs": [
+    "claude-cli",
+    "network"
   ],
-  "labloop": "0.1.0"
+  "teaches": [
+    "a harness bug and a bad prompt produce the same low number",
+    "spread: none can be a symptom of a broken harness, not a stable metric",
+    "the eval harness should self-test before it scores anything",
+    "mean field accuracy over whole-case accuracy, to avoid ties",
+    "an exact tie reverts, seen on real data"
+  ],
+  "labloop": "0.1.0",
+  "recorded": {
+    "date": "2026-08-05",
+    "labloop": "0.1.0",
+    "agent": "claude CLI headless (proposer); claude-haiku-4-5 (system under test)",
+    "cases": 30,
+    "fields": 3
+  },
+  "observed": {
+    "noise_spread": 0.088889,
+    "noise_sd": 0.0449051,
+    "baseline": 0.288889,
+    "trials": [
+      {
+        "index": 1,
+        "accuracy": 0.888889,
+        "outcome": "kept",
+        "change": "schema + field guidance"
+      },
+      {
+        "index": 2,
+        "accuracy": 0.888889,
+        "outcome": "reverted",
+        "reason": "exact tie"
+      },
+      {
+        "index": 3,
+        "accuracy": 0.877778,
+        "outcome": "reverted"
+      }
+    ],
+    "final": {
+      "kept": 2,
+      "reverted": 2,
+      "best": 0.888889
+    },
+    "note": "trials 2 and 3 are inside the noise; run used no --min-delta, which was a mistake that only trial 1's margin excused"
+  }
 }

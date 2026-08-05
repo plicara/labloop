@@ -63,9 +63,11 @@ need a real agent or real hardware and cannot run in CI:
 *How do I let an agent rewrite a prompt without it learning the answer key?*
 
 `narrative` · needs `claude-cli`, `network`
+- a harness bug and a bad prompt produce the same low number
+- spread: none can be a symptom of a broken harness, not a stable metric
+- the eval harness should self-test before it scores anything
 - mean field accuracy over whole-case accuracy, to avoid ties
-- protecting the eval set when the optimiser can read files
-- a metric that is noisy because the system under test is a model
+- an exact tie reverts, seen on real data
 
 ### [Speed up a test suite without shrinking it](03-real-tasks/speed-up-a-test-suite/)
 
