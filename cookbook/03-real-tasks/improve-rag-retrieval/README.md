@@ -105,3 +105,69 @@ the forty queries score exactly zero.
 
 Every one of those is a vocabulary-gap failure: the right document exists and
 uses different words.
+
+## Step 3: run
+
+```bash
+labloop run --run "python evaluate.py" --metric ndcg --goal maximize \
+  --protect evaluate.py --protect queries.py --protect corpus.py \
+  --propose "python propose.py" \
+  --budget 120 --propose-budget 300 --trials 4
+```
+
+## What the agent did
+
+```
+[+] trial   0       0.25272     0.2s  (baseline)
+[+] trial   1      0.519855   110.1s  b4c45bf
+[-] trial   2       0.51081   285.6s
+```
+
+**Trial 1 — 0.2527 to 0.5199. The score doubled.** The agent implemented BM25:
+
+```diff
+-        idf = math.log(index["n"] / len(posting))
++        df = len(posting)
++        idf = math.log((n - df + 0.5) / (df + 0.5) + 1)
+         for doc_id, count in posting.items():
+-            scores[doc_id] = scores.get(doc_id, 0.0) + count * idf
++            dl = lengths[doc_id]
++            denom = count + K1 * (1 - B + B * dl / avgdl)
++            scores[doc_id] = scores.get(doc_id, 0.0) + idf * (count * (K1 + 1)) / denom
+```
+
+Smoothed idf, term-frequency saturation, and document-length normalisation,
+with a docstring naming the diagnosis:
+
+> Raw term frequency lets long documents (modules with hundreds of public
+> names) win purely by being long. BM25's saturation and length normalization
+> keep a short, on-topic summary competitive with a bloated names list.
+
+That is the correct reading of this corpus. `os` and `sys` export hundreds of
+names; under raw term frequency they surfaced for almost anything.
+
+**Trial 2 — reverted.** 0.5109 against 0.5199, on a metric where higher is
+better. It also took 285 seconds against trial 1's 110.
+
+## What BM25 did not fix
+
+Ten queries still score exactly zero:
+
+```
+  0.000  cache the result of an expensive function call
+  0.000  count how many times each item appears in a list
+  0.000  download a web page from a url
+  0.000  parse a date written as text into an object
+  0.000  write messages to a log file with severity levels
+```
+
+None of these is a ranking problem — the right document never enters the
+candidate set at all, because no query term appears in it. `functools`
+documents `lru_cache`, and whitespace tokenisation cannot match `cache`
+against `lru_cache`. `collections` documents `Counter`, not "count how many
+times".
+
+The next lever is visible in the data rather than guessed: split identifiers
+on underscores and case boundaries so `lru_cache` yields `lru` and `cache`,
+and `DictReader` yields `dict` and `reader`. That is what `--detail` is for,
+and it is why the recipe prints per-query scores at all.
