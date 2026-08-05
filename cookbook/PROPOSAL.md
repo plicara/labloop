@@ -46,93 +46,108 @@ cookbook is where that decision lands.
 
 ## The catalog
 
-Roughly twenty recipes across six sections. Each is a scenario, not a topic.
+Organised by **the job the reader is doing**, not by which flag it exercises.
+Each entry is a real task on real inputs, driven by a real agent, and each
+names the metric it optimises — because "what is the number" is the first
+thing a reader has to decide and the thing they get wrong.
 
-### 1. The first loop
+### 1. Making code faster
 
-- **Tune a classifier and watch the loop throw most of it away** — *built.*
-  The end-to-end tour: noise check, baseline, six trials, two commits.
-- **Your script prints nothing, or prints the wrong thing** — a `train.py`
-  that writes `metrics.json` and logs to stderr. Three ways to bridge it
-  (a one-line shim, a `--run` that pipes, editing the script), why the
-  last-occurrence rule means printing every epoch is fine, and what
-  `no_metric` looks like when you get it wrong.
-- **Deciding what `--run` covers** — the same experiment wired three ways:
-  training only, training plus eval, and a Makefile target. Shows the trap of
-  putting the eval outside `--run`, where the loop scores a stale number.
-- **Budgets that don't lie** — a proposer that thinks for 90s wrapped around a
-  40s experiment. Shows why `--propose-budget` exists, and a training script
-  that spawns workers, so the process-group kill is visible in `ps` rather
-  than asserted.
-- **Running in a repo that isn't fresh** — an existing project with build
-  artifacts, a virtualenv, and a warm dataset cache. What to `.gitignore` so
-  it survives reverts, and what the dirty-tree refusal is protecting.
+The most common real use of a keep-or-revert loop, and the one where the
+metric is treacherous: wall-clock time is noisy, so most "speedups" are dice.
 
-### 2. Wiring a proposer
+- **Let Claude Code optimize real code against a real benchmark** — *built.*
+  An identifier index over 4.7 MB of CPython stdlib source. Metric: seconds.
+  Real agent, real 22% measurement noise, `--min-delta` and `--confirm`
+  chosen from the measurement rather than from taste.
+- **Speed up a test suite without breaking it** — metric: `pytest` wall-clock,
+  with the suite's own pass/fail as the protected harness. The natural cheat
+  (skip the slow tests) is what `--protect` is for.
+- **Cut memory, not time** — same loop, metric from `tracemalloc` peak. Shows
+  that "the metric" need not be time or loss, and what changes when the metric
+  is perfectly deterministic (spoiler: you can drop `--confirm`).
 
-The reserved gap. One recipe per adapter, each ending with the same loop
-running for real.
+Also built, and honestly labelled:
+[`01-first-loop/tune-a-classifier/`](01-first-loop/tune-a-classifier/) is a
+toy — twenty spam messages and a scripted proposer replaying fixed edits. It
+is not a use case and is not presented as one. Its job is to be the
+deterministic fixture the CI harness is tested against, since a `narrative`
+recipe like the one above can never play that role. Every cookbook needs one
+of these; it should not be the front door.
 
-- **Claude Code as the proposer** — headless invocation, the prompt built from
-  `$LABLOOP_BRIEF`, keeping the agent scoped to the file it should edit, and
-  what its `harness_changed` trials look like when it wanders.
-- **aider as the proposer** · **Codex CLI as the proposer** · **A plain API
-  script as the proposer** — the same experiment, three wirings, so the
-  contract is visibly tool-agnostic.
-- **The ten lines that read a brief** — the reference adapter: brief JSON to
-  prompt, including `why` and `output_tail`, which are the fields an agent
-  cannot reconstruct for itself. Copy-paste sized on purpose.
-- **Prove your harness before you spend tokens** — a deterministic stub
-  proposer that makes a known-good and a known-bad edit. Run this first; if
-  the ledger doesn't show one kept and one reverted, the bug is in your wiring,
-  not your agent.
+### 2. Improving a model
 
-### 3. Trusting the number
+- **Beat a baseline on a real tabular dataset** — a real CSV, a real
+  train/test split, metric: held-out AUC. The agent does feature engineering.
+  The holdout and the split are protected, which is the whole ballgame.
+- **Tune a training script you did not write** — someone else's `train.py`,
+  seeded and un-seeded, showing what `noise` says about each and why the
+  un-seeded one needs fixing before the loop is worth running.
+- **Reproduce the autoresearch loop** — the original use case (nanochat-style
+  `val_bpb` on one GPU) run under labloop, as the honest comparison to the
+  project this generalises. `narrative` tier; nobody's CI has a GPU.
 
-- **Your metric is noisy: what the numbers actually cost you** — a training
-  script with a real seed, run under `noise`, then the same loop with and
-  without `--min-delta` and `--confirm`, showing false keeps in the ledger.
-  Reproduces the README's table on a live experiment instead of a simulation.
-- **Make a stochastic experiment hold still** — seed, fixed split, averaged
-  runs; the before-and-after `noise` output as the evidence.
-- **Choosing `--protect` for a real evaluator** — a project where the eval
-  writes a cache inside its own directory, which breaks the digest. Shows the
-  refusal, then the fix, and why "protect the measurement, not the directory"
-  is a rule with teeth.
-- **What the classic cheats look like in a ledger** — three staged proposals:
-  overwrite the test, memorise the holdout by adding a file, print the metric
-  without computing it. The third is the interesting one, because `--protect`
-  does not catch it and the recipe says so.
+### 3. Improving an LLM pipeline
 
-### 4. More than one thread
+Real 2026 work, and a place where the metric is an eval score rather than a
+number a program computes about itself.
+
+- **Optimize a prompt against a real eval set** — the agent edits the prompt
+  file; metric: accuracy over held-out cases. The eval set and grader are
+  protected, and this is the recipe where memorising the answers is a live
+  risk rather than a hypothetical.
+- **Make a RAG pipeline retrieve better** — metric: recall@k on a real query
+  set. Chunking, embedding choice, and reranking are all in scope for the
+  agent; the queries and judgments are not.
+- **Cut token cost at fixed quality** — two numbers, one loop: cost is the
+  metric, and a quality floor lives in the harness as a hard failure. The
+  worked answer to "labloop only optimises one thing".
+
+### 4. Running more than one idea
 
 - **Two ideas, one baseline** — fork two directions into worktrees over a
-  shared ledger, run both, read `log --compare`. The differentiator, worked.
-- **Comparing directions that aren't comparable** — deliberately drift one
-  direction's harness, watch `--compare` refuse, and fix it.
-- **An overnight run on a box you'll close the laptop on** — tmux, budgets,
+  shared ledger, run both, read `log --compare`. The differentiator, worked
+  on the section-1 benchmark so the reader already knows the task.
+- **Comparing directions that aren't comparable** — drift one direction's
+  harness on purpose, watch `--compare` refuse, fix it.
+- **An overnight run you'll close the laptop on** — tmux, budgets,
   `--give-up-after`, and what the morning looks like.
-- **Your run died at trial 34** — kill it mid-trial, `labloop resume`, verify
-  the ledger is contiguous. Then change `--metric` and watch the refusal name
-  the field.
+- **Your run died at trial 34** — kill it mid-trial, `resume`, verify the
+  ledger is contiguous. Then change `--metric` and watch the refusal name the
+  field.
 
-### 5. The ledger as an artifact
+### 5. Reading the result
 
-- **Turn a ledger into a report** — a stdlib-only script over `log --json`
-  producing a convergence plot and a table of what was tried.
+- **Turn a ledger into a report** — stdlib-only script over `log --json`:
+  convergence plot, table of what was tried and rejected.
 - **Write up what the agent tried and why it failed** — mining reverted trials
   for the negative results, in the shape `experiments/` already publishes.
-- **The research record that ships with the repo** — using
-  `labloop-history.jsonl` in review, months later.
+- **The research record that ships with the repo** — `labloop-history.jsonl`
+  read in review, months later, by someone who wasn't there.
 
-### 6. Loops not worth running
+### 6. Problems you will hit in the first hour
+
+Short troubleshooting entries, not full worked examples. These exist because
+every one of them cost someone an afternoon.
+
+- **Your script prints nothing, or prints the wrong thing** — bridging a
+  `metrics.json` writer; why last-occurrence means per-epoch printing is fine.
+- **`--run` covers the wrong thing** — putting eval outside `--run` scores a
+  stale number.
+- **The loop refuses to start** — the dirty-tree interlock, including the way
+  I tripped it building this cookbook: redirecting a log into the repo.
+- **Your proposer thinks for longer than your experiment runs** — why
+  `--propose-budget` is separate, and what the process-group kill saves you
+  from.
+
+### 7. Loops not worth running
 
 Anti-recipes. Each names the tool that is actually right instead.
 
 - **A metric that takes six hours** — the arithmetic on how many trials an
   overnight budget buys, and when to build a proxy metric first.
-- **Two things you care about** — keep-or-revert has no defined answer for a
-  tie-break between accuracy and latency. What to do instead.
+- **Two things you care about** — when the section-3 trick (one metric, one
+  floor) does *not* rescue you, and what to use instead.
 - **A hyperparameter sweep** — this wants a sweeper, not an agent.
 - **A metric too noisy for any setting to save** — the honest exit.
 
