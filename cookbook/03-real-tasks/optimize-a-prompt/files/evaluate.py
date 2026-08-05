@@ -38,12 +38,20 @@ def ask(system_prompt, message):
     return proc.stdout if proc.returncode == 0 else None
 
 
+DECORATION = " \t*_`#\"'.,"
+
+
 def parse(text):
     """Pull the three fields out of whatever the model said.
 
     Deliberately forgiving: a JSON object anywhere in the reply, else
-    `field: value` lines. The prompt is what is being optimised, so the parser
+    `field: value` lines, with markdown decoration stripped from both the
+    label and the value. The prompt is what is being optimised, so the parser
     must not be the thing that fails.
+
+    It was, once. The first version matched `field\\s*[:=]\\s*(.+)` and models
+    answer in markdown, so `**Urgency:** High` parsed to `'** High'` and
+    failed to match `high`. See `selftest()` and the recipe's write-up.
     """
     if not text:
         return {}
@@ -52,15 +60,52 @@ def parse(text):
         try:
             obj = json.loads(m.group(0))
             if isinstance(obj, dict):
-                return {k.lower(): obj[k] for k in obj}
+                return {k.strip(DECORATION).lower(): obj[k] for k in obj}
         except json.JSONDecodeError:
             pass
     out = {}
     for field in FIELDS:
-        m = re.search(rf"{field}\s*[:=]\s*(.+)", text, re.I)
+        # `order_id` is also written "Order ID", "order-id", "Order Id".
+        label = r"[ _-]*".join(field.split("_"))
+        # Allow markdown emphasis around the label and inside the value, and
+        # take only the first line: models like to follow a value with prose.
+        m = re.search(rf"[*_`]*{label}[*_`]*\s*[:=]\s*(.+)", text, re.I)
         if m:
-            out[field] = m.group(1).strip().strip('",.')
+            value = m.group(1).split("\n")[0].strip(DECORATION)
+            if value:
+                out[field] = value
     return out
+
+
+CANONICAL = [
+    ('{"category": "billing", "urgency": "high", "order_id": "A-4471"}',
+     {"category": "billing", "urgency": "high", "order_id": "A-4471"}),
+    ("category: billing\nurgency: high\norder_id: A-4471",
+     {"category": "billing", "urgency": "high", "order_id": "A-4471"}),
+    ("**Category:** billing\n**Urgency:** High\n**Order ID:** A-4471",
+     {"category": "billing", "urgency": "high", "order_id": "A-4471"}),
+    ("Here is the triage:\n\n```json\n{\"category\": \"refund\", "
+     "\"urgency\": \"normal\", \"order_id\": null}\n```\nHope that helps.",
+     {"category": "refund", "urgency": "normal", "order_id": None}),
+]
+
+
+def selftest():
+    """Fail loudly if the parser cannot read a reply that is obviously correct.
+
+    Without this, a parser bug is indistinguishable from a bad prompt: the
+    score is low either way, and the loop optimises against a number that is
+    measuring the harness. The retrieval recipe has the same guard for its
+    judgments (`queries.check`), and for the same reason.
+    """
+    for reply, expected in CANONICAL:
+        got = parse(reply)
+        for field, want in expected.items():
+            if normalise(field, got.get(field)) != normalise(field, want):
+                raise SystemExit(
+                    f"parser self-test failed on {reply[:40]!r}: "
+                    f"{field} read as {got.get(field)!r}, expected {want!r}"
+                )
 
 
 def normalise(field, value):
@@ -86,6 +131,7 @@ def score_case(system_prompt, message, gold):
 
 
 def main():
+    selftest()
     system_prompt = PROMPT_FILE.read_text()
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=WORKERS) as pool:
