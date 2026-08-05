@@ -56,6 +56,7 @@ need a real agent or real hardware and cannot run in CI:
 - nDCG over recall@k, because a coarse metric ties and a tie reverts
 - protecting queries and judgments, not the retriever
 - a corpus built by importing so C modules are not silently missing
+- a metric that goes up is not evidence your explanation is right
 
 ### [Optimize a prompt against a held-out eval set](03-real-tasks/optimize-a-prompt/)
 

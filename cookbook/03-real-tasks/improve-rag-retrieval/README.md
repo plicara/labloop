@@ -149,25 +149,60 @@ names; under raw term frequency they surfaced for almost anything.
 **Trial 2 — reverted.** 0.5109 against 0.5199, on a metric where higher is
 better. It also took 285 seconds against trial 1's 110.
 
-## What BM25 did not fix
+**Trial 3 — 0.5199 to 0.5355.** The agent fixed the tokenizer:
 
-Ten queries still score exactly zero:
-
-```
-  0.000  cache the result of an expensive function call
-  0.000  count how many times each item appears in a list
-  0.000  download a web page from a url
-  0.000  parse a date written as text into an object
-  0.000  write messages to a log file with severity levels
+```diff
+-    return text.lower().split()
++    return _TOKEN_RE.findall(text.lower())   # r"[a-z0-9]+"
 ```
 
-None of these is a ranking problem — the right document never enters the
-candidate set at all, because no query term appears in it. `functools`
-documents `lru_cache`, and whitespace tokenisation cannot match `cache`
-against `lru_cache`. `collections` documents `Counter`, not "count how many
-times".
+> Plain whitespace splitting leaves stdlib identifiers like `lru_cache`,
+> `make_archive`, or `ZIP_DEFLATED` as single opaque tokens, so they never
+> match a query word like "cache" or "archive".
 
-The next lever is visible in the data rather than guessed: split identifiers
-on underscores and case boundaries so `lru_cache` yields `lru` and `cache`,
-and `DictReader` yields `dict` and `reader`. That is what `--detail` is for,
-and it is why the recipe prints per-query scores at all.
+**Trial 4 — `no_change`.** The agent finished without editing anything, so
+there was nothing to measure. Not a failure and not a result: the loop
+recorded it as its own outcome and moved on.
+
+```
+kept=3  reverted=1  no_change=1
+ndcg: 0.535526 (trial 3)
+```
+
+**0.2527 to 0.5355 — 2.1× — over two kept commits.**
+
+## The wrong diagnosis, and the right one
+
+While trial 3 was still running, I wrote in this file that the ten
+zero-scoring queries were candidate-set failures — that `functools` never
+surfaced for *"cache the result of an expensive function call"* because
+whitespace tokenisation could not match `cache` against `lru_cache`, and that
+splitting identifiers was therefore the next lever.
+
+The agent then made exactly that change, and **it fixed none of them.** Still
+ten zeros, the same ten. So the diagnosis was wrong, and the data says why:
+
+```
+query terms: ['cache', 'the', 'result', 'of', 'an', 'expensive', 'function', 'call']
+functools has 'cache'? True | doc length: 41
+functools score: 5.505
+rank of functools: 32
+top10: ['shelve', 'ast', 'sys', 'rlcompleter', 'platform', 'pdb', ...]
+```
+
+`functools` **is** in the candidate set, and does score. It ranks 32nd. The
+top ten are documents matching *"the"*, *"of"*, *"an"*, *"function"*,
+*"call"* — six near-meaningless terms outvoting the one that carries the
+query. This was never a tokenisation problem. It is a **term-weighting**
+problem, and the fix is stopword handling or a floor on idf, not more
+aggressive splitting.
+
+Two things worth taking from that:
+
+- **The improvement was real and the explanation was wrong.** Trial 3 earned
+  its keep — the tokenizer change did help other queries — but not for the
+  reason predicted. A metric that goes up is not evidence that your story
+  about it is correct.
+- **The loop did not care.** It measured the change and kept it. Being right
+  about *why* is a human problem, which is what `--detail`, the ledger, and
+  five minutes of poking at the index are for.
