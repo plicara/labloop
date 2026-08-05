@@ -1,0 +1,86 @@
+# Skills
+
+Three agent skills covering the three moments where a labloop user has an
+agent in the room. They are written for Claude Code's skill format
+(`SKILL.md` with `name`/`description` frontmatter) and contain no
+Claude-specific machinery, so the body is useful to any agent that can read
+instructions.
+
+| Skill | Who loads it | The moment |
+| --- | --- | --- |
+| `labloop-setup` | the user's assistant | wiring an experiment before any trial is spent |
+| `labloop-proposer` | **the agent inside `--propose`** | making one attempt, judged and probably reverted |
+| `labloop-triage` | the user's assistant | a run that produced nothing, or too much |
+
+## Install
+
+Copy into the project where you run experiments — not into labloop's own
+checkout:
+
+```bash
+mkdir -p .claude/skills
+cp -r /path/to/labloop/cookbook/skills/labloop-* .claude/skills/
+```
+
+`labloop-setup` and `labloop-triage` then load themselves when the
+conversation calls for them. `labloop-proposer` is different: it is for the
+agent labloop invokes, so the proposer command has to be one that can load
+skills from the project.
+
+```bash
+labloop run --propose "claude -p 'Improve train.py' --permission-mode acceptEdits" ...
+```
+
+## Why `labloop-proposer` is the interesting one
+
+The roadmap declines to bundle an agent: `propose` stays any command, and the
+brief/env contract is the integration surface. That leaves a real gap — every
+user wires up the same brief-reading glue and the same hard-won prompt
+knowledge in private.
+
+A skill fills the gap without closing the door. It is text, it ships in the
+cookbook rather than the package, it adds no dependency, and swapping `claude`
+for `aider` or `codex` costs nothing.
+
+Its content is not invented. It encodes what a recorded run actually did:
+
+- **One focused change per trial.** After three reverts, an agent escalated to
+  a sweeping rewrite, spent seven times its usual thinking budget, and produced
+  its worst result of the run. The skill names that instinct and redirects it.
+- **The `reverted` trap.** When `--min-delta` causes the revert, the brief says
+  *"did not beat 0.2245"* even when the change did beat it and merely missed
+  the threshold. Until that is fixed in `brief.py`, an agent needs to check the
+  numbers itself — so the skill tells it to, with the comparison spelled out.
+- **The nine outcomes as a routing table.** Each label sends you somewhere
+  different; that is measured, not asserted
+  (`experiments/outcome_granularity/`, p < 0.01 against no labels).
+
+## What was actually tested
+
+`labloop-proposer` was installed into a scratch project and driven through a
+real loop on the stdlib-index benchmark. It loads, the agent works under it,
+and the loop keeps its result:
+
+```
+[+] trial   0        0.3613     0.4s  (baseline)
+[+] trial   1        0.2163    27.3s  daccf1d
+```
+
+**That is all it establishes.** It is one trial, and it does not show the skill
+*helps*. The obvious comparison — 0.2163 here against 0.2245 in the recipe — is
+not a comparison at all: different baselines (0.3613 vs 0.3342) on a shared
+machine whose load moved between runs, n=1 on each side, and a non-deterministic
+agent. Reading a win into that would be exactly the mistake `labloop noise`
+exists to prevent, in the repository that built the tool.
+
+Measuring whether the skill helps means many paired runs with and without it,
+which is an `experiments/` job with statistics, not a cookbook claim. Until
+someone does that, these skills are reasoned from recorded failures, not
+demonstrated to improve anything.
+
+## Limits
+
+These are instructions, not enforcement. A skill cannot stop an agent editing
+the harness — `--protect` detects that, and nothing prevents it. The skill
+makes the good path clear and the bad path explicitly named, which is what
+instructions can do and all they can do.

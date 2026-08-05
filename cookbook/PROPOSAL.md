@@ -151,6 +151,43 @@ Anti-recipes. Each names the tool that is actually right instead.
 - **A hyperparameter sweep** — this wants a sweeper, not an agent.
 - **A metric too noisy for any setting to save** — the honest exit.
 
+## Skills
+
+*Built: [`cookbook/skills/`](skills/). Candidate recipes to choose from:
+[`CANDIDATES.md`](CANDIDATES.md).*
+
+Three agent skills, one for each moment where a labloop user has an agent in
+the room:
+
+| Skill | Who loads it | The moment |
+| --- | --- | --- |
+| `labloop-setup` | the user's assistant | wiring an experiment before a trial is spent |
+| `labloop-proposer` | **the agent inside `--propose`** | one attempt, judged and probably reverted |
+| `labloop-triage` | the user's assistant | a run that produced nothing, or too much |
+
+`labloop-proposer` is the one that matters. The roadmap declines to bundle an
+agent — `propose` stays any command — which leaves every user re-deriving the
+same prompt knowledge privately. A skill fills that gap without closing the
+door: it is text, it ships in the cookbook rather than the package, it adds no
+dependency, and swapping `claude` for `aider` costs nothing.
+
+Its content is evidence, not advice. Each rule traces to something a recorded
+run did:
+
+- **One focused change per trial** — after three reverts an agent escalated to
+  a sweeping rewrite, spent 220s against a usual 30s, and produced its worst
+  result of the run.
+- **The `reverted` trap** — when `--min-delta` causes the revert, the brief
+  says *"did not beat 0.2245"* even though the change did beat it. Until
+  `brief.py` is fixed, the agent has to check the arithmetic itself, so the
+  skill tells it to.
+- **The nine outcomes as a routing table** — measured, not asserted
+  (`experiments/outcome_granularity/`, p < 0.01 against no labels).
+
+Skills are instructions, not enforcement. One cannot stop an agent editing the
+harness; `--protect` detects that and nothing prevents it. What a skill does is
+make the good path clear and name the bad one.
+
 ## Keeping them true
 
 This is the supporting machinery, and the reason it matters is empirical:
