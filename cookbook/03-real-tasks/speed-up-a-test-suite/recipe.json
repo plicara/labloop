@@ -3,11 +3,55 @@
   "question": "How do I let an agent make my tests faster without letting it delete the slow ones?",
   "tier": "narrative",
   "section": "03-real-tasks",
-  "needs": ["claude-cli", "network", "pytest"],
+  "needs": [
+    "claude-cli",
+    "network",
+    "pytest"
+  ],
   "teaches": [
     "protecting a property of the run (test count) instead of hashing files",
     "an acceptance check the agent cannot edit, behind editable unit tests",
     "wall-clock is not inherently noisy: this suite measured 0.1% spread"
   ],
-  "labloop": "0.1.0"
+  "labloop": "0.1.0",
+  "recorded": {
+    "date": "2026-08-05",
+    "labloop": "0.1.0",
+    "agent": "claude CLI, headless, with labloop-proposer skill installed",
+    "hardware": "container, shared CPU"
+  },
+  "observed": {
+    "noise_spread": 0.0349,
+    "noise_sd": 0.0144061,
+    "baseline": 10.5423,
+    "trials": [
+      {
+        "index": 1,
+        "seconds": 2.672,
+        "outcome": "kept"
+      },
+      {
+        "index": 2,
+        "seconds": 0.4761,
+        "outcome": "kept"
+      },
+      {
+        "index": 3,
+        "seconds": 0.5461,
+        "outcome": "reverted"
+      },
+      {
+        "index": 4,
+        "seconds": null,
+        "outcome": "timed_out"
+      }
+    ],
+    "final": {
+      "kept": 3,
+      "reverted": 1,
+      "timed_out": 1,
+      "best": 0.4761,
+      "speedup": "22x"
+    }
+  }
 }

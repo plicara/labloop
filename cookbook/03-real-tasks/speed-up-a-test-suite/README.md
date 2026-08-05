@@ -113,6 +113,10 @@ inform.
 [+] trial   0       10.5423    10.7s  (baseline)
 [+] trial   1         2.672    71.2s  f3bbb59
 [+] trial   2        0.4761   112.0s  0a96d3e
+[-] trial   3        0.5461   222.4s
+[T] trial   4            --   300.2s  (proposal exceeded its 300s budget)
+
+best seconds: 0.4761 (trial 2)
 ```
 
 **Trial 1 — 10.54s to 2.67s.** A two-line change, and the right one:
@@ -137,3 +141,54 @@ tests and the per-test construction of `big_order`.
 All 53 tests still ran, all still passed, and the acceptance check still
 passed at every step — otherwise the trial would have been recorded as
 `failed`, not scored.
+
+**Trial 3 — reverted.** 0.5461 against an incumbent of 0.4761: genuinely
+slower, correctly discarded, no threshold needed to justify it.
+
+**Trial 4 — timed out.** The agent ran past its 300-second `--propose-budget`
+and was killed with its whole process group.
+
+That is the third time in this cookbook the same pattern has appeared: after
+a setback, the agent reaches for something bigger. Trial 1 took 71 seconds and
+cut 74% of the runtime. Trials 3 and 4 took 222 and 300+ seconds and produced
+a regression and nothing at all. The
+[`labloop-proposer` skill](../../skills/labloop-proposer/) names this instinct
+explicitly — *escalate specificity, not scope* — and it was installed for this
+run. It did not prevent it.
+
+Worth being precise about what the timeout cost: nothing. The budget killed a
+runaway attempt, the tree was restored, and the two good commits were already
+in the history. A loop that stops paying for an attempt that has stopped
+converging is the budget working, not the run failing.
+
+## The result
+
+```
+kept=3  reverted=1  timed_out=1
+seconds: 0.4761 (trial 2)
+```
+
+```
+0a96d3e labloop: seconds 0.4761 (was 2.672)
+f3bbb59 labloop: seconds 2.672 (was 10.5423)
+8ecd4a4 invoicing library and a suite that is slower than it needs to be
+```
+
+**10.54s to 0.48s — 22× — across two commits, with the test count unchanged.**
+Two of the five attempts earned their place; the other three are in the ledger
+and not in the history, which is the arrangement the tool exists to produce.
+
+## Limits
+
+- **`narrative` tier: CI does not run this.** It needs the `claude` CLI,
+  network, and several minutes of agent time.
+- **The count check is not a correctness check.** It stops tests being
+  deleted, skipped or deselected. It does not stop an assertion being
+  weakened inside a test that still passes — `acceptance_test.py` is the
+  backstop for that, and it is only as good as what it asserts.
+- **A 53-test suite is not a real suite.** The slowness here is three
+  ordinary causes, planted deliberately. A real suite has twenty, and some of
+  them are the tests being genuinely necessary.
+- **22× is a property of this suite, not of the tool.** It was built with a
+  fixable problem in it. Your suite may be slow for reasons no fixture scope
+  will solve.
