@@ -35,6 +35,13 @@ replaced it.
   measured on pure noise over 400 replicated runs: fabricated improvement
   falls from 23.5% to 9.9% with both, for 10% more compute. Neither makes
   a noisy metric safe, and the docs say so.
+- `labloop noise` suggests two thresholds, not one. It used to name the
+  spread alone, which is the safe-looking number and silently expensive: on
+  a recorded run `--min-delta <spread>` discarded three genuine speedups of
+  31%, 27% and 15%. It now prints the spread and the deviation with what
+  each costs — conservative discards real work, permissive lets flukes
+  through — because only the user knows which mistake is cheaper. The README
+  already reasoned with the deviation; the tool now agrees with it.
 - A `--min-delta` revert says so. It used to tell the proposer
   `seconds 0.155 did not beat 0.2245` about a change that beat it by 31%,
   because the explanation compared metric to incumbent and never mentioned

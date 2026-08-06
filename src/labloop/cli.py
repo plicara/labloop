@@ -91,7 +91,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "--min-delta",
             type=float,
             default=0.0,
-            help="how much better the metric must be to count; use the spread from `labloop noise`",
+            help="how much better the metric must be to count; `labloop noise` suggests two",
         )
         p.add_argument(
             "--budget", type=float, default=300.0, help="seconds the run command may take"
@@ -471,12 +471,23 @@ def _noise(loop: Loop, repeats: int) -> int:
     # across experiments or against a later measurement.
     deviation = statistics.stdev(values)
     print(f"spread: {spread:.6g}   standard deviation: {deviation:.6g}")
+    # Two thresholds, because they err in opposite directions and only the
+    # user knows which mistake is cheaper for their experiment. Naming just
+    # the spread hid that choice: it is the safe-looking number and it
+    # silently discards real work.
     print(
         f"\nAn improvement smaller than {spread:.6g} is a difference this experiment has "
         f"already produced without any change to the code, so the loop would be "
         f"selecting lucky runs. Best is to remove the variance — fix the seed, average "
-        f"more, hold the data still. Failing that:\n"
+        f"more, hold the data still. Failing that, pick a threshold:\n"
         f"\n    labloop run --min-delta {spread:.6g} --confirm ...\n"
+        f"        conservative — clears everything seen here, and will\n"
+        f"        discard real improvements smaller than it\n"
+        f"\n    labloop run --min-delta {deviation:.6g} --confirm ...\n"
+        f"        permissive — keeps more real gains, and lets through more flukes\n"
+        f"\nThe spread widens with every extra run; the deviation does not, so the "
+        f"deviation is the one to compare against another experiment or a later "
+        f"measurement.\n"
     )
     return 0
 

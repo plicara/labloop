@@ -223,6 +223,32 @@ def test_noise_on_a_varying_metric_recommends_the_settings(project, capsys):
     )
 
 
+def test_noise_offers_both_thresholds_and_says_what_each_costs(project, capsys):
+    """The suggestion used to name the spread alone.
+
+    The spread is the conservative choice and it is expensive: on a recorded
+    run, `--min-delta <spread>` discarded three genuine speedups of 31%, 27%
+    and 15%. The deviation is the permissive one and lets more flukes through.
+    Naming only one hid a decision the user has to make, and contradicted the
+    README, which reasons with the deviation.
+    """
+    (project / "train.py").write_text(
+        "import random\nprint(f'val_loss = {random.random():.4f}')\n"
+    )
+    git("commit", "-aqm", "noisy", cwd=project)
+    main(["noise", "--run", "python train.py", "--metric", "val_loss", "--repeat", "4"])
+    out = capsys.readouterr().out
+
+    suggestions = [line for line in out.splitlines() if "--min-delta" in line]
+    assert len(suggestions) == 2, (
+        f"expected a conservative and a permissive option, got {suggestions}"
+    )
+    assert "conservative" in out and "permissive" in out, (
+        "a user choosing between two thresholds needs to know which way each errs"
+    )
+    assert "discard real improvements" in out
+
+
 def test_noise_on_a_broken_experiment_says_so(project):
     with pytest.raises(RuntimeError, match="usable val_loss"):
         main(["noise", "--run", "exit 1", "--metric", "val_loss"])
