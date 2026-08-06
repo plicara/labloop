@@ -21,7 +21,8 @@ Three files:
   it is slow in the way code is slow when it was written once and never
   revisited: a list-membership check inside the hot loop.
 - `bench.py` — times the build and the queries, then checks a SHA-256
-  fingerprint of the index's *contents* against a golden value. **Protected.**
+  fingerprint of the index's *contents* against a reference implementation it
+  keeps itself. **Protected.**
 - `corpus.py` — locates the stdlib source. **Protected.**
 
 The fingerprint is the part that makes this a real optimization task rather
@@ -29,6 +30,20 @@ than a benchmark game. An index that is fast because it is wrong fails the
 check, exits non-zero, and is recorded as `failed` — not as a good score. And
 because the fingerprint samples the index itself and not just the ten query
 answers, an index that special-cases the queries is caught too.
+
+**This part was wrong when the recipe was first written**, and CI caught it.
+`bench.py` originally compared against a hash recorded once, on one machine.
+But the corpus is *the running Python's own standard library*, so the
+fingerprint differs on every Python version — five CI jobs produced five
+different values, none of them the recorded one. A golden constant was only
+ever valid where it was computed.
+
+It now compares against a slow, obviously-correct reference implementation
+kept inside `bench.py`. That is the better design anyway: the harness computes
+what the answer should be instead of trusting a number someone wrote down. On
+the machine that recorded this run, the reference produces exactly the hash
+the constant used to hold, so the transcript below is unaffected — the check
+is the same check, computed honestly.
 
 ## Step 1: find out what the metric is worth
 
