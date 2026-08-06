@@ -151,10 +151,14 @@ and was killed with its whole process group.
 That is the third time in this cookbook the same pattern has appeared: after
 a setback, the agent reaches for something bigger. Trial 1 took 71 seconds and
 cut 74% of the runtime. Trials 3 and 4 took 222 and 300+ seconds and produced
-a regression and nothing at all. The
-[`labloop-proposer` skill](../../skills/labloop-proposer/) names this instinct
-explicitly — *escalate specificity, not scope* — and it was installed for this
-run. It did not prevent it.
+a regression and nothing at all.
+
+An earlier draft of the [`labloop-proposer`
+skill](../../skills/labloop-proposer/) told agents not to do this, and the
+skill was installed for this run. It did not prevent it — here or in the two
+other runs where the pattern appeared. That advice has since been removed from
+the skill: one observation for it, three against, is not a basis for
+instructing an agent.
 
 Worth being precise about what the timeout cost: nothing. The budget killed a
 runaway attempt, the tree was restored, and the two good commits were already

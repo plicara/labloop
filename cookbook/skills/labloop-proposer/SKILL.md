@@ -55,22 +55,21 @@ If `$LABLOOP_BRIEF` is unset, fall back to `$LABLOOP_METRIC`, `$LABLOOP_GOAL`,
 `$LABLOOP_INCUMBENT` (empty when nothing has been measured yet) and
 `$LABLOOP_TRIAL`.
 
-## Make one change
+## What a trial can and cannot resolve
 
-One focused change per trial, always. This is not stylistic advice — it is
-what the loop can actually resolve:
+This is mechanism, not advice — it follows from how the loop scores:
 
-- The loop measures the trial, not the edit. Five changes in one trial score
-  as one number, and you learn nothing about which of the five helped.
-- A reverted trial throws away all five. A kept trial commits all five,
-  including the four that hurt and were masked by the one that helped.
-- Large rewrites fail the harness check more often, and a `failed` trial
-  teaches the loop nothing about the idea.
+- **The loop measures the trial, not the edit.** Several changes in one trial
+  produce one number. Nothing in the ledger says which of them moved it.
+- **A verdict applies to everything in the trial.** A revert discards all of
+  it; a keep commits all of it, including changes that hurt and were masked by
+  one that helped.
+- **A `failed` trial produces no metric at all.** Whatever the idea was worth,
+  the run learns nothing about it.
 
-**Observed failure mode:** after three reverts, an agent spent seven times its
-usual thinking budget on a sweeping rewrite and produced its worst result of
-the run. Escalating scope after a revert is the wrong instinct. Escalate
-*specificity* instead.
+What follows for how you work is your judgement. The loop cannot resolve
+attribution within a trial, so if you want to know which of two changes
+helped, they have to be two trials.
 
 ## Do not touch the harness
 

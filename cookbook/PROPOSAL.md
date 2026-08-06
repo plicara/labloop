@@ -173,9 +173,10 @@ dependency, and swapping `claude` for `aider` costs nothing.
 Its content is evidence, not advice. Each rule traces to something a recorded
 run did:
 
-- **One focused change per trial** — after three reverts an agent escalated to
-  a sweeping rewrite, spent 220s against a usual 30s, and produced its worst
-  result of the run.
+- **What a trial can resolve** — the loop scores a trial, not an edit, so it
+  cannot attribute a result to one change among several. Mechanism, not
+  advice: an earlier draft gave the advice too, and three later runs
+  contradicted it.
 - **The `reverted` trap** — when `--min-delta` caused the revert, the brief
   said *"did not beat 0.2245"* about a change that beat it by 31%. Found by
   writing the recipe, and now fixed in `brief.py` with tests; the skill

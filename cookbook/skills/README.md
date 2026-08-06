@@ -42,11 +42,25 @@ A skill fills the gap without closing the door. It is text, it ships in the
 cookbook rather than the package, it adds no dependency, and swapping `claude`
 for `aider` or `codex` costs nothing.
 
-Its content is not invented. It encodes what a recorded run actually did:
+**It is reference, not coaching.** The skills describe how the loop behaves —
+what the nine outcomes mean, what the brief contains, what `--protect` covers,
+how a `--min-delta` revert reads. That content is checkable and an agent
+genuinely lacks it.
 
-- **One focused change per trial.** After three reverts, an agent escalated to
-  a sweeping rewrite, spent seven times its usual thinking budget, and produced
-  its worst result of the run. The skill names that instinct and redirects it.
+They deliberately do *not* tell an agent how to strategise. An earlier draft
+did: it said to make one focused change per trial and to "escalate specificity,
+not scope" after a revert, on the strength of one observed run. Three later
+runs violated that rule *with the skill installed*, so the evidence for it was
+one anecdote and the evidence against it was three. It has been removed rather
+than left in with a caveat — unproven behavioural advice in a skill is
+instruction an agent will follow, and this repository does not ship claims it
+cannot support.
+
+What survives from that section is the mechanism underneath it, which is true
+by construction: the loop scores a trial, not an edit, so it cannot attribute
+a result to one change among several. What an agent does with that is its own
+judgement.
+
 - **The `reverted` trap.** A change can move the metric the right way and still
   be reverted for missing `--min-delta`. On labloop 0.1.0 the brief said
   *"did not beat 0.2245"* about a change that beat it by 31%; that is
