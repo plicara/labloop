@@ -1,0 +1,69 @@
+{
+  "title": "Let Claude Code optimize real code against a real benchmark",
+  "question": "How do I point an actual coding agent at my code and only keep the speedups that are real?",
+  "tier": "narrative",
+  "verify": "python bench.py",
+  "section": "02-proposers",
+  "needs": [
+    "claude-cli",
+    "network"
+  ],
+  "runtime_seconds": 600,
+  "recorded": {
+    "date": "2026-08-05",
+    "labloop": "0.1.0",
+    "agent": "claude CLI, headless (-p, --permission-mode acceptEdits)",
+    "corpus": "CPython stdlib source, 170 files, 4.7 MB",
+    "hardware": "container, shared CPU"
+  },
+  "observed": {
+    "noise_spread": 0.0727,
+    "noise_sd": 0.0269781,
+    "baseline": 0.3342,
+    "trials": [
+      {
+        "index": 1,
+        "seconds": 0.2245,
+        "outcome": "kept"
+      },
+      {
+        "index": 2,
+        "seconds": 0.155,
+        "outcome": "reverted",
+        "reason": "min_delta"
+      },
+      {
+        "index": 3,
+        "seconds": 0.1628,
+        "outcome": "reverted",
+        "reason": "min_delta"
+      },
+      {
+        "index": 4,
+        "seconds": 0.1906,
+        "outcome": "reverted",
+        "reason": "min_delta"
+      },
+      {
+        "index": 5,
+        "seconds": 0.2838,
+        "outcome": "reverted",
+        "reason": "slower"
+      }
+    ],
+    "note": "trials 2-4 were all faster than the incumbent and all discarded by min_delta; trial 5 was genuinely slower",
+    "final": {
+      "kept": 2,
+      "reverted": 4,
+      "best": 0.2245,
+      "best_seen_but_discarded": 0.155
+    }
+  },
+  "teaches": [
+    "the ten lines that turn $LABLOOP_BRIEF into an agent prompt",
+    "measuring wall-clock noise before believing a speedup",
+    "--min-delta and --confirm chosen from a real noise measurement",
+    "protecting a correctness check, not just an eval script"
+  ],
+  "labloop": "0.1.0"
+}

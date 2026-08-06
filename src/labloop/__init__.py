@@ -27,7 +27,7 @@ from .runner import Completed, run_command
 from .types import Experiment, Goal, Outcome, Trial, UsageError
 from .workspace import DirtyTreeError, GitWorkspace, NotAGitRepositoryError, Workspace
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "Completed",

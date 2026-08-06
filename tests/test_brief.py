@@ -193,3 +193,52 @@ def test_the_brief_can_be_turned_off(tmp_path):
     loop = Loop(exp, workdir=tmp_path, ledger=tmp_path / "l.jsonl", workspace=FakeWorkspace())
     loop.run(trials=1)
     assert seen.read_text().strip() == "[unset]"
+
+
+def test_a_win_too_small_for_min_delta_is_not_described_as_a_loss():
+    """The bug this pins: a change that improved the metric was told it did not.
+
+    Found by dogfooding -- an agent optimizing wall-clock time was told
+    "seconds 0.155 did not beat 0.2245" about a change that beat it by 31%,
+    and spent the next trial reaching for something bigger. `did not beat` is
+    false here, and it is the one field the proposer cannot check for itself.
+    """
+    history = [trial(1, Outcome.REVERTED, metric=1.95, incumbent=2.0)]
+    brief = build(experiment(min_delta=0.1), history, index=2, incumbent=2.0)
+    explanation = why(brief, 1)
+    assert "did not beat" not in explanation, (
+        "1.95 did beat 2.0; it was reverted for the margin, not the direction"
+    )
+    assert "beat 2" in explanation
+    assert "0.05" in explanation, "the proposer needs the margin it actually achieved"
+    assert "0.1" in explanation, "and the margin it needed"
+
+
+def test_a_win_too_small_for_min_delta_reads_the_same_when_maximizing():
+    history = [trial(1, Outcome.REVERTED, metric=0.92, incumbent=0.9)]
+    brief = build(
+        experiment(goal=Goal.MAXIMIZE, min_delta=0.1), history, index=2, incumbent=0.9
+    )
+    explanation = why(brief, 1)
+    assert "did not beat" not in explanation
+    assert "0.02" in explanation
+
+
+def test_a_real_regression_still_says_it_did_not_beat_the_incumbent():
+    """min_delta must not soften the message for a change that was worse."""
+    history = [trial(1, Outcome.REVERTED, metric=2.5, incumbent=2.0)]
+    brief = build(experiment(min_delta=0.1), history, index=2, incumbent=2.0)
+    assert why(brief, 1) == "reverted: val_loss 2.5 did not beat 2; lower is better"
+
+
+def test_an_exact_tie_is_still_a_tie_under_min_delta():
+    history = [trial(1, Outcome.REVERTED, metric=2.0, incumbent=2.0)]
+    brief = build(experiment(min_delta=0.1), history, index=2, incumbent=2.0)
+    assert "tied" in why(brief, 1)
+
+
+def test_a_margin_exactly_equal_to_min_delta_is_still_short():
+    """is_better needs the gain to exceed min_delta, so equal is not enough."""
+    history = [trial(1, Outcome.REVERTED, metric=1.9, incumbent=2.0)]
+    brief = build(experiment(min_delta=0.1), history, index=2, incumbent=2.0)
+    assert "did not beat" not in why(brief, 1)

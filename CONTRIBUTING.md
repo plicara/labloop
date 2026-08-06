@@ -16,7 +16,7 @@ that way is a feature. `pytest`, `ruff` and `mypy` are dev-only.
 Everything CI runs, runnable locally:
 
 ```bash
-pytest -q            # the suite; ~230 tests, under 30 seconds
+pytest -q            # the suite; ~255 tests, about 30 seconds
 ruff check .         # lint
 mypy                 # strict, src only; the package ships py.typed
 ```

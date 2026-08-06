@@ -1,0 +1,23 @@
+{
+  "title": "Tune a classifier and watch the loop throw most of it away",
+  "question": "I have a script and a metric. What does a real labloop run actually look like, start to finish?",
+  "tier": "verified",
+  "verify": "python train.py",
+  "section": "01-first-loop",
+  "runtime_seconds": 2,
+  "needs": [],
+  "expect": {
+    "kept": 3,
+    "reverted": 2,
+    "failed": 1,
+    "harness_changed": 1,
+    "best_metric": 0.2651227330068643
+  },
+  "teaches": [
+    "labloop noise before trusting any number",
+    "what --protect catches, and what it does not",
+    "reading $LABLOOP_BRIEF in a proposer",
+    "why a kept commit contains the change and nothing else"
+  ],
+  "labloop": "0.1.0"
+}

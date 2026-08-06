@@ -200,6 +200,10 @@ loop picking a good roll of the dice. The spread is what to clear, but it widens
 with every extra run; the standard deviation is the one to compare against a
 later measurement or another experiment.
 
+Four worked experiments in [the cookbook](cookbook/noise-across-recipes.md)
+measured 22%, 8.9%, 0.3% and 0% on one machine — including two timing
+benchmarks that differ by 70× — so this is not a number to assume.
+
 **Removing the variance is the real fix.** Fix the seed, average over more
 data, hold the split still. Two settings help when you can't:
 

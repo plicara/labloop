@@ -125,6 +125,25 @@ def _why_verdict(trial: Trial, experiment: Experiment) -> str:
             f"reverted: {metric} {trial.metric:.6g} tied the incumbent, and a "
             "tie is not an improvement"
         )
+
+    # A change can move the metric the right way and still be reverted, when
+    # the gain is inside the band `--min-delta` treats as noise. Saying "did
+    # not beat" there is false, and it is the one thing the proposer cannot
+    # check for itself: it sends an agent away from a direction that worked.
+    if (
+        experiment.min_delta
+        and trial.metric is not None
+        and trial.incumbent is not None
+        and goal.is_better(trial.metric, trial.incumbent)
+    ):
+        gain = abs(trial.incumbent - trial.metric)
+        return (
+            f"reverted: {metric} {trial.metric:.6g} beat {trial.incumbent:.6g} "
+            f"by {gain:.6g}, but --min-delta needs more than "
+            f"{experiment.min_delta:.6g}; the direction worked, the margin was "
+            "too small to trust"
+        )
+
     direction = "lower" if goal is Goal.MINIMIZE else "higher"
     return (
         f"reverted: {metric} {trial.metric:.6g} did not beat "
