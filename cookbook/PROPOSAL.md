@@ -211,6 +211,15 @@ cookbook/01-first-loop/tune-a-classifier/
 stay that way, `tomllib` is 3.11+ while we support 3.10, and JSON Lines is
 already the house format.
 
+*Built: `tests/test_cookbook.py`, running in CI on every supported Python.*
+
+**Every recipe's harness is verified, whatever tier its trajectory is.** The
+tier system was honest about what cannot be re-run, and it left four of five
+recipes with nothing guarding them. Splitting the two halves closes that:
+*whether the agent did well* needs an agent, but *whether the harness still
+runs* is deterministic code, and it is the half that rots. Each recipe
+declares a `verify` command and it runs regardless of tier.
+
 **The ledger is the test oracle.** `recipe.json` declares what the run should
 produce, and CI checks the ledger against it:
 

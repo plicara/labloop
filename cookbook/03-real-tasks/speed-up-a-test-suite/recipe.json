@@ -2,6 +2,7 @@
   "title": "Speed up a test suite without shrinking it",
   "question": "How do I let an agent make my tests faster without letting it delete the slow ones?",
   "tier": "narrative",
+  "verify": "python bench.py",
   "section": "03-real-tasks",
   "needs": [
     "claude-cli",

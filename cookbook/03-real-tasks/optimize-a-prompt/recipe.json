@@ -2,6 +2,7 @@
   "title": "Optimize a prompt against a held-out eval set",
   "question": "How do I let an agent rewrite a prompt without it learning the answer key?",
   "tier": "narrative",
+  "verify": "python -c 'import evaluate, eval_set; evaluate.selftest(); eval_set.check()'",
   "section": "03-real-tasks",
   "needs": [
     "claude-cli",

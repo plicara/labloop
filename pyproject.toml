@@ -57,6 +57,7 @@ include = [
   "src/labloop",
   "tests",
   "experiments",
+  "cookbook",
   "README.md",
   "CHANGELOG.md",
   "ROADMAP.md",

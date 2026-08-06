@@ -77,3 +77,28 @@ CASES = [
 CATEGORIES = ["billing", "shipping", "technical", "account", "refund", "other"]
 URGENCIES = ["low", "normal", "high"]
 FIELDS = ["category", "urgency", "order_id"]
+
+
+def check():
+    """The answer key is internally consistent. Run before scoring anything.
+
+    A label outside the allowed set is unreachable: no prompt can produce it,
+    so that case scores zero forever and the ceiling silently drops below 1.0.
+    Cheap to check, and invisible if you don't.
+    """
+    for message, gold in CASES:
+        if sorted(gold) != sorted(FIELDS):
+            raise SystemExit(f"case {message[:40]!r} does not label every field: {sorted(gold)}")
+        if gold["category"] not in CATEGORIES:
+            raise SystemExit(f"unknown category {gold['category']!r} on {message[:40]!r}")
+        if gold["urgency"] not in URGENCIES:
+            raise SystemExit(f"unknown urgency {gold['urgency']!r} on {message[:40]!r}")
+
+    # Every category and urgency should actually appear, or the set is not
+    # exercising the distinctions the prompt is being asked to make.
+    for value in CATEGORIES:
+        if not any(g["category"] == value for _, g in CASES):
+            raise SystemExit(f"no case has category {value!r}")
+    for value in URGENCIES:
+        if not any(g["urgency"] == value for _, g in CASES):
+            raise SystemExit(f"no case has urgency {value!r}")

@@ -2,6 +2,7 @@
   "title": "Tune a classifier and watch the loop throw most of it away",
   "question": "I have a script and a metric. What does a real labloop run actually look like, start to finish?",
   "tier": "verified",
+  "verify": "python train.py",
   "section": "01-first-loop",
   "runtime_seconds": 2,
   "needs": [],

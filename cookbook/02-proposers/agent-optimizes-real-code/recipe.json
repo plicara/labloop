@@ -2,6 +2,7 @@
   "title": "Let Claude Code optimize real code against a real benchmark",
   "question": "How do I point an actual coding agent at my code and only keep the speedups that are real?",
   "tier": "narrative",
+  "verify": "python bench.py",
   "section": "02-proposers",
   "needs": [
     "claude-cli",

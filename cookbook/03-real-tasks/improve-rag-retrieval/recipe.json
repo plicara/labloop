@@ -2,6 +2,7 @@
   "title": "Improve retrieval quality on a real corpus",
   "question": "How do I tune a retriever against a real query set without tuning it to the answers?",
   "tier": "narrative",
+  "verify": "python evaluate.py",
   "section": "03-real-tasks",
   "needs": [
     "claude-cli",
