@@ -255,21 +255,22 @@ proposer has no way to detect that. A min-delta revert wants its own sentence
 — *beat 0.2245 but only by 0.0695, and 0.0727 is required* — which is both
 true and actionable, where the current message is neither.
 
-The recipe records it because it is what the run actually produced. A fix is
-small — `_why_verdict` has `experiment.min_delta` in hand already:
+**This has since been fixed** (`brief.py`, with tests in
+`tests/test_brief.py`). The same trial now reads:
 
-```python
-if experiment.min_delta and _improved(trial.metric, trial.incumbent, goal):
-    gain = abs(trial.incumbent - trial.metric)
-    return (
-        f"reverted: {metric} {trial.metric:.6g} beat {trial.incumbent:.6g} "
-        f"by {gain:.6g}, but {experiment.min_delta:.6g} is required because "
-        "the experiment is that noisy"
-    )
+```
+reverted: seconds 0.155 beat 0.2245 by 0.0695, but --min-delta needs more
+than 0.0727; the direction worked, the margin was too small to trust
 ```
 
-That sentence is true, and it tells the agent to push harder in the same
-direction rather than to abandon it.
+That sentence is true, and it tells the agent to push further in the same
+direction rather than to abandon it. Real regressions and exact ties are
+unchanged — the new wording only fires when the metric genuinely moved the
+right way.
+
+The transcript above is left as it was recorded, because it is what the run
+produced and because the bug is the reason the recipe found anything worth
+reporting.
 
 Swap `claude` for `aider`, `codex`, or a script that calls an API, and nothing
 else in this recipe changes. That is the contract the roadmap means when it

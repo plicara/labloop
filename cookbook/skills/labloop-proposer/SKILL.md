@@ -119,16 +119,24 @@ Each label sends you somewhere different. This is why there are nine of them.
 
 ### The `reverted` trap
 
-A `why` of the form *"did not beat 0.2245; lower is better"* does **not** always
-mean your change was worse. When the loop runs with `--min-delta`, a change
-that genuinely improved the metric is still reverted if the gain is smaller
-than the threshold — and the message reads identically.
+A change can move the metric the *right* way and still be reverted, when the
+gain is inside the band `--min-delta` treats as noise. Current labloop says so
+outright:
 
-Check it yourself: compare `history[-1].metric` against the `incumbent` at the
-time. If your number was *better* but reverted, the change worked and was
-merely too small to be believed over the experiment's noise. **Push further in
-the same direction.** Do not abandon it, and do not conclude the opposite of
-what happened.
+```
+reverted: seconds 0.155 beat 0.2245 by 0.0695, but --min-delta needs more
+than 0.0727; the direction worked, the margin was too small to trust
+```
+
+When you see that, **push further in the same direction.** The change worked;
+it was too small to be believed over the experiment's noise. Do not abandon
+it, and do not switch strategy.
+
+On labloop 0.1.0 and earlier the same trial read *"did not beat 0.2245; lower
+is better"*, which is false and points the wrong way. If you are on an older
+version, check the arithmetic yourself: compare `history[-1].metric` against
+the `incumbent` at the time, and if your number was better, treat it as the
+message above.
 
 ## Do not leave notes for yourself
 

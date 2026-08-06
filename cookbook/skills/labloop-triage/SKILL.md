@@ -28,9 +28,10 @@ print(c.most_common())"
 
 **Mostly `reverted`, metrics close to the incumbent.** The proposals are real
 but small. Check whether `--min-delta` is set: a change that beat the incumbent
-by less than the threshold is reverted, and the message reads *"did not beat
-X"* even though it did. Compare each reverted trial's metric against the
-incumbent at the time:
+by less than the threshold is reverted, and current labloop says so in the
+`why` (*"beat X by Y, but --min-delta needs more than Z"*). On 0.1.0 and
+earlier it said *"did not beat X"* instead, so on an older ledger compare each
+reverted trial's metric against the incumbent yourself:
 
 ```bash
 labloop log --json | python -c "

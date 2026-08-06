@@ -1,10 +1,10 @@
 # Proposal: a labloop cookbook
 
-**Status: proposal, with one recipe built.**
-[`01-first-loop/tune-a-classifier/`](01-first-loop/tune-a-classifier/) is
-finished and runs — read that first. It is what every entry in the catalog
-below should look like. The rest of this document is the catalog and the
-argument.
+**Status: five recipes built, catalog below is what is not.**
+Start with [`02-proposers/agent-optimizes-real-code/`](02-proposers/agent-optimizes-real-code/)
+— a real agent on real code — then the three in
+[`03-real-tasks/`](03-real-tasks/). [`cookbook/README.md`](README.md) is the
+generated index. The rest of this document is the argument and the backlog.
 
 ## What a recipe is here
 
@@ -60,9 +60,9 @@ metric is treacherous: wall-clock time is noisy, so most "speedups" are dice.
   An identifier index over 4.7 MB of CPython stdlib source. Metric: seconds.
   Real agent, real 22% measurement noise, `--min-delta` and `--confirm`
   chosen from the measurement rather than from taste.
-- **Speed up a test suite without breaking it** — metric: `pytest` wall-clock,
-  with the suite's own pass/fail as the protected harness. The natural cheat
-  (skip the slow tests) is what `--protect` is for.
+- **Speed up a test suite without shrinking it** — *built*
+  ([03-real-tasks](03-real-tasks/speed-up-a-test-suite/)). 10.54s to 0.48s.
+  The protect set is a property of the run, not a file hash.
 - **Cut memory, not time** — same loop, metric from `tracemalloc` peak. Shows
   that "the metric" need not be time or loss, and what changes when the metric
   is perfectly deterministic (spoiler: you can drop `--confirm`).
@@ -92,13 +92,12 @@ of these; it should not be the front door.
 Real 2026 work, and a place where the metric is an eval score rather than a
 number a program computes about itself.
 
-- **Optimize a prompt against a real eval set** — the agent edits the prompt
-  file; metric: accuracy over held-out cases. The eval set and grader are
-  protected, and this is the recipe where memorising the answers is a live
-  risk rather than a hypothetical.
-- **Make a RAG pipeline retrieve better** — metric: recall@k on a real query
-  set. Chunking, embedding choice, and reranking are all in scope for the
-  agent; the queries and judgments are not.
+- **Optimize a prompt against a real eval set** — *built*
+  ([03-real-tasks](03-real-tasks/optimize-a-prompt/)). 0.29 to 0.89, and the
+  recipe leads with the harness bug that was scoring nothing.
+- **Improve retrieval quality on a real corpus** — *built*
+  ([03-real-tasks](03-real-tasks/improve-rag-retrieval/)). nDCG 0.25 to 0.54,
+  including a diagnosis of mine that the data disproved.
 - **Cut token cost at fixed quality** — two numbers, one loop: cost is the
   metric, and a quality floor lives in the harness as a hard failure. The
   worked answer to "labloop only optimises one thing".
@@ -177,10 +176,10 @@ run did:
 - **One focused change per trial** — after three reverts an agent escalated to
   a sweeping rewrite, spent 220s against a usual 30s, and produced its worst
   result of the run.
-- **The `reverted` trap** — when `--min-delta` causes the revert, the brief
-  says *"did not beat 0.2245"* even though the change did beat it. Until
-  `brief.py` is fixed, the agent has to check the arithmetic itself, so the
-  skill tells it to.
+- **The `reverted` trap** — when `--min-delta` caused the revert, the brief
+  said *"did not beat 0.2245"* about a change that beat it by 31%. Found by
+  writing the recipe, and now fixed in `brief.py` with tests; the skill
+  teaches the current message and the older-version workaround.
 - **The nine outcomes as a routing table** — measured, not asserted
   (`experiments/outcome_granularity/`, p < 0.01 against no labels).
 

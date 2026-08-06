@@ -47,10 +47,11 @@ Its content is not invented. It encodes what a recorded run actually did:
 - **One focused change per trial.** After three reverts, an agent escalated to
   a sweeping rewrite, spent seven times its usual thinking budget, and produced
   its worst result of the run. The skill names that instinct and redirects it.
-- **The `reverted` trap.** When `--min-delta` causes the revert, the brief says
-  *"did not beat 0.2245"* even when the change did beat it and merely missed
-  the threshold. Until that is fixed in `brief.py`, an agent needs to check the
-  numbers itself — so the skill tells it to, with the comparison spelled out.
+- **The `reverted` trap.** A change can move the metric the right way and still
+  be reverted for missing `--min-delta`. On labloop 0.1.0 the brief said
+  *"did not beat 0.2245"* about a change that beat it by 31%; that is
+  [now fixed](../../src/labloop/brief.py), and the skill teaches both the
+  current message and the check to run on older versions.
 - **The nine outcomes as a routing table.** Each label sends you somewhere
   different; that is measured, not asserted
   (`experiments/outcome_granularity/`, p < 0.01 against no labels).

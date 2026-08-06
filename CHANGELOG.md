@@ -35,6 +35,14 @@ replaced it.
   measured on pure noise over 400 replicated runs: fabricated improvement
   falls from 23.5% to 9.9% with both, for 10% more compute. Neither makes
   a noisy metric safe, and the docs say so.
+- A `--min-delta` revert says so. It used to tell the proposer
+  `seconds 0.155 did not beat 0.2245` about a change that beat it by 31%,
+  because the explanation compared metric to incumbent and never mentioned
+  the threshold. Found by dogfooding: the agent that read it abandoned a
+  direction that was working and spent its next trial on a wilder rewrite
+  that scored worse. It now reads `beat 0.2245 by 0.0695, but --min-delta
+  needs more than 0.0727; the direction worked, the margin was too small to
+  trust`. Real regressions and exact ties are unchanged.
 - Non-finite metrics never become the incumbent: one `nan` used to freeze
   the loop permanently, reverting every later improvement while `best`
   reported nan.
