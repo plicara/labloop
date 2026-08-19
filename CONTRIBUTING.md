@@ -57,6 +57,25 @@ Before "fixing" one, check whether a test asserts it on purpose:
 
 Changing any of these is a design discussion, not a cleanup.
 
+## Releasing
+
+`scripts/publish.sh` cuts a release. It refuses before it does anything
+irreversible — wrong branch, dirty tree, diverged from origin, tag already
+taken, version already on PyPI — then runs the suite, builds, and drives the
+built wheel end to end in a clean venv, because `twine check` validates
+metadata and not that the wheel contains the package.
+
+```bash
+scripts/publish.sh --dry-run     # rehearse; touches nothing
+scripts/publish.sh --rehearse    # upload to TestPyPI on the way
+scripts/publish.sh               # date the changelog, commit, tag, push
+```
+
+It stops at the tag. Publishing to PyPI happens when you create the GitHub
+Release, which is what `publish.yml` triggers on — a version number is
+permanent, so the last step before one becomes permanent is a human reading
+the release notes.
+
 ## Commit messages
 
 Explain *why*, in prose, the way the existing history does. The subject
