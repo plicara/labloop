@@ -43,7 +43,8 @@
 
 ## 0.1.0 — 2026-08-02
 
-First release. Everything below was built and then used in anger before
+First release, published to PyPI as `labloop` and tagged `v0.1.0`.
+Everything below was built and then used in anger before
 shipping: the loop was pointed at real experiment shapes — a regression
 task, a timing benchmark, a checkpoint-heavy training script, a pure-noise
 metric — and every bug that surfaced is listed here with the behavior that
@@ -134,4 +135,8 @@ refused by a pre-commit hook taking the run down with an empty ledger;
 the index), wedging the tree permanently; a relative `--ledger` resolving
 against the shell's cwd and silently splitting the record; one budget
 covering both the agent and the experiment; and a proposal killed at the
-budget reported as failed rather than timed out.
+budget reported as failed rather than timed out. Plus two found after the
+changelog was first written: a typo'd `--direction` silently creating a
+phantom direction, and `resume` refused when the newest manifest was a
+baseline. And from release review: `labloop run` outside a git repository
+now names the fix instead of tracebacking.
