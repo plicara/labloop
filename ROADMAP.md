@@ -1,9 +1,8 @@
-# Roadmap to 0.1.0
+# Roadmap
 
-What has to exist before this ships as a package rather than a concept.
-Ordered: each stage builds on the one before it, and release is last on
-purpose. PyPI version numbers are permanent and the name is claimed on first
-publish, so nothing goes out until the list above it is done.
+Stages 1–6 below shipped as `labloop` 0.1.0 on PyPI (2026-08-02, tag
+`v0.1.0`). They are kept with their shipped notes as the record of what the
+release contains; the open list is at the bottom.
 
 The positioning this serves: autoresearch proved the keep-or-revert loop on
 one task (nanochat, `val_bpb`, one GPU, one thread of commits). labloop
@@ -117,7 +116,7 @@ jq". Minimum honest version:
   refuses when the two directions' harness digests differ. Each README
   example has a test running the same command.
 
-## 6. Release engineering
+## 6. Release engineering · **done**
 
 - Rehearse on TestPyPI: build, upload, `pip install` into a clean venv on
   3.10 and 3.13, run the CI smoke script against the installed wheel.
@@ -126,6 +125,20 @@ jq". Minimum honest version:
 - Configure PyPI trusted publishing exactly as `publish.yml`'s header
   documents; tag `v0.1.0`; verify the published wheel with the same smoke
   script. A pending publisher does not reserve the name — publish claims it.
+- Shipped: v0.1.0 on PyPI via trusted publishing from the release event,
+  SPDX license metadata (hatchling ≥ 1.27), 3.10–3.14 tested, cold-install
+  smoke from PyPI passing on every command.
+
+## After 0.1.0, in rough order
+
+1. **Simultaneous direction runs** — the one deliberate gap in stage 3:
+   runs still serialize on the per-run ledger lock. Needs per-append
+   locking with index coordination.
+2. **Version-bump guard** — the publish workflow should refuse to run when
+   the version in `__init__.py` already exists on PyPI, so a forgotten
+   bump fails at the gate instead of mid-publish.
+3. **Windows CI** — the msvcrt lock path is shipped best-effort and
+   untested; a windows-latest matrix entry would make it a claim.
 
 ## Not doing, and why
 
