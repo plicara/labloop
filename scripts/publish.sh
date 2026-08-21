@@ -19,7 +19,7 @@ set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-REPO="foothills-labs/labloop"
+REPO="plicara/labloop"
 PACKAGE="labloop"
 BRANCH="main"
 VERSION_FILE="src/labloop/__init__.py"

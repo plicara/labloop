@@ -4,7 +4,7 @@
 #   1. GitHub -> Settings -> Environments -> create an environment named `pypi`.
 #   2. PyPI -> Your projects -> Publishing -> Add a pending publisher:
 #        Project name:  labloop
-#        Owner / Repo:  foothills-labs / labloop
+#        Owner / Repo:  plicara / labloop
 #        Workflow:      publish.yml
 #        Environment:   pypi
 #

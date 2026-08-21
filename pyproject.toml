@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
-authors = [{ name = "Foothills Labs" }]
+authors = [{ name = "Plicara Labs" }]
 keywords = ["research", "experiments", "agents", "machine-learning", "ablation"]
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -31,11 +31,11 @@ dev = ["pytest>=8.0", "ruff>=0.6", "mypy>=1.10"]
 labloop = "labloop.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/foothills-labs/labloop"
-Repository = "https://github.com/foothills-labs/labloop"
-Issues = "https://github.com/foothills-labs/labloop/issues"
-Changelog = "https://github.com/foothills-labs/labloop/blob/main/CHANGELOG.md"
-Roadmap = "https://github.com/foothills-labs/labloop/blob/main/ROADMAP.md"
+Homepage = "https://github.com/plicara/labloop"
+Repository = "https://github.com/plicara/labloop"
+Issues = "https://github.com/plicara/labloop/issues"
+Changelog = "https://github.com/plicara/labloop/blob/main/CHANGELOG.md"
+Roadmap = "https://github.com/plicara/labloop/blob/main/ROADMAP.md"
 
 [build-system]
 # hatchling 1.27 is the floor for PEP 639: below it, `license = "Apache-2.0"`
