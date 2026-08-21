@@ -3,7 +3,7 @@
 ## Setup
 
 ```bash
-git clone https://github.com/foothills-labs/labloop
+git clone https://github.com/plicara/labloop
 cd labloop
 pip install -e ".[dev]"
 ```
