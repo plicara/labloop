@@ -15,7 +15,8 @@ import pytest
 
 from labloop.cli import main
 
-from .conftest import run_git as git  # noqa: E402
+from .conftest import replace_text  # noqa: E402
+from .conftest import run_git as git
 
 
 def ledger(project):
@@ -165,7 +166,7 @@ def test_run_artifacts_are_not_committed_and_do_not_linger(project, capsys):
             "--metric",
             "val_loss",
             "--propose",
-            r"sed -i 's/= 1\.0/= 0.5/' train.py",
+            replace_text("train.py", "= 1.0", "= 0.5"),
         ]
     )
     assert code == 0

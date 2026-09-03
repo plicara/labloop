@@ -13,7 +13,8 @@ import pytest
 
 from labloop.cli import main
 
-from .conftest import run_git as git  # noqa: E402
+from .conftest import replace_text  # noqa: E402
+from .conftest import run_git as git
 
 
 @pytest.fixture
@@ -89,7 +90,7 @@ def busy_project(empty_repo, capsys):
             "--metric",
             "val_loss",
             "--propose",
-            "sed -i 's/LR = 0.5/LR = 0.1/' labloop-example.py",
+            replace_text("labloop-example.py", "LR = 0.5", "LR = 0.1"),
         ]
     )
     main(
@@ -100,7 +101,7 @@ def busy_project(empty_repo, capsys):
             "--metric",
             "val_loss",
             "--propose",
-            "sed -i 's/LR = 0.1/LR = 0.4/' labloop-example.py",
+            replace_text("labloop-example.py", "LR = 0.1", "LR = 0.4"),
         ]
     )
     capsys.readouterr()
@@ -146,7 +147,7 @@ def test_compare_reports_two_directions_side_by_side(busy_project, capsys):
             "--direction",
             "alt",
             "--propose",
-            "sed -i 's/LR = .*/LR = 0.05/' labloop-example.py",
+            replace_text("labloop-example.py", "LR = 0.4", "LR = 0.05"),
         ]
     )
     capsys.readouterr()

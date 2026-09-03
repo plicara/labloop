@@ -7,7 +7,9 @@ command line end to end in test_cli.py.
 
 from __future__ import annotations
 
+import shlex
 import subprocess
+import sys
 
 import pytest
 
@@ -19,6 +21,16 @@ def run_git(*args, cwd):
     return subprocess.run(
         ["git", *args], cwd=cwd, check=True, capture_output=True, text=True
     ).stdout
+
+
+def replace_text(path: str, old: str, new: str) -> str:
+    """Return a portable shell command that replaces text in one file."""
+    code = (
+        "from pathlib import Path; "
+        f"p=Path({path!r}); "
+        f"p.write_text(p.read_text().replace({old!r}, {new!r}))"
+    )
+    return f"{shlex.quote(sys.executable)} -c {shlex.quote(code)}"
 
 
 @pytest.fixture
