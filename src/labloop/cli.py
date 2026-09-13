@@ -13,6 +13,7 @@ from .integrity import HarnessMismatchError, NoProtectedFilesError
 from .ledger import Ledger
 from .lock import LedgerLockedError
 from .loop import Loop, StalledError
+from .sandbox import resolve_sandbox
 from .types import Experiment, Goal, Outcome, Trial, UsageError
 from .workspace import DirtyTreeError, GitIdentityError, NotAGitRepositoryError
 
@@ -162,6 +163,18 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         metavar="TEXT",
         help="who or what proposes these trials, e.g. a model name (recorded in the manifest)",
+    )
+    run.add_argument(
+        "--sandbox",
+        choices=["none", "auto", "bwrap", "docker"],
+        default="none",
+        help="confine the propose step to the worktree (OS isolation; default none)",
+    )
+    run.add_argument(
+        "--sandbox-exec",
+        default=None,
+        metavar="TEMPLATE",
+        help="custom sandbox template containing {command} and optional {workdir}",
     )
 
     noise = sub.add_parser(
@@ -426,6 +439,14 @@ def _fork_point(ledger: Ledger, index: int, ledger_path: Path) -> Trial:
     return trial
 
 
+def _sandbox_template(args: argparse.Namespace) -> str | None:
+    """Resolve --sandbox/--sandbox-exec to a template string, recorded in the spec."""
+    resolved = resolve_sandbox(
+        getattr(args, "sandbox", None), getattr(args, "sandbox_exec", None)
+    )
+    return resolved.template if resolved is not None else None
+
+
 def _experiment_command(args: argparse.Namespace) -> int:
     workdir, _ = _paths(args)
 
@@ -442,6 +463,7 @@ def _experiment_command(args: argparse.Namespace) -> int:
         give_up_after=getattr(args, "give_up_after", 0),
         propose_budget=getattr(args, "propose_budget", None),
         label=getattr(args, "label", None),
+        sandbox=_sandbox_template(args),
     )
     loop = Loop(
         experiment,

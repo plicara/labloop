@@ -138,6 +138,13 @@ class Experiment:
     Recorded in the manifest so the ledger says which setup produced each
     trial. Free text, not identity: it claims nothing and proves nothing.
     """
+    sandbox: str | None = None
+    """An OS-isolation template for the propose step, or None (no isolation).
+
+    A command template containing `{command}` and optional `{workdir}` that
+    confines the untrusted propose step to the worktree (see `sandbox.py`).
+    Recorded in the manifest so a run says how it was isolated.
+    """
 
     @property
     def propose_timeout(self) -> float:
@@ -169,6 +176,7 @@ class Experiment:
             "give_up_after": self.give_up_after,
             "propose_budget": self.propose_budget,
             "label": self.label,
+            "sandbox": self.sandbox,
         }
 
     @classmethod
@@ -195,6 +203,11 @@ class Experiment:
             if "\n" in self.label or "\r" in self.label:
                 raise UsageError("label must be a single line")
             self.label = self.label.strip()
+        if self.sandbox is not None:
+            if not isinstance(self.sandbox, str) or "{command}" not in self.sandbox:
+                raise UsageError(
+                    "sandbox template must be a string containing '{command}'"
+                )
         if isinstance(self.goal, str):
             self.goal = Goal(self.goal)
         if isinstance(self.protect, str):
