@@ -48,10 +48,15 @@ def run_command(
     # Keep bytecode out of the tree: a proposing command that imports a module
     # under a protected dir would otherwise write __pycache__/*.pyc inside it,
     # moving the harness digest so every trial reads as harness_changed. The
-    # prefix must be FRESH per invocation, not a fixed path: a fixed mirror is
-    # predictable, lives outside every protected pattern, and a proposing
-    # command could plant a forged .pyc there for this run to read. It is
-    # removed afterwards. A caller value wins; "" counts as unset.
+    # prefix is FRESH per invocation so a *static* plant at a fixed path cannot
+    # be read, and it is removed afterwards. A caller value wins; "" counts as
+    # unset.
+    #
+    # This is a raised bar, not a boundary. A same-user process can discover the
+    # prefix under /tmp and race to plant a forged .pyc before the import; and
+    # labloop cannot sandbox an arbitrary shell command. For an adversarial
+    # proposer, run the loop under OS isolation (container/namespace) so the
+    # propose step can write only the worktree.
     cache_dir: str | None = None
     if not merged_env.get("PYTHONPYCACHEPREFIX"):
         cache_dir = tempfile.mkdtemp(prefix="labloop-pycache-")
