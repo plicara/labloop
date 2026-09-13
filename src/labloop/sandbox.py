@@ -24,8 +24,9 @@ bytecode mirror labloop itself creates under `/tmp` must not be writable by the
 proposer, or the race this feature exists to close comes back. Scratch is
 redirected inside the worktree.
 
-Nothing here runs unless you ask: `--sandbox none` (the default) is exactly the
-0.3.0 behaviour. `--sandbox auto` is the recommended setting. When isolation is
+The CLI defaults to `--sandbox auto`; `--sandbox none` restores the earlier
+behaviour. The network is off by default and turned on with `--sandbox-network`,
+so a compromised proposer cannot exfiltrate what it reads. When isolation is
 requested and no backend is available the loop refuses to start rather than
 running unconfined — a silent fail-open is worse than an error.
 """
@@ -70,7 +71,7 @@ class TemplateSandbox:
     name: str
     template: str
 
-    def wrap(self, command: str, worktree: str) -> str:
+    def wrap(self, command: str, worktree: str, network: bool = False) -> str:
         return self.template.replace("{workdir}", worktree).replace("{command}", command)
 
 
@@ -80,12 +81,13 @@ class BwrapSandbox:
 
     name: str = "bwrap"
 
-    def wrap(self, command: str, worktree: str) -> str:
+    def wrap(self, command: str, worktree: str, network: bool = False) -> str:
         wt = shlex.quote(worktree)
         scratch = shlex.quote(os.path.join(worktree, _SCRATCH))
+        net = "" if network else "--unshare-net "
         return (
             f"mkdir -p {scratch} && exec bwrap --die-with-parent --ro-bind / / "
-            f"--dev /dev --proc /proc --bind {wt} {wt} --bind {scratch} /tmp "
+            f"--dev /dev --proc /proc {net}--bind {wt} {wt} --bind {scratch} /tmp "
             f"--chdir {wt} --setenv TMPDIR /tmp -- "
             f"{_SHELL} -c {shlex.quote(command)}"
         )
@@ -98,10 +100,11 @@ class LandlockSandbox:
     python: str = sys.executable
     name: str = "landlock"
 
-    def wrap(self, command: str, worktree: str) -> str:
+    def wrap(self, command: str, worktree: str, network: bool = False) -> str:
+        net = "on" if network else "off"
         return (
-            f"{shlex.quote(self.python)} -m labloop._landlock {shlex.quote(worktree)} -- "
-            f"{_SHELL} -c {shlex.quote(command)}"
+            f"{shlex.quote(self.python)} -m labloop._landlock {shlex.quote(worktree)} "
+            f"--network {net} -- {_SHELL} -c {shlex.quote(command)}"
         )
 
 
@@ -111,8 +114,7 @@ _SEATBELT_PROFILE = """(version 1)
 (allow signal (target self))
 (allow sysctl-read)
 (allow mach-lookup)
-(allow network*)
-(allow file-read*)
+{network}(allow file-read*)
 (allow file-write* (subpath "{worktree}"))
 (allow file-write-data (literal "/dev/null") (literal "/dev/stdout")
                     (literal "/dev/stderr") (literal "/dev/tty")
@@ -126,8 +128,10 @@ class SeatbeltSandbox:
 
     name: str = "seatbelt"
 
-    def wrap(self, command: str, worktree: str) -> str:
-        profile = _SEATBELT_PROFILE.format(worktree=worktree)
+    def wrap(self, command: str, worktree: str, network: bool = False) -> str:
+        profile = _SEATBELT_PROFILE.format(
+            worktree=worktree, network="(allow network*)\n" if network else ""
+        )
         scratch = shlex.quote(os.path.join(worktree, _SCRATCH))
         return (
             f"mkdir -p {scratch} && exec env TMPDIR={scratch} "
@@ -143,13 +147,14 @@ class DockerSandbox:
     image: str = "python:3.12-slim"
     name: str = "docker"
 
-    def wrap(self, command: str, worktree: str) -> str:
+    def wrap(self, command: str, worktree: str, network: bool = False) -> str:
         wt = shlex.quote(worktree)
+        net = "bridge" if network else "none"
         return (
             f"exec docker run --rm --init --read-only --cap-drop=ALL "
             f"--security-opt=no-new-privileges --pids-limit 2048 "
             f"-v {wt}:{wt}:rw -w {wt} --tmpfs /tmp:rw,exec,nosuid,nodev "
-            f"-e TMPDIR=/tmp --network bridge "
+            f"-e TMPDIR=/tmp --network {net} "
             f"{self.image} {_SHELL} -c {shlex.quote(command)}"
         )
 

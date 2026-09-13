@@ -172,3 +172,14 @@ def test_caller_pycacheprefix_wins(tmp_path, monkeypatch):
         env={"PYTHONPYCACHEPREFIX": "/custom/prefix"},
     )
     assert completed.output.strip() == "/custom/prefix"
+
+
+def test_a_shadow_package_moves_the_digest(tmp_path):
+    # `import mod` prefers mod/__init__.py over mod.py; protecting only the file
+    # would miss the package that replaces its behaviour.
+    write(tmp_path, "mod.py", "value = 1\n")
+    before = harness_digest(tmp_path, ["mod.py"])
+    write(tmp_path, "mod/__init__.py", "value = 999\n")
+    after = harness_digest(tmp_path, ["mod.py"])
+    assert before != after
+    assert "mod/__init__.py" in harness_files(tmp_path, ["mod.py"])

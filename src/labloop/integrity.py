@@ -162,6 +162,19 @@ def _matching(root: Path, patterns: Sequence[str]) -> set[str]:
                 )
             elif path.is_file():
                 names.add(path.relative_to(root).as_posix())
+
+    # A protected module can be shadowed by a package directory of the same
+    # name: `import x` prefers `x/__init__.py` over `x.py`. Digest that
+    # would-be package too, so creating one shows up as the harness changing
+    # rather than as a silent replacement of the protected file's behaviour.
+    for name in list(names):
+        if not name.endswith(".py"):
+            continue
+        shadow = root / name[:-3]
+        if shadow.is_dir():
+            for child in shadow.rglob("*"):
+                if child.is_file() and not child.is_symlink():
+                    names.add(child.relative_to(root).as_posix())
     return names
 
 

@@ -44,6 +44,10 @@ _MAKE_CHAR, _MAKE_DIR, _MAKE_REG = 1 << 6, 1 << 7, 1 << 8
 _MAKE_SOCK, _MAKE_FIFO, _MAKE_BLOCK, _MAKE_SYM = 1 << 9, 1 << 10, 1 << 11, 1 << 12
 _REFER, _TRUNCATE, _IOCTL_DEV = 1 << 13, 1 << 14, 1 << 15
 
+# Network access rights (linux/landlock.h, ABI 4+). Handling them without
+# granting them denies them.
+_NET_BIND_TCP, _NET_CONNECT_TCP = 1 << 0, 1 << 1
+
 
 def _libc() -> ctypes.CDLL:
     try:
@@ -80,8 +84,12 @@ def _handled_access(abi: int) -> int:
     return handled
 
 
-def confine(worktree: str, argv: list[str]) -> None:
-    """Apply Landlock (write only beneath `worktree`) and exec `argv`."""
+def confine(worktree: str, argv: list[str], network: bool = False) -> None:
+    """Apply Landlock (write only beneath `worktree`) and exec `argv`.
+
+    `network` False blocks TCP connect/bind (needs Landlock ABI 4+); True leaves
+    the network untouched.
+    """
     libc = _libc()
     syscall = libc.syscall
     syscall.restype = ctypes.c_long
@@ -103,7 +111,15 @@ def confine(worktree: str, argv: list[str]) -> None:
     os.environ["TMPDIR"] = os.environ["TMP"] = os.environ["TEMP"] = scratch
 
     handled = _handled_access(abi)
-    attr = _RulesetAttr(handled, 0, 0)
+    handled_net = 0
+    if not network:
+        if abi < 4:
+            _die(
+                "this kernel's Landlock cannot restrict the network (ABI < 4) but the "
+                "network was asked to be off; refusing to run with it open"
+            )
+        handled_net = _NET_BIND_TCP | _NET_CONNECT_TCP
+    attr = _RulesetAttr(handled, handled_net, 0)
     ruleset_fd, err = -1, 0
     for size in (24, 16, 8):  # shrink for kernels whose attr is smaller
         ruleset_fd, err = call(_NR_CREATE, ctypes.byref(attr), ctypes.c_size_t(size),
@@ -145,12 +161,19 @@ def confine(worktree: str, argv: list[str]) -> None:
 
 def main(argv: list[str] | None = None) -> None:
     args = list(sys.argv[1:] if argv is None else argv)
+    network = True  # default open; the caller passes --network off to block it
+    if "--network" in args:
+        index = args.index("--network")
+        if index + 1 >= len(args) or args[index + 1] not in ("on", "off"):
+            _die("--network takes 'on' or 'off'", 2)
+        network = args[index + 1] == "on"
+        del args[index:index + 2]
     if len(args) < 3 or args[1] != "--":
-        _die("usage: python -m labloop._landlock <worktree> -- <command...>", 2)
+        _die("usage: python -m labloop._landlock <worktree> [--network on|off] -- <command...>", 2)
     worktree = os.path.realpath(args[0])
     if not os.path.isdir(worktree):
         _die(f"worktree is not a directory: {worktree}", 2)
-    confine(worktree, args[2:])
+    confine(worktree, args[2:], network=network)
 
 
 if __name__ == "__main__":

@@ -147,6 +147,12 @@ class Experiment:
     """
     sandbox_exec: str | None = None
     """A custom sandbox command template, overriding `sandbox` when set."""
+    sandbox_network: bool = False
+    """Whether the sandboxed propose step may reach the network. Off by default.
+
+    A proposer that calls a hosted model needs this on; a local or scripted one
+    does not. Off means a compromise cannot exfiltrate what it reads.
+    """
 
     @property
     def propose_timeout(self) -> float:
@@ -180,6 +186,7 @@ class Experiment:
             "label": self.label,
             "sandbox": self.sandbox,
             "sandbox_exec": self.sandbox_exec,
+            "sandbox_network": self.sandbox_network,
         }
 
     @classmethod

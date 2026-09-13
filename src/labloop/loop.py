@@ -271,7 +271,9 @@ class Loop:
         with self._proposal_env(index, incumbent) as env:
             propose_command = self.experiment.propose or ""
             if self.sandbox is not None:
-                propose_command = self.sandbox.wrap(propose_command, str(self.workdir))
+                propose_command = self.sandbox.wrap(
+                    propose_command, str(self.workdir), self.experiment.sandbox_network
+                )
             proposal = run_command(
                 propose_command,
                 cwd=self.workdir,

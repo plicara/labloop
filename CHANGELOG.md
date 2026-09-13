@@ -1,5 +1,28 @@
 # Changelog
 
+## Unreleased — toward 1.0
+
+### Sandboxing on by default, with the network off
+
+- The propose step runs sandboxed by default. `--sandbox auto` picks the best
+  backend the machine has (macOS Seatbelt, bubblewrap, Landlock; Docker only if
+  named), and the loop refuses to start when none exists rather than running
+  unconfined. `--sandbox none` restores the old behaviour.
+- **The network is off by default** (`--sandbox-network` turns it on). A proposer
+  that reads the machine can no longer send what it reads anywhere; a proposing
+  agent that calls a hosted model must be given the flag (or a local model used).
+- A startup self-check proves the boundary on the machine before trial 0: a write
+  inside the worktree works and a write outside it is denied. This catches a
+  "best effort" backend silently running unsandboxed.
+- `--sandbox-exec TEMPLATE` still allows a custom backend, and is verified too.
+
+### A protected file can no longer be shadowed
+
+`import x` prefers a package `x/` over a module `x.py`. Protecting `x.py` alone
+missed a proposal that creates `x/__init__.py` — the watched file is byte-identical
+while its behaviour is replaced. The digest now covers the would-be package too, so
+creating one is a harness change.
+
 ## 0.3.0 — 2026-09-13
 
 ### Running where the project actually lives, and keeping the record straight

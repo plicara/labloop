@@ -157,3 +157,25 @@ def test_run_with_the_auto_sandbox_wraps_and_verifies(project, capsys):
         "--trials", "1",
     ]) == 0
     capsys.readouterr()
+
+
+# --- the network switch ------------------------------------------------------
+
+def test_the_network_is_off_by_default():
+    assert "--unshare-net" in BwrapSandbox().wrap("x", "/wt")
+    assert "--network none" in DockerSandbox().wrap("x", "/wt")
+    assert "(allow network*)" not in SeatbeltSandbox().wrap("x", "/wt")
+    assert "--network off" in LandlockSandbox().wrap("x", "/wt")
+
+
+def test_the_network_can_be_turned_on():
+    assert "--unshare-net" not in BwrapSandbox().wrap("x", "/wt", True)
+    assert "--network bridge" in DockerSandbox().wrap("x", "/wt", True)
+    assert "(allow network*)" in SeatbeltSandbox().wrap("x", "/wt", True)
+    assert "--network on" in LandlockSandbox().wrap("x", "/wt", True)
+
+
+def test_the_network_choice_is_recorded():
+    assert Experiment(run="true", metric="m", goal=Goal.MAXIMIZE,
+                      sandbox_network=True).spec()["sandbox_network"] is True
+    assert Experiment(run="true", metric="m", goal=Goal.MAXIMIZE).spec()["sandbox_network"] is False
