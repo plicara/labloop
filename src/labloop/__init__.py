@@ -25,7 +25,13 @@ from .loop import Loop, StalledError
 from .metrics import MetricNotFound, extract_metric
 from .runner import Completed, run_command
 from .types import Experiment, Goal, Outcome, Trial, UsageError
-from .workspace import DirtyTreeError, GitWorkspace, NotAGitRepositoryError, Workspace
+from .workspace import (
+    DirtyTreeError,
+    GitIdentityError,
+    GitWorkspace,
+    NotAGitRepositoryError,
+    Workspace,
+)
 
 __version__ = "0.3.0"
 
@@ -35,6 +41,7 @@ __all__ = [
     "Experiment",
     "GitWorkspace",
     "Goal",
+    "GitIdentityError",
     "HarnessMismatchError",
     "Ledger",
     "LedgerLock",

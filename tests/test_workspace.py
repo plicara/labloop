@@ -11,7 +11,7 @@ import subprocess
 
 import pytest
 
-from labloop import DirtyTreeError, GitWorkspace
+from labloop import DirtyTreeError, GitIdentityError, GitWorkspace
 
 from .conftest import replace_text
 
@@ -304,3 +304,21 @@ def test_a_rename_is_committed(repo):
     workspace = GitWorkspace(repo)
     workspace.commit("rename", workspace.changed_paths())
     assert "renamed.py" in git("show", "--name-only", "--format=", "HEAD", cwd=repo)
+
+
+def _unset_identity(repo, monkeypatch):
+    # Hermetic: ignore any global/system identity, then remove the repo's.
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", "/dev/null")
+    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
+    subprocess.run(["git", "config", "--unset", "user.email"], cwd=repo)
+    subprocess.run(["git", "config", "--unset", "user.name"], cwd=repo)
+
+
+def test_a_missing_git_identity_is_refused(repo, monkeypatch):
+    _unset_identity(repo, monkeypatch)
+    with pytest.raises(GitIdentityError):
+        GitWorkspace(repo).require_identity()
+
+
+def test_a_configured_identity_is_accepted(repo):
+    GitWorkspace(repo).require_identity()   # the fixture sets name and email

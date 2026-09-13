@@ -484,3 +484,16 @@ def test_pre_label_ledger_is_not_given_a_duplicate_manifest(project, capsys):
     main(["baseline", "--run", "python train.py", "--metric", "val_loss"])
     capsys.readouterr()
     assert len(_manifests(project)) == 1
+
+
+def test_run_refuses_when_git_has_no_identity(project, monkeypatch, capsys):
+    import subprocess
+
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", "/dev/null")
+    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
+    subprocess.run(["git", "config", "--unset", "user.email"], cwd=project)
+    subprocess.run(["git", "config", "--unset", "user.name"], cwd=project)
+    rc = main(["run", "--run", "python train.py", "--metric", "val_loss",
+               "--propose", "true", "--trials", "1"])
+    err = capsys.readouterr().err
+    assert rc == 2 and "committer identity" in err
