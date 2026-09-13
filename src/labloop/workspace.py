@@ -14,11 +14,26 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Protocol
 
-__all__ = ["Workspace", "GitWorkspace", "DirtyTreeError", "NotAGitRepositoryError"]
+__all__ = [
+    "Workspace",
+    "GitWorkspace",
+    "DirtyTreeError",
+    "GitIdentityError",
+    "NotAGitRepositoryError",
+]
 
 
 class DirtyTreeError(RuntimeError):
     """The working tree had uncommitted changes when the loop started."""
+
+
+class GitIdentityError(RuntimeError):
+    """Git has no committer identity, so a kept change could not be committed.
+
+    Its own type because it is a setup problem with a known fix, not a bug in
+    the loop — and one worth catching before trial 0 rather than after a real
+    improvement has already been measured and then thrown away.
+    """
 
 
 class NotAGitRepositoryError(RuntimeError):
@@ -103,6 +118,29 @@ class GitWorkspace:
                 "commit or stash them. If they are an unjudged change left by an "
                 "interrupted run, discard them with `git reset --hard && git clean -fd` "
                 "— committing one would put a change nothing measured into the history."
+            )
+
+    def require_identity(self) -> None:
+        """Refuse to start when git cannot name a committer.
+
+        `git var GIT_COMMITTER_IDENT` is the same lookup `git commit` performs,
+        so a failure here is exactly the failure a keep would hit — caught
+        before trial 0 instead of after a real improvement was measured and
+        then discarded because the commit was refused.
+        """
+        result = subprocess.run(
+            ["git", "var", "GIT_COMMITTER_IDENT"],
+            cwd=str(self._toplevel()),
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            raise GitIdentityError(
+                "git has no committer identity, so a kept change could not be "
+                "committed and the trial's improvement would be lost. Set one "
+                "before starting:\n"
+                '  git config user.name "Your Name"\n'
+                '  git config user.email "you@example.com"'
             )
 
     def revert(self) -> None:

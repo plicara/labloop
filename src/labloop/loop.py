@@ -186,6 +186,7 @@ class Loop:
         with self.lock:
             if isinstance(self.workspace, GitWorkspace):
                 self.workspace.require_clean()
+                self.workspace.require_identity()
             self._record_manifest()
 
         results: list[Trial] = []
