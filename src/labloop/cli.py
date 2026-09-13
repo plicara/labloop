@@ -121,6 +121,12 @@ def _build_parser() -> argparse.ArgumentParser:
 
     baseline = sub.add_parser("baseline", help="measure the tree as it stands")
     add_common(baseline)
+    baseline.add_argument(
+        "--label",
+        default=None,
+        metavar="TEXT",
+        help="who or what proposes these trials, e.g. a model name (recorded in the manifest)",
+    )
 
     run = sub.add_parser("run", help="run proposal-and-judge cycles")
     add_common(run)
@@ -150,6 +156,12 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="brief",
         action="store_false",
         help="don't hand the proposal the trial history via $LABLOOP_BRIEF",
+    )
+    run.add_argument(
+        "--label",
+        default=None,
+        metavar="TEXT",
+        help="who or what proposes these trials, e.g. a model name (recorded in the manifest)",
     )
 
     noise = sub.add_parser(
@@ -428,6 +440,7 @@ def _experiment_command(args: argparse.Namespace) -> int:
         min_delta=args.min_delta,
         give_up_after=getattr(args, "give_up_after", 0),
         propose_budget=getattr(args, "propose_budget", None),
+        label=getattr(args, "label", None),
     )
     loop = Loop(
         experiment,
@@ -536,8 +549,13 @@ def _log(args: argparse.Namespace) -> int:
         return 0
 
     if args.json:
+        # The label lives on the manifest, but `log --json` is one object
+        # per trial by contract — so each trial carries the label of the
+        # spec in force. Pre-label manifests report null, not a missing key.
+        last = ledger.last_manifest()
+        label = last.get("label") if last else None
         for trial in trials:
-            print(json.dumps(trial.to_dict(), sort_keys=True))
+            print(json.dumps({"label": label, **trial.to_dict()}, sort_keys=True))
         return 0
 
     for trial in trials:

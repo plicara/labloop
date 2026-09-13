@@ -8,6 +8,9 @@ in the shared ledger, and never contaminates another direction's comparisons.
 from __future__ import annotations
 
 import json
+import shlex
+import sys
+import threading
 
 import pytest
 
@@ -17,13 +20,14 @@ from labloop.cli import main
 from .conftest import FakeWorkspace
 
 
-def direction_loop(tmp_path, run, direction, propose="true"):
+def direction_loop(tmp_path, run, direction, propose="true", wait=False):
     exp = Experiment(run=run, metric="val", propose=propose)
     return Loop(
         exp,
         workdir=tmp_path,
         ledger=tmp_path / "l.jsonl",
         workspace=FakeWorkspace(),
+        wait_for_lock=wait,
         direction=direction,
     )
 
@@ -95,6 +99,128 @@ def test_indices_stay_unique_across_directions(tmp_path):
     direction_loop(tmp_path, "echo val=2.0", "b").run(trials=1)
     direction_loop(tmp_path, "echo val=1.0", "a").run(trials=1)
     assert [t.index for t in Ledger(tmp_path / "l.jsonl")] == [0, 1, 2, 3]
+
+
+def test_the_ledger_lock_is_taken_per_trial_not_per_run(tmp_path, monkeypatch):
+    # The bug was a run-level lock around every trial, so a second direction
+    # could not start until the first finished its whole run. Counting the
+    # lock's acquisitions pins the fix without relying on thread timing.
+    import labloop.loop as loop_module
+
+    acquisitions = []
+    real_lock = loop_module.LedgerLock
+
+    class CountingLock:
+        def __init__(self, *args, **kwargs):
+            self._inner = real_lock(*args, **kwargs)
+
+        def __enter__(self):
+            acquisitions.append(1)
+            self._inner.__enter__()
+            return self
+
+        def __exit__(self, *exc):
+            return self._inner.__exit__(*exc)
+
+    monkeypatch.setattr(loop_module, "LedgerLock", CountingLock)
+    direction_loop(tmp_path, "echo val=1.0", "main", wait=True).run(trials=3)
+
+    # One for the manifest, then one per trial. A run-level lock takes one
+    # for all three, which is < 3 and fails here.
+    assert len(acquisitions) >= 3
+
+
+def test_two_directions_run_concurrently_over_one_ledger(tmp_path):
+    # Two directions share one ledger and run at the same time. The lock is
+    # handed out per trial, so they may interleave; whichever order it lands
+    # in, every trial is recorded once, indices never collide, and each
+    # direction is judged against its own incumbent. (The lock is flock, so
+    # which direction wins a given handoff is the kernel's business, not an
+    # assertion this test can make deterministically.)
+    trials = 3
+    direction_loop(tmp_path, "echo val=10.0", "main").run(trials=1)
+    ledger = Ledger(tmp_path / "l.jsonl")
+    ledger.append_fork("a", from_index=0)
+    ledger.append_fork("b", from_index=0)
+
+    started = threading.Barrier(2)
+    results: dict[str, list] = {}
+    failures: list[BaseException] = []
+
+    def drive(direction: str, metric: float) -> None:
+        loop = Loop(
+            Experiment(
+                run=f"sleep 0.05; echo val={metric}", metric="val", propose="true"
+            ),
+            workdir=tmp_path,
+            ledger=tmp_path / "l.jsonl",
+            workspace=FakeWorkspace(),
+            wait_for_lock=True,
+            direction=direction,
+        )
+        try:
+            started.wait(timeout=10)
+            results[direction] = loop.run(trials=trials)
+        except BaseException as exc:  # surfaced by the main thread
+            failures.append(exc)
+
+    threads = [
+        threading.Thread(target=drive, args=("a", 1.0)),
+        threading.Thread(target=drive, args=("b", 2.0)),
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=30)
+        assert not thread.is_alive(), "a direction never finished; the lock starved it"
+    assert not failures, failures
+    assert set(results) == {"a", "b"}, "both directions must make progress"
+
+    recorded = Ledger(tmp_path / "l.jsonl")
+    indices = [trial.index for trial in recorded]
+    assert len(indices) == len(set(indices)), "trial indices collided"
+    assert sorted(indices) == list(range(len(indices))), "indices should be dense"
+
+    # Each direction is judged against its own fork point, and the ledger
+    # agrees with what the loops reported.
+    assert recorded.best(Goal.MINIMIZE, direction="a").metric == 1.0
+    assert recorded.best(Goal.MINIMIZE, direction="b").metric == 2.0
+    assert [trial.metric for trial in results["a"]] == [1.0] * trials
+    assert [trial.metric for trial in results["b"]] == [2.0] * trials
+
+
+def test_a_peers_kept_trial_sets_the_bar_for_the_next_trial(tmp_path):
+    # The incumbent is re-read from the ledger each trial, not remembered from
+    # before the loop. A peer keeping a better trial mid-run must move the bar;
+    # a stale in-memory incumbent would have kept the next, worse, change.
+    direction_loop(tmp_path, "echo val=10.0", "main").run(trials=1)  # baseline
+
+    # A stand-in peer process: it keeps a 1.0 trial the first time it runs,
+    # then prints a worse 2.0 on the second. Appending to the ledger here is
+    # safe because the run command executes after the tampering check.
+    helper = tmp_path / "peer.py"
+    helper.write_text(
+        "import sys\n"
+        "from labloop import Ledger, Outcome, Trial\n"
+        "ledger = Ledger(sys.argv[1])\n"
+        "if not any(t.note == 'peer' for t in ledger):\n"
+        "    ledger.append(Trial(index=99, outcome=Outcome.KEPT, metric=1.0,\n"
+        "        incumbent=10.0, duration_seconds=0.0, note='peer', direction='main'))\n"
+        "    print('val=5.0')\n"
+        "else:\n"
+        "    print('val=2.0')\n"
+    )
+    ledger_path = tmp_path / "l.jsonl"
+    run = (
+        f"{shlex.quote(sys.executable)} {shlex.quote(str(helper))} "
+        f"{shlex.quote(str(ledger_path))}"
+    )
+    first, second = direction_loop(tmp_path, run, "main").run(trials=2)
+
+    assert first.outcome is Outcome.KEPT and first.metric == 5.0
+    # 2.0 is worse than the peer's 1.0. A stale incumbent of 5.0 keeps it.
+    assert second.outcome is Outcome.REVERTED
+    assert second.incumbent == 1.0
 
 
 def test_the_brief_tells_the_proposer_its_direction_and_only_its_history(tmp_path):

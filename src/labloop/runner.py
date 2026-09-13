@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import signal
 import subprocess
+import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -43,6 +44,13 @@ def run_command(
     contending for the GPU with the next trial.
     """
     merged_env = {**os.environ, **(env or {})}
+    # Keep bytecode out of the tree: a proposing command that imports a
+    # module under a protected dir would otherwise write __pycache__/*.pyc
+    # inside it, moving the harness digest so every trial reads as
+    # harness_changed. The digest still hashes in-tree .pyc files, so a
+    # planted one is caught — and with the prefix set Python neither writes
+    # nor reads in-tree bytecode. Respect a caller-provided value.
+    merged_env.setdefault("PYTHONPYCACHEPREFIX", os.path.join(tempfile.gettempdir(), "labloop-pycache"))
     start = time.monotonic()
 
     process = subprocess.Popen(

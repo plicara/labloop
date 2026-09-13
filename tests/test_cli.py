@@ -396,3 +396,61 @@ def test_a_missing_subcommand_is_an_error(capsys):
     with pytest.raises(SystemExit) as exit_info:
         main([])
     assert exit_info.value.code == 2
+
+
+def _manifests(project):
+    lines = [json.loads(line) for line in (project / "labloop.jsonl").read_text().splitlines()]
+    return [entry for entry in lines if entry.get("manifest") == 1]
+
+
+def test_baseline_label_is_recorded_in_the_manifest(project, capsys):
+    assert (
+        main(
+            ["baseline", "--run", "python train.py", "--metric", "val_loss",
+             "--label", "gpt-5"]
+        )
+        == 0
+    )
+    capsys.readouterr()
+    (manifest,) = _manifests(project)
+    assert manifest["label"] == "gpt-5"
+
+    assert main(["log", "--json"]) == 0
+    out = capsys.readouterr().out
+    assert '"label": "gpt-5"' in out
+
+
+def test_run_label_is_recorded_in_the_manifest(project, capsys):
+    main(["baseline", "--run", "python train.py", "--metric", "val_loss"])
+    capsys.readouterr()
+    assert (
+        main(
+            ["run", "--run", "python train.py", "--metric", "val_loss",
+             "--propose", "true", "--label", "claude"]
+        )
+        == 0
+    )
+    capsys.readouterr()
+    assert _manifests(project)[-1]["label"] == "claude"
+
+
+def test_log_json_reads_a_manifest_from_before_labels(project, capsys):
+    # Ledgers written before the field exists have no "label" key; they must
+    # still load and log, reporting null.
+    from labloop import Experiment
+
+    assert Experiment.from_spec({"run": "x", "metric": "m"}).label is None
+    main(["baseline", "--run", "python train.py", "--metric", "val_loss"])
+    capsys.readouterr()
+    assert main(["log", "--json"]) == 0
+    out = capsys.readouterr().out
+    assert '"label": null' in out
+
+
+@pytest.mark.parametrize("bad", ["", "   ", "a\nb", "a\rb", "x" * 129])
+def test_an_invalid_label_is_refused(project, capsys, bad):
+    code = main(
+        ["baseline", "--run", "python train.py", "--metric", "val_loss", "--label", bad]
+    )
+    assert code == 2
+    assert "label" in capsys.readouterr().err
