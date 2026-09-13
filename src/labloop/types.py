@@ -194,6 +194,7 @@ class Experiment:
                 raise UsageError("label must be at most 128 characters")
             if "\n" in self.label or "\r" in self.label:
                 raise UsageError("label must be a single line")
+            self.label = self.label.strip()
         if isinstance(self.goal, str):
             self.goal = Goal(self.goal)
         if isinstance(self.protect, str):

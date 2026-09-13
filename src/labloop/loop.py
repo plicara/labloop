@@ -177,13 +177,15 @@ class Loop:
 
     def _run(self, trials: int) -> list[Trial]:
         self._check_direction()
-        if isinstance(self.workspace, GitWorkspace):
-            self.workspace.require_clean()
 
-        # The spec is shared state, so even this one write is made under the
-        # lock. A queueing run then releases it; a refusing run already holds
-        # the outer lock and these acquisitions are just re-entrant.
+        # Both the dirty-tree interlock and the manifest write are shared state,
+        # so they happen under the lock. A queueing run then releases it; a
+        # refusing run already holds the outer lock and this is re-entrant.
+        # Checking cleanliness under the lock stops a --wait run from tripping
+        # on a peer's in-flight change in the same tree.
         with self.lock:
+            if isinstance(self.workspace, GitWorkspace):
+                self.workspace.require_clean()
             self._record_manifest()
 
         results: list[Trial] = []
@@ -446,6 +448,10 @@ class Loop:
                         "Comparing them would mix different measurements — put the "
                         "spec back, or start a new ledger."
                     )
+        # A manifest written before `label` existed lacks the key; without this
+        # the first run on an old ledger would append a near-duplicate spec.
+        if last is not None and "label" not in last:
+            last = {**last, "label": None}
         if last != spec:
             self.ledger.append_manifest(spec)
 

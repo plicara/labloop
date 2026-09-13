@@ -549,13 +549,13 @@ def _log(args: argparse.Namespace) -> int:
         return 0
 
     if args.json:
-        # The label lives on the manifest, but `log --json` is one object
-        # per trial by contract — so each trial carries the label of the
-        # spec in force. Pre-label manifests report null, not a missing key.
-        last = ledger.last_manifest()
-        label = last.get("label") if last else None
+        # The label lives on the manifest, but `log --json` is one object per
+        # trial by contract — so each trial carries the label of the spec in
+        # force when it was recorded, not the latest one. Pre-label manifests
+        # report null, not a missing key.
+        labels = ledger.trial_labels()
         for trial in trials:
-            print(json.dumps({"label": label, **trial.to_dict()}, sort_keys=True))
+            print(json.dumps({"label": labels.get(trial.index), **trial.to_dict()}, sort_keys=True))
         return 0
 
     for trial in trials:

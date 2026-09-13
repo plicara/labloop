@@ -454,3 +454,33 @@ def test_an_invalid_label_is_refused(project, capsys, bad):
     )
     assert code == 2
     assert "label" in capsys.readouterr().err
+
+
+def test_log_json_attributes_each_trial_to_its_own_label(project, capsys):
+    main(["baseline", "--run", "python train.py", "--metric", "val_loss", "--label", "alice"])
+    capsys.readouterr()
+    main(["run", "--run", "python train.py", "--metric", "val_loss",
+          "--propose", "true", "--label", "bob"])
+    capsys.readouterr()
+    assert main(["log", "--json"]) == 0
+    labels = [json.loads(line)["label"] for line in capsys.readouterr().out.strip().splitlines()]
+    assert labels == ["alice", "bob"]
+
+
+def test_label_is_stripped(project, capsys):
+    main(["baseline", "--run", "python train.py", "--metric", "val_loss", "--label", "  spaced  "])
+    capsys.readouterr()
+    assert _manifests(project)[0]["label"] == "spaced"
+
+
+def test_pre_label_ledger_is_not_given_a_duplicate_manifest(project, capsys):
+    main(["baseline", "--run", "python train.py", "--metric", "val_loss"])
+    capsys.readouterr()
+    path = project / "labloop.jsonl"
+    rows = [json.loads(line) for line in path.read_text().splitlines()]
+    for row in rows:
+        row.pop("label", None)
+    path.write_text("".join(json.dumps(row, sort_keys=True) + "\n" for row in rows))
+    main(["baseline", "--run", "python train.py", "--metric", "val_loss"])
+    capsys.readouterr()
+    assert len(_manifests(project)) == 1

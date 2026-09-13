@@ -295,3 +295,12 @@ def test_a_kept_trial_commits_when_the_workdir_is_a_subdirectory(subdir_repo, mo
     assert git("show", "HEAD:sub/train.py", cwd=root) == 'print("val_loss = 1.0")\n'
     assert "sub/labloop-history.jsonl" in git("ls-files", cwd=root).splitlines()
     assert GitWorkspace(sub).is_dirty() is False
+
+
+def test_a_rename_is_committed(repo):
+    # changed_paths() reports both sides of a rename; the vanished side is in
+    # neither the worktree nor the index, and `git add` fails on it.
+    git("mv", "train.py", "renamed.py", cwd=repo)
+    workspace = GitWorkspace(repo)
+    workspace.commit("rename", workspace.changed_paths())
+    assert "renamed.py" in git("show", "--name-only", "--format=", "HEAD", cwd=repo)

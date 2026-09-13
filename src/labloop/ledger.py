@@ -85,6 +85,27 @@ class Ledger:
         manifests = self.manifests()
         return manifests[-1] if manifests else None
 
+    def trial_labels(self) -> dict[int, str | None]:
+        """The manifest label in force at each trial index, in file order.
+
+        A ledger can hold more than one manifest — a label may change between
+        runs — so attributing every trial to the *last* manifest is wrong.
+        Walking the records and carrying the current label attributes each
+        trial to the spec that actually governed it.
+        """
+        labels: dict[int, str | None] = {}
+        current: str | None = None
+        for record in self._raw_records():
+            if record.get("manifest") == 1:
+                current = record.get("label")
+                continue
+            try:
+                trial = Trial.from_dict(record)
+            except (KeyError, ValueError):
+                continue
+            labels[trial.index] = current
+        return labels
+
     def __iter__(self) -> Iterator[Trial]:
         for record in self._raw_records():
             try:

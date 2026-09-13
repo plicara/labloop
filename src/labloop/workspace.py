@@ -160,12 +160,33 @@ class GitWorkspace:
         if paths is None:
             self._git("add", "-A")
         else:
-            wanted = [self._to_toplevel(p) for p in paths if not self._is_ignored(p)]
+            wanted = [
+                self._to_toplevel(p)
+                for p in paths
+                if not self._is_ignored(p) and self._exists_or_tracked(p)
+            ]
             if not wanted:
                 raise RuntimeError("nothing to commit: every named path is gitignored")
             self._git("add", "-A", "--", *wanted)
         self._git("commit", "-m", message)
         return self._git("rev-parse", "--short", "HEAD")
+
+    def _exists_or_tracked(self, path: str) -> bool:
+        """Whether a caller path is on disk or in the index.
+
+        changed_paths() reports both sides of a rename; the vanished side is in
+        neither the worktree nor the index, and `git add` fails on it. The
+        surviving side carries the rename.
+        """
+        top = self._to_toplevel(path)
+        if (self._toplevel() / top).exists():
+            return True
+        result = subprocess.run(
+            ["git", "ls-files", "--error-unmatch", "--", top],
+            cwd=str(self._toplevel()),
+            capture_output=True,
+        )
+        return result.returncode == 0
 
     def _is_ignored(self, path: str) -> bool:
         result = subprocess.run(
