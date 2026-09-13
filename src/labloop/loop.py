@@ -25,6 +25,7 @@ from .ledger import Ledger
 from .lock import LedgerLock
 from .metrics import MetricNotFound, extract_metric
 from .runner import Completed, run_command
+from .sandbox import resolve_sandbox, verify_sandbox
 from .types import Experiment, Goal, Outcome, Trial, UsageError
 from .workspace import GitWorkspace, Workspace
 
@@ -70,6 +71,9 @@ class Loop:
         self.lock = LedgerLock(self.ledger.path, wait=wait_for_lock)
         self.wait_for_lock = wait_for_lock
         self.direction = direction
+        # The propose step is the untrusted one; when a sandbox is configured it
+        # is wrapped so it can write only the worktree. `none` is 0.3.0 behaviour.
+        self.sandbox = resolve_sandbox(experiment.sandbox, experiment.sandbox_exec)
 
     def baseline(self) -> Trial:
         """Measure the tree as it stands, without proposing a change.
@@ -187,6 +191,8 @@ class Loop:
             if isinstance(self.workspace, GitWorkspace):
                 self.workspace.require_clean()
                 self.workspace.require_identity()
+            if self.sandbox is not None:
+                verify_sandbox(self.sandbox, str(self.workdir))
             self._record_manifest()
 
         results: list[Trial] = []
@@ -263,8 +269,11 @@ class Loop:
             return record(outcome, duration, **fields)
 
         with self._proposal_env(index, incumbent) as env:
+            propose_command = self.experiment.propose or ""
+            if self.sandbox is not None:
+                propose_command = self.sandbox.wrap(propose_command, str(self.workdir))
             proposal = run_command(
-                self.experiment.propose or "",
+                propose_command,
                 cwd=self.workdir,
                 timeout=self.experiment.propose_timeout,
                 env=env,

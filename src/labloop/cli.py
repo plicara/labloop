@@ -13,6 +13,7 @@ from .integrity import HarnessMismatchError, NoProtectedFilesError
 from .ledger import Ledger
 from .lock import LedgerLockedError
 from .loop import Loop, StalledError
+from .sandbox import SandboxError
 from .types import Experiment, Goal, Outcome, Trial, UsageError
 from .workspace import DirtyTreeError, GitIdentityError, NotAGitRepositoryError
 
@@ -163,6 +164,18 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="TEXT",
         help="who or what proposes these trials, e.g. a model name (recorded in the manifest)",
     )
+    run.add_argument(
+        "--sandbox",
+        choices=["none", "auto", "bwrap", "landlock", "seatbelt", "docker"],
+        default="none",
+        help="confine the propose step to the worktree: auto picks the best backend (default none)",
+    )
+    run.add_argument(
+        "--sandbox-exec",
+        default=None,
+        metavar="TEMPLATE",
+        help="custom sandbox command template containing {command} and optional {workdir}",
+    )
 
     noise = sub.add_parser(
         "noise", help="run the experiment repeatedly, unchanged, to measure its spread"
@@ -251,6 +264,7 @@ def main(argv: list[str] | None = None) -> int:
         LedgerLockedError,
         NoProtectedFilesError,
         NotAGitRepositoryError,
+        SandboxError,
         StalledError,
         UsageError,
     ) as exc:
@@ -442,6 +456,8 @@ def _experiment_command(args: argparse.Namespace) -> int:
         give_up_after=getattr(args, "give_up_after", 0),
         propose_budget=getattr(args, "propose_budget", None),
         label=getattr(args, "label", None),
+        sandbox=getattr(args, "sandbox", "none"),
+        sandbox_exec=getattr(args, "sandbox_exec", None),
     )
     loop = Loop(
         experiment,

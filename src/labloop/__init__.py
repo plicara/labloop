@@ -24,6 +24,18 @@ from .lock import LedgerLock, LedgerLockedError
 from .loop import Loop, StalledError
 from .metrics import MetricNotFound, extract_metric
 from .runner import Completed, run_command
+from .sandbox import (
+    BwrapSandbox,
+    DockerSandbox,
+    LandlockSandbox,
+    Sandbox,
+    SandboxError,
+    SeatbeltSandbox,
+    TemplateSandbox,
+    available_backends,
+    resolve_sandbox,
+    verify_sandbox,
+)
 from .types import Experiment, Goal, Outcome, Trial, UsageError
 from .workspace import (
     DirtyTreeError,
@@ -52,11 +64,21 @@ __all__ = [
     "NoProtectedFilesError",
     "Outcome",
     "StalledError",
+    "TemplateSandbox",
     "Trial",
     "UsageError",
     "Workspace",
     "__version__",
+    "available_backends",
+    "BwrapSandbox",
+    "DockerSandbox",
+    "LandlockSandbox",
+    "Sandbox",
+    "SandboxError",
+    "SeatbeltSandbox",
     "extract_metric",
     "harness_digest",
+    "resolve_sandbox",
+    "verify_sandbox",
     "run_command",
 ]
