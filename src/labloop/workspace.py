@@ -8,6 +8,7 @@ tests can substitute an in-memory workspace.
 
 from __future__ import annotations
 
+import os
 import subprocess
 from collections.abc import Sequence
 from pathlib import Path
@@ -36,13 +37,24 @@ class Workspace(Protocol):
 
 
 class GitWorkspace:
+    """Git operations rooted at a workdir that may sit below the repo top.
+
+    `git status --porcelain` reports paths relative to the repository root even
+    when run from a subdirectory, so a workdir below the top has two competing
+    path bases. Resolving the top once and running every command there gives
+    status and add one base; paths crossing the API are translated to and from
+    the workdir so callers (the loop writes its history beside the project)
+    keep addressing files the way they always have.
+    """
+
     def __init__(self, root: str | Path = ".") -> None:
         self.root = Path(root)
+        self._top: Path | None = None
 
-    def _git(self, *args: str) -> str:
+    def _run(self, args: Sequence[str], cwd: Path) -> str:
         result = subprocess.run(
             ["git", *args],
-            cwd=str(self.root),
+            cwd=str(cwd),
             capture_output=True,
             text=True,
         )
@@ -54,7 +66,26 @@ class GitWorkspace:
                     f"and reverts trials as commits — run `git init` first"
                 )
             raise RuntimeError(f"git {' '.join(args)} failed: {stderr}")
-        return result.stdout.strip()
+        return result.stdout
+
+    def _toplevel(self) -> Path:
+        """The repository root, resolved once and cached."""
+        if self._top is None:
+            self._top = Path(
+                self._run(("rev-parse", "--show-toplevel"), self.root).strip()
+            ).resolve()
+        return self._top
+
+    def _from_toplevel(self, path: str) -> str:
+        """A repo-root-relative git path, as the caller's workdir sees it."""
+        return os.path.relpath(self._toplevel() / path, self.root.resolve())
+
+    def _to_toplevel(self, path: str) -> str:
+        """A workdir-relative caller path, as git from the repo top sees it."""
+        return os.path.relpath(self.root.resolve() / path, self._toplevel())
+
+    def _git(self, *args: str) -> str:
+        return self._run(args, self._toplevel()).strip()
 
     def is_dirty(self) -> bool:
         return bool(self._git("status", "--porcelain"))
@@ -96,7 +127,7 @@ class GitWorkspace:
         """
         result = subprocess.run(
             ["git", "status", "--porcelain", "-z"],
-            cwd=str(self.root),
+            cwd=str(self._toplevel()),
             capture_output=True,
             text=True,
         )
@@ -112,11 +143,11 @@ class GitWorkspace:
                 index += 1
                 continue
             status, name = token[:2], token[3:]
-            paths.add(name)
+            paths.add(self._from_toplevel(name))
             # A rename or copy carries the original name as its own token.
             if "R" in status or "C" in status:
                 index += 1
-                paths.add(tokens[index])
+                paths.add(self._from_toplevel(tokens[index]))
             index += 1
         return sorted(paths)
 
@@ -129,17 +160,38 @@ class GitWorkspace:
         if paths is None:
             self._git("add", "-A")
         else:
-            wanted = [p for p in paths if not self._is_ignored(p)]
+            wanted = [
+                self._to_toplevel(p)
+                for p in paths
+                if not self._is_ignored(p) and self._exists_or_tracked(p)
+            ]
             if not wanted:
                 raise RuntimeError("nothing to commit: every named path is gitignored")
             self._git("add", "-A", "--", *wanted)
         self._git("commit", "-m", message)
         return self._git("rev-parse", "--short", "HEAD")
 
+    def _exists_or_tracked(self, path: str) -> bool:
+        """Whether a caller path is on disk or in the index.
+
+        changed_paths() reports both sides of a rename; the vanished side is in
+        neither the worktree nor the index, and `git add` fails on it. The
+        surviving side carries the rename.
+        """
+        top = self._to_toplevel(path)
+        if (self._toplevel() / top).exists():
+            return True
+        result = subprocess.run(
+            ["git", "ls-files", "--error-unmatch", "--", top],
+            cwd=str(self._toplevel()),
+            capture_output=True,
+        )
+        return result.returncode == 0
+
     def _is_ignored(self, path: str) -> bool:
         result = subprocess.run(
-            ["git", "check-ignore", "-q", "--", path],
-            cwd=str(self.root),
+            ["git", "check-ignore", "-q", "--", self._to_toplevel(path)],
+            cwd=str(self._toplevel()),
             capture_output=True,
         )
         return result.returncode == 0

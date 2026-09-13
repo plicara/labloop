@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from labloop import NoProtectedFilesError, harness_digest
+from labloop import NoProtectedFilesError, harness_digest, run_command
 from labloop.integrity import changed_files, harness_files
 
 
@@ -135,3 +135,40 @@ def test_unprotected_files_do_not_move_the_digest(tmp_path):
     assert harness_digest(tmp_path, ["eval.py"]) == before, (
         "the loop must still be free to change the code under study"
     )
+
+
+def test_self_check_import_leaves_the_digest_unchanged(tmp_path, monkeypatch):
+    # Explicit about the override: drop any ambient PYTHONPYCACHEPREFIX so
+    # this exercises run_command's default injection, not the test env's.
+    monkeypatch.delenv("PYTHONPYCACHEPREFIX", raising=False)
+    write(tmp_path, "evals/check.py", "VALUE = 1\n")
+    before = harness_digest(tmp_path, ["evals"])
+
+    completed = run_command("python -c 'import check; print(check.VALUE)'", cwd=tmp_path / "evals")
+    assert completed.ok, completed.output
+
+    assert harness_digest(tmp_path, ["evals"]) == before
+    assert list(tmp_path.rglob("__pycache__")) == [], "bytecode must land outside the tree"
+
+
+def test_planted_pyc_is_still_detected(tmp_path):
+    write(tmp_path, "evals/check.py", "VALUE = 1\n")
+    before = harness_digest(tmp_path, ["evals"])
+
+    # A crafted .pyc can override unchanged source, so it must stay digested.
+    planted = tmp_path / "evals" / "__pycache__" / "check.cpython-312.pyc"
+    planted.parent.mkdir(parents=True, exist_ok=True)
+    planted.write_bytes(b"planted")
+
+    assert harness_digest(tmp_path, ["evals"]) != before
+    assert any(name.endswith(".pyc") for name in harness_files(tmp_path, ["evals"]))
+
+
+def test_caller_pycacheprefix_wins(tmp_path, monkeypatch):
+    monkeypatch.delenv("PYTHONPYCACHEPREFIX", raising=False)
+    completed = run_command(
+        "python -c 'import os; print(os.environ.get(\"PYTHONPYCACHEPREFIX\", \"\"))'",
+        cwd=tmp_path,
+        env={"PYTHONPYCACHEPREFIX": "/custom/prefix"},
+    )
+    assert completed.output.strip() == "/custom/prefix"

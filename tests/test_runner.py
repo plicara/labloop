@@ -116,3 +116,35 @@ def test_a_timeout_kills_children_the_command_spawned(tmp_path, no_stragglers):
 def test_duration_is_measured(tmp_path):
     completed = run_command("sleep 0.2", cwd=tmp_path)
     assert completed.duration_seconds >= 0.2
+
+
+def _prefix_command() -> str:
+    import shlex
+    import sys
+
+    code = "import os; print(os.environ.get('PYTHONPYCACHEPREFIX') or 'EMPTY')"
+    return f"{shlex.quote(sys.executable)} -c {shlex.quote(code)}"
+
+
+def test_bytecode_prefix_is_fresh_per_invocation():
+    """A fixed prefix is predictable and can be pre-planted; each run gets its own."""
+    first = run_command(_prefix_command()).output.strip()
+    second = run_command(_prefix_command()).output.strip()
+    assert first and second and first != second and first != "EMPTY"
+
+
+def test_bytecode_prefix_dir_is_removed_after_the_run():
+    prefix = run_command(_prefix_command()).output.strip()
+    assert prefix and prefix != "EMPTY"
+    assert not os.path.exists(prefix)
+
+
+def test_an_empty_bytecode_prefix_is_treated_as_unset():
+    out = run_command(_prefix_command(), env={"PYTHONPYCACHEPREFIX": ""}).output.strip()
+    assert out and out != "EMPTY" and not os.path.exists(out)
+
+
+def test_a_caller_bytecode_prefix_wins(tmp_path):
+    mine = str(tmp_path / "mine")
+    out = run_command(_prefix_command(), env={"PYTHONPYCACHEPREFIX": mine}).output.strip()
+    assert out == mine

@@ -132,6 +132,12 @@ class Experiment:
     min_delta: float = 0.0
     give_up_after: int = 10
     propose_budget: float | None = None
+    label: str | None = None
+    """Who or what proposed these trials, e.g. a model name.
+
+    Recorded in the manifest so the ledger says which setup produced each
+    trial. Free text, not identity: it claims nothing and proves nothing.
+    """
 
     @property
     def propose_timeout(self) -> float:
@@ -162,6 +168,7 @@ class Experiment:
             "min_delta": self.min_delta,
             "give_up_after": self.give_up_after,
             "propose_budget": self.propose_budget,
+            "label": self.label,
         }
 
     @classmethod
@@ -180,6 +187,14 @@ class Experiment:
             raise UsageError("propose_budget must be positive")
         if not self.run.strip():
             raise UsageError("run command must not be empty")
+        if self.label is not None:
+            if not isinstance(self.label, str) or not self.label.strip():
+                raise UsageError("label must be a non-empty string")
+            if len(self.label) > 128:
+                raise UsageError("label must be at most 128 characters")
+            if "\n" in self.label or "\r" in self.label:
+                raise UsageError("label must be a single line")
+            self.label = self.label.strip()
         if isinstance(self.goal, str):
             self.goal = Goal(self.goal)
         if isinstance(self.protect, str):

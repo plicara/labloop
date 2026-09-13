@@ -68,6 +68,7 @@ class Loop:
         self.workspace = workspace or GitWorkspace(self.workdir)
         self.reporter = reporter
         self.lock = LedgerLock(self.ledger.path, wait=wait_for_lock)
+        self.wait_for_lock = wait_for_lock
         self.direction = direction
 
     def baseline(self) -> Trial:
@@ -154,50 +155,69 @@ class Loop:
     def run(self, trials: int = 1) -> list[Trial]:
         """Run `trials` proposal-and-judge cycles.
 
-        Holds the ledger lock throughout: two loops over one ledger would
-        interleave trial indices and each advance its own incumbent.
+        A run that is willing to queue takes and releases the ledger lock
+        around each trial, so two `--wait` directions over one ledger
+        interleave instead of the first holding the ledger for its whole run
+        and starving the other. A run that refuses to wait claims the ledger
+        for the whole run instead, so a second `--no-wait` process is refused
+        at startup rather than slipping into the gap between two trials.
+
+        The next trial re-reads the incumbent from the ledger, so a peer's
+        kept trial is never judged against a stale number.
         """
         if self.experiment.propose is None:
             raise UsageError(
                 "experiment has no `propose` command; use baseline() to measure "
                 "the tree as-is, or set propose to an agent invocation"
             )
-        with self.lock:
-            return self._run(trials)
+        if not self.wait_for_lock:
+            with self.lock:
+                return self._run(trials)
+        return self._run(trials)
 
     def _run(self, trials: int) -> list[Trial]:
         self._check_direction()
-        if isinstance(self.workspace, GitWorkspace):
-            self.workspace.require_clean()
 
-        self._record_manifest()
-        incumbent = self._incumbent()
+        # Both the dirty-tree interlock and the manifest write are shared state,
+        # so they happen under the lock. A queueing run then releases it; a
+        # refusing run already holds the outer lock and this is re-entrant.
+        # Checking cleanliness under the lock stops a --wait run from tripping
+        # on a peer's in-flight change in the same tree.
+        with self.lock:
+            if isinstance(self.workspace, GitWorkspace):
+                self.workspace.require_clean()
+            self._record_manifest()
+
         results: list[Trial] = []
         stalled = 0
 
         for _ in range(trials):
-            try:
-                trial = self._one_trial(incumbent)
-            except KeyboardInterrupt:
-                # An overnight run stopped by hand is still a trial that
-                # happened. Recording it before re-raising keeps the ledger's
-                # promise; the tree is left as it is, because discarding a
-                # change nobody has looked at is the user's call, not ours.
-                self._record(
-                    Trial(
-                        index=self.ledger.next_index(),
-                        outcome=Outcome.INTERRUPTED,
-                        metric=None,
-                        incumbent=incumbent,
-                        duration_seconds=0.0,
-                        note="stopped by hand; the tree may hold an unjudged change",
-                        direction=self.direction,
+            # Read the incumbent inside the lock, once per trial. Another
+            # direction may have kept a trial since the last one, and judging
+            # against a number read before the run started would either keep a
+            # change the ledger already beat or revert one that beats it.
+            with self.lock:
+                incumbent = self._incumbent()
+                try:
+                    trial = self._one_trial(incumbent)
+                except KeyboardInterrupt:
+                    # An overnight run stopped by hand is still a trial that
+                    # happened. Recording it before re-raising keeps the ledger's
+                    # promise; the tree is left as it is, because discarding a
+                    # change nobody has looked at is the user's call, not ours.
+                    self._record(
+                        Trial(
+                            index=self.ledger.next_index(),
+                            outcome=Outcome.INTERRUPTED,
+                            metric=None,
+                            incumbent=incumbent,
+                            duration_seconds=0.0,
+                            note="stopped by hand; the tree may hold an unjudged change",
+                            direction=self.direction,
+                        )
                     )
-                )
-                raise
+                    raise
             results.append(trial)
-            if trial.outcome is Outcome.KEPT and trial.metric is not None:
-                incumbent = trial.metric
 
             # Keeping and reverting are the loop working; a verdict on merit
             # was reached either way. Everything else is machinery that did
@@ -428,6 +448,10 @@ class Loop:
                         "Comparing them would mix different measurements — put the "
                         "spec back, or start a new ledger."
                     )
+        # A manifest written before `label` existed lacks the key; without this
+        # the first run on an old ledger would append a near-duplicate spec.
+        if last is not None and "label" not in last:
+            last = {**last, "label": None}
         if last != spec:
             self.ledger.append_manifest(spec)
 

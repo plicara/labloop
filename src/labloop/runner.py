@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import os
+import shutil
 import signal
 import subprocess
+import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -43,29 +45,48 @@ def run_command(
     contending for the GPU with the next trial.
     """
     merged_env = {**os.environ, **(env or {})}
+    # Keep bytecode out of the tree: a proposing command that imports a module
+    # under a protected dir would otherwise write __pycache__/*.pyc inside it,
+    # moving the harness digest so every trial reads as harness_changed. The
+    # prefix is FRESH per invocation so a *static* plant at a fixed path cannot
+    # be read, and it is removed afterwards. A caller value wins; "" counts as
+    # unset.
+    #
+    # This is a raised bar, not a boundary. A same-user process can discover the
+    # prefix under /tmp and race to plant a forged .pyc before the import; and
+    # labloop cannot sandbox an arbitrary shell command. For an adversarial
+    # proposer, run the loop under OS isolation (container/namespace) so the
+    # propose step can write only the worktree.
+    cache_dir: str | None = None
+    if not merged_env.get("PYTHONPYCACHEPREFIX"):
+        cache_dir = tempfile.mkdtemp(prefix="labloop-pycache-")
+        merged_env["PYTHONPYCACHEPREFIX"] = cache_dir
     start = time.monotonic()
-
-    process = subprocess.Popen(
-        command,
-        cwd=str(cwd),
-        shell=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        errors="replace",
-        env=merged_env,
-        # Its own session, so a timeout can kill the whole process group.
-        # POSIX-only semantics; Windows rejects True, so gate on platform.
-        start_new_session=os.name == "posix",
-    )
-
-    timed_out = False
     try:
-        output, _ = process.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        timed_out = True
-        _terminate(process)
-        output, _ = process.communicate()
+        process = subprocess.Popen(
+            command,
+            cwd=str(cwd),
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            errors="replace",
+            env=merged_env,
+            # Its own session, so a timeout can kill the whole process group.
+            # POSIX-only semantics; Windows rejects True, so gate on platform.
+            start_new_session=os.name == "posix",
+        )
+
+        timed_out = False
+        try:
+            output, _ = process.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            _terminate(process)
+            output, _ = process.communicate()
+    finally:
+        if cache_dir is not None:
+            shutil.rmtree(cache_dir, ignore_errors=True)
 
     return Completed(
         returncode=None if timed_out else process.returncode,

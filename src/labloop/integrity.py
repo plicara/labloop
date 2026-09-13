@@ -16,6 +16,22 @@ cannot be compared. A number that cannot be compared is not a result.
 
 Recording the digest on each trial is what makes the ledger auditable later:
 two trials carrying the same digest were measured the same way.
+
+Bytecode stays in the digest on purpose. A crafted .pyc planted under a
+protected directory can override unchanged source when Python reads it, so
+excluding __pycache__ would reopen a score-forgery hole. Instead the runner
+sets PYTHONPYCACHEPREFIX for child commands (unless the caller already did),
+directing bytecode out of the tree: a normal self-check that imports or
+compiles a protected module then leaves no __pycache__ behind and the digest
+does not move, while a deliberately planted in-tree .pyc still changes it.
+
+This is detection, not isolation. The digest covers the protected set, and the
+runner redirects bytecode away from it, but a same-user process can still write
+code the measurement loads from outside that set — a forged .pyc in the
+bytecode mirror, or a package that shadows a protected module. labloop cannot
+sandbox an arbitrary shell command, so it cannot close that class. For an
+adversarial proposer, run the loop under OS isolation and let it write only the
+worktree.
 """
 
 from __future__ import annotations

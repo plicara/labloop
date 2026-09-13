@@ -33,7 +33,13 @@ class LedgerLockedError(RuntimeError):
 
 
 class LedgerLock:
-    """Advisory exclusive lock on a ledger, held for the life of a run.
+    """Advisory exclusive lock on a ledger.
+
+    A queueing loop (`wait=True`) takes the lock once per trial, so two
+    directions over one ledger interleave trials rather than serializing
+    whole runs. A loop that refuses to wait holds it for its whole run, so a
+    second such process is refused at startup. A caller may also hold it
+    across several operations.
 
     The lock file lives in the system temp directory, keyed by the ledger's
     resolved path — never beside the ledger. A sidecar in the working tree
@@ -42,7 +48,7 @@ class LedgerLock:
     one ledger resolve to one key, which is the collision being guarded.
 
     Usable as a context manager. Re-entrant within one instance, so a caller
-    that locks around `run()` does not deadlock a nested `baseline()`.
+    that locks more than once does not deadlock itself.
     """
 
     def __init__(self, ledger_path: str | Path, wait: bool = False) -> None:
