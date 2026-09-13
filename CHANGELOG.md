@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.3.0 — 2026-09-13
+
+### Running where the project actually lives, and keeping the record straight
+
+Found by consuming 0.2.0 in a real project — a prompt-optimization chase whose
+workspace sat in a subdirectory of its repository.
+
+- **A `--workdir` below the repository root can keep changes.** `git status`
+  reports paths relative to the repo root while `git add` ran from the workdir,
+  so a keep in a subdirectory failed with a pathspec error: the loop measured an
+  improvement it could never commit. `GitWorkspace` now resolves the toplevel
+  once and runs every git command there, translating paths at the boundary.
+- **Child commands no longer write bytecode into the protected tree.** A propose
+  step that imported or compiled a protected module wrote `__pycache__` inside
+  it, moved the harness digest, and made *every* trial read as `harness_changed`.
+  The runner points `PYTHONPYCACHEPREFIX` at a fresh, removed-after directory.
+  This is a raised bar, not a boundary: a same-user process can still race the
+  mirror, and labloop remains a detector, not a sandbox. The integrity docstring
+  now says so, and names the real fix (run adversarial proposers under OS
+  isolation).
+- **`--wait` runs share the ledger per trial, not per run.** The lock held the
+  whole multi-trial run, so a second direction waited hours while the first
+  finished and the documented round-robin never happened. The incumbent is also
+  re-read per trial, so a peer's kept trial is not judged against a stale bar.
+- **`--label` on `baseline` and `run` records who or what proposed a trial** in
+  the manifest and in `log --json`, instead of abusing the propose command
+  string to carry it. `log --json` attributes each trial to the label in force
+  when it was recorded; ledgers written before the field still load.
+- **A staged rename can be committed.** `changed_paths()` reports both sides of
+  a rename, and the vanished side is in neither the worktree nor the index, so
+  `git add` failed on it.
+
+286 tests (was 256).
+
 ## 0.2.0 — 2026-08-05
 
 ### Trusting the number
