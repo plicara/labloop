@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import statistics
 import sys
 from pathlib import Path
@@ -166,15 +167,14 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     run.add_argument(
         "--sandbox",
-        choices=["none", "auto", "bwrap", "landlock", "seatbelt", "docker"],
-        default="none",
-        help="confine the propose step to the worktree: auto picks the best backend (default none)",
+        choices=["none", "auto", "bwrap"],
+        default=os.environ.get("LABLOOP_SANDBOX", "auto"),
+        help="confine the propose step with bubblewrap; auto by default (default: auto)",
     )
     run.add_argument(
-        "--sandbox-exec",
-        default=None,
-        metavar="TEMPLATE",
-        help="custom sandbox command template containing {command} and optional {workdir}",
+        "--sandbox-network",
+        action="store_true",
+        help="let the sandboxed proposer reach the network (off by default)",
     )
 
     noise = sub.add_parser(
@@ -457,7 +457,7 @@ def _experiment_command(args: argparse.Namespace) -> int:
         propose_budget=getattr(args, "propose_budget", None),
         label=getattr(args, "label", None),
         sandbox=getattr(args, "sandbox", "none"),
-        sandbox_exec=getattr(args, "sandbox_exec", None),
+        sandbox_network=getattr(args, "sandbox_network", False),
     )
     loop = Loop(
         experiment,

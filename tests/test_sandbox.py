@@ -1,159 +1,129 @@
-"""The sandbox dispatcher: backend selection, wrapping, and the self-check.
-
-The pure tests pin the command shapes and the fail-closed behaviour; the last
-two exercise a real backend when the machine has one.
-"""
+"""The bubblewrap sandbox: selection, the command it builds, and the self-check."""
 
 from __future__ import annotations
-
-import shlex
 
 import pytest
 
 from labloop import (
     BwrapSandbox,
-    DockerSandbox,
     Experiment,
     Goal,
-    LandlockSandbox,
     SandboxError,
-    SeatbeltSandbox,
-    TemplateSandbox,
     UsageError,
     available_backends,
     resolve_sandbox,
     verify_sandbox,
 )
 from labloop.cli import main
-from labloop.sandbox import landlock_available
 
-HAS_BACKEND = bool(available_backends())
+HAS_BWRAP = bool(available_backends())
 
 
-# --- selection ---------------------------------------------------------------
+# --- selection: one backend, and it fails closed -----------------------------
 
-def test_no_choice_is_no_isolation():
-    assert resolve_sandbox(None) is None
+def test_none_is_no_isolation():
     assert resolve_sandbox("none") is None
+    assert resolve_sandbox(None) is None
 
 
-def test_a_custom_template_wins_and_is_used_verbatim():
-    sandbox = resolve_sandbox("none", "echo {command} # {workdir}")
-    assert sandbox is not None
-    assert sandbox.wrap("do x", "/wt") == "echo do x # /wt"
-
-
-def test_a_template_without_the_placeholder_is_refused():
-    with pytest.raises(SandboxError):
-        resolve_sandbox(None, "echo hello")
-
-
-def test_auto_returns_a_backend_or_fails_loudly(monkeypatch):
-    if HAS_BACKEND:
-        assert resolve_sandbox("auto") is not None
-    else:
+def test_auto_refuses_without_bubblewrap(monkeypatch):
+    monkeypatch.setattr("labloop.sandbox._which", lambda name: False)
+    for choice in ("auto", "bwrap"):
         with pytest.raises(SandboxError):
-            resolve_sandbox("auto")
+            resolve_sandbox(choice)
 
 
-def test_auto_never_picks_docker(monkeypatch):
-    # Docker is the heavy fallback; auto must not choose it even if present,
-    # unless nothing lighter exists.
-    monkeypatch.setattr("labloop.sandbox._which", lambda name: name == "docker")
-    monkeypatch.setattr("labloop.sandbox.seatbelt_available", lambda: False)
-    monkeypatch.setattr("labloop.sandbox.landlock_available", lambda: False)
+def test_auto_refuses_when_user_namespaces_are_blocked(monkeypatch):
+    monkeypatch.setattr("labloop.sandbox._which", lambda name: True)
     monkeypatch.setattr("labloop.sandbox.user_namespaces_work", lambda: False)
     with pytest.raises(SandboxError):
         resolve_sandbox("auto")
 
 
-def test_naming_an_absent_backend_is_an_error(monkeypatch):
-    monkeypatch.setattr("labloop.sandbox._which", lambda name: False)
-    monkeypatch.setattr("labloop.sandbox.landlock_available", lambda: False)
-    monkeypatch.setattr("labloop.sandbox.seatbelt_available", lambda: False)
-    for name in ("bwrap", "docker", "landlock", "seatbelt"):
+def test_removed_backends_are_refused():
+    for gone in ("landlock", "seatbelt", "docker"):
         with pytest.raises(SandboxError):
-            resolve_sandbox(name)
+            resolve_sandbox(gone)
 
 
-# --- command shapes ----------------------------------------------------------
+# --- the command it builds ---------------------------------------------------
 
-def test_bwrap_confines_writes_to_the_worktree_and_maps_tmp_inside_it():
+def test_it_reads_everything_and_writes_only_the_worktree():
     command = BwrapSandbox().wrap("make", "/wt")
-    assert "bwrap" in command
     assert "--ro-bind / /" in command
     assert "--bind /wt /wt" in command
-    assert "--bind /wt/.labloop-tmp /tmp" in command      # /tmp must NOT be the real one
+    assert "--unshare-pid" in command          # detached processes cannot outlive it
 
 
-def test_landlock_runs_the_bundled_wrapper():
-    command = LandlockSandbox(python="/usr/bin/python3").wrap("make", "/wt")
-    assert "-m labloop._landlock /wt --" in command
-    assert shlex.quote("make") in command
+def test_the_network_is_off_by_default():
+    assert "--unshare-net" in BwrapSandbox().wrap("x", "/wt")
 
 
-def test_seatbelt_denies_by_default_and_allows_only_the_worktree():
-    command = SeatbeltSandbox().wrap("make", "/wt")
-    assert "/usr/bin/sandbox-exec" in command
-    assert "(deny default)" in command
-    assert '(allow file-write* (subpath "/wt"))' in command
+def test_the_network_can_be_turned_on():
+    assert "--unshare-net" not in BwrapSandbox().wrap("x", "/wt", True)
 
 
-def test_docker_is_read_only_and_mounts_only_the_worktree():
-    command = DockerSandbox(image="img:1").wrap("make", "/wt")
-    assert "docker run --rm" in command and "--read-only" in command
-    assert "-v /wt:/wt:rw" in command
-    assert "img:1" in command
+def test_the_git_metadata_is_bound_read_only(tmp_path):
+    (tmp_path / ".git").mkdir()
+    command = BwrapSandbox().wrap("x", str(tmp_path))
+    assert f"--ro-bind {tmp_path}/.git {tmp_path}/.git" in command
 
 
-# --- experiment validation ---------------------------------------------------
+def test_a_privileged_socket_is_masked(tmp_path, monkeypatch):
+    socket = tmp_path / "docker.sock"
+    socket.write_text("")
+    monkeypatch.setattr("labloop.sandbox._SENSITIVE_SOCKETS", (str(socket),))
+    command = BwrapSandbox().wrap("x", "/wt")
+    assert f"--ro-bind /dev/null {socket}" in command
+
+
+# --- validation --------------------------------------------------------------
 
 def test_an_experiment_rejects_an_unknown_sandbox():
     with pytest.raises(UsageError):
-        Experiment(run="true", metric="m", goal=Goal.MAXIMIZE, sandbox="firejail")
+        Experiment(run="true", metric="m", goal=Goal.MAXIMIZE, sandbox="docker")
 
 
-def test_an_experiment_rejects_a_template_without_the_placeholder():
-    with pytest.raises(UsageError):
-        Experiment(run="true", metric="m", goal=Goal.MAXIMIZE, sandbox_exec="bwrap /")
+def test_the_network_choice_is_recorded():
+    assert Experiment(run="true", metric="m", goal=Goal.MAXIMIZE,
+                      sandbox_network=True).spec()["sandbox_network"] is True
+    assert Experiment(run="true", metric="m", goal=Goal.MAXIMIZE).spec()["sandbox_network"] is False
 
 
 # --- the self-check ----------------------------------------------------------
 
 def test_the_self_check_rejects_a_sandbox_that_does_not_confine(tmp_path):
-    # A template that runs the command unchanged is not a sandbox; the probe
-    # must notice the write outside landing.
-    noop = TemplateSandbox("noop", "{command}")
+    class Noop:
+        name = "noop"
+
+        def wrap(self, command: str, worktree: str, network: bool = False) -> str:
+            return command
+
     with pytest.raises(SandboxError):
-        verify_sandbox(noop, str(tmp_path))
+        verify_sandbox(Noop(), str(tmp_path))
 
 
-@pytest.mark.skipif(not landlock_available(), reason="no Landlock on this kernel")
-def test_the_self_check_accepts_the_landlock_backend(tmp_path):
-    verify_sandbox(LandlockSandbox(), str(tmp_path))   # raises if it fails
+@pytest.mark.skipif(not HAS_BWRAP, reason="bubblewrap is not available on this machine")
+def test_the_self_check_accepts_bubblewrap(tmp_path):
+    verify_sandbox(BwrapSandbox(), str(tmp_path))
 
 
-# --- wiring ------------------------------------------------------------------
+# --- wiring through the CLI --------------------------------------------------
 
-def test_a_non_confining_template_is_refused_at_startup(project, capsys):
-    # --sandbox-exec is also verified: a template that merely prefixes the
-    # command is not a sandbox, and the self-check must catch that before trial 0.
+def test_run_refuses_when_bubblewrap_is_unavailable(project, monkeypatch, capsys):
+    monkeypatch.setattr("labloop.sandbox._which", lambda name: False)
+    rc = main([
+        "run", "--run", "python train.py", "--metric", "val_loss",
+        "--propose", "true", "--sandbox", "auto", "--trials", "1",
+    ])
+    assert rc == 2
+    assert "bubblewrap" in capsys.readouterr().err
+
+
+@pytest.mark.skipif(not HAS_BWRAP, reason="bubblewrap is not available on this machine")
+def test_run_with_the_sandbox_wraps_and_verifies(project, capsys):
     assert main([
         "run", "--run", "python train.py", "--metric", "val_loss",
-        "--propose", "true",
-        "--sandbox-exec", "env LABLOOP_PROBE=1 {command}",
-        "--trials", "1",
-    ]) == 2
-    assert "self-check FAILED" in capsys.readouterr().err
-
-
-@pytest.mark.skipif(not landlock_available(), reason="no Landlock on this kernel")
-def test_run_with_the_auto_sandbox_wraps_and_verifies(project, capsys):
-    # End to end through a real backend: the self-check runs, the propose step
-    # is confined, and a change inside the worktree still lands.
-    assert main([
-        "run", "--run", "python train.py", "--metric", "val_loss",
-        "--propose", "printf 'x\\n' >> train.py", "--sandbox", "auto",
-        "--trials", "1",
+        "--propose", "printf 'x\\n' >> train.py", "--sandbox", "auto", "--trials", "1",
     ]) == 0
     capsys.readouterr()

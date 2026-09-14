@@ -139,14 +139,18 @@ class Experiment:
     trial. Free text, not identity: it claims nothing and proves nothing.
     """
     sandbox: str = "none"
-    """OS isolation for the propose step: `none`, `auto`, or a backend name.
+    """OS isolation for the propose step: `none`, `auto`, or `bwrap`.
 
-    `auto` picks the best backend the machine has (Seatbelt, bubblewrap,
-    Landlock); an explicit name demands that one. Recorded in the manifest so a
-    run says how it was isolated. `none` is the 0.3.0 behaviour.
+    bubblewrap is the only backend. `auto` picks it and refuses when it cannot
+    run. Recorded in the manifest so a run says how it was isolated. `none` is
+    the pre-sandbox behaviour.
     """
-    sandbox_exec: str | None = None
-    """A custom sandbox command template, overriding `sandbox` when set."""
+    sandbox_network: bool = False
+    """Whether the sandboxed propose step may reach the network. Off by default.
+
+    A proposer that calls a hosted model needs this on; a local or scripted one
+    does not. Off means a compromise cannot exfiltrate what it reads.
+    """
 
     @property
     def propose_timeout(self) -> float:
@@ -179,7 +183,7 @@ class Experiment:
             "propose_budget": self.propose_budget,
             "label": self.label,
             "sandbox": self.sandbox,
-            "sandbox_exec": self.sandbox_exec,
+            "sandbox_network": self.sandbox_network,
         }
 
     @classmethod
@@ -206,13 +210,8 @@ class Experiment:
             if "\n" in self.label or "\r" in self.label:
                 raise UsageError("label must be a single line")
             self.label = self.label.strip()
-        if self.sandbox not in ("none", "auto", "bwrap", "landlock", "seatbelt", "docker"):
-            raise UsageError(
-                "sandbox must be one of: none, auto, bwrap, landlock, seatbelt, docker"
-            )
-        if self.sandbox_exec is not None:
-            if not isinstance(self.sandbox_exec, str) or "{command}" not in self.sandbox_exec:
-                raise UsageError("sandbox_exec template must be a string containing '{command}'")
+        if self.sandbox not in ("none", "auto", "bwrap"):
+            raise UsageError("sandbox must be one of: none, auto, bwrap")
         if isinstance(self.goal, str):
             self.goal = Goal(self.goal)
         if isinstance(self.protect, str):

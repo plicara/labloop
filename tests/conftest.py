@@ -33,6 +33,16 @@ def replace_text(path: str, old: str, new: str) -> str:
     return f"{shlex.quote(sys.executable)} -c {shlex.quote(code)}"
 
 
+@pytest.fixture(autouse=True)
+def _no_sandbox_by_default(monkeypatch):
+    """The CLI defaults to --sandbox auto; tests opt in explicitly.
+
+    Keeps the suite independent of which isolation backend (if any) the machine
+    has; the sandbox tests pass --sandbox explicitly.
+    """
+    monkeypatch.setenv("LABLOOP_SANDBOX", "none")
+
+
 @pytest.fixture
 def project(tmp_path, monkeypatch):
     """A committed git repo whose experiment prints val_loss, as cwd.

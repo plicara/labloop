@@ -26,12 +26,8 @@ from .metrics import MetricNotFound, extract_metric
 from .runner import Completed, run_command
 from .sandbox import (
     BwrapSandbox,
-    DockerSandbox,
-    LandlockSandbox,
     Sandbox,
     SandboxError,
-    SeatbeltSandbox,
-    TemplateSandbox,
     available_backends,
     resolve_sandbox,
     verify_sandbox,
@@ -45,7 +41,7 @@ from .workspace import (
     Workspace,
 )
 
-__version__ = "0.3.0"
+__version__ = "1.0.0"
 
 __all__ = [
     "Completed",
@@ -64,18 +60,14 @@ __all__ = [
     "NoProtectedFilesError",
     "Outcome",
     "StalledError",
-    "TemplateSandbox",
     "Trial",
     "UsageError",
     "Workspace",
     "__version__",
     "available_backends",
     "BwrapSandbox",
-    "DockerSandbox",
-    "LandlockSandbox",
     "Sandbox",
     "SandboxError",
-    "SeatbeltSandbox",
     "extract_metric",
     "harness_digest",
     "resolve_sandbox",
