@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — toward 1.0
+## 1.0.0 — 2026-09-13
 
 ### Sandboxing on by default, with the network off
 

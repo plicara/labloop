@@ -99,11 +99,17 @@ class BwrapSandbox:
         git = os.path.join(worktree, ".git")
         if os.path.exists(git):
             args += ["--ro-bind", git, git]           # no hook/refdir planting
+        masked: set[str] = set()
         for socket in _SENSITIVE_SOCKETS:
-            if os.path.exists(socket):
-                # /var/run is a symlink to /run; bwrap cannot create a mount
-                # point at the symlinked spelling, so mask the real path.
-                args += ["--ro-bind", "/dev/null", os.path.realpath(socket)]
+            if not os.path.exists(socket):
+                continue
+            # /var/run is a symlink to /run and bwrap cannot make a mount point
+            # at the symlinked spelling, so mask the real path; two names for
+            # one socket must not produce two mounts.
+            real = os.path.realpath(socket)
+            if real not in masked:
+                masked.add(real)
+                args += ["--ro-bind", "/dev/null", real]
         if not network:
             args += ["--unshare-net"]
         args += ["--chdir", worktree, "--setenv", "TMPDIR", scratch,
