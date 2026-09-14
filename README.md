@@ -281,6 +281,44 @@ writes a cache or a log inside a protected path, that path stops being stable
 and the loop will refuse to compare against its own earlier trials. Caches are
 artifacts; keep them somewhere you are not protecting.
 
+## Sandboxing the proposer
+
+Digesting detects a proposal that edits the measurement; it cannot stop one
+that writes code the measurement later loads from somewhere the digest was never
+pointed at. For that, the propose step itself is confined.
+
+On Linux, labloop runs the propose command inside **bubblewrap**: it can read the
+whole machine, write only the worktree, and gets its own process and network
+namespaces. The project's `.git` is bound read-only and the root-equivalent
+container sockets are masked, so the obvious escapes are closed at the kernel.
+This is the default; `--sandbox none` opts out.
+
+It needs bubblewrap and unprivileged user namespaces:
+
+```bash
+sudo apt install bubblewrap
+sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0   # Ubuntu 24.04+
+```
+
+Without them the loop **refuses to start** rather than quietly running the
+proposer unconfined, and a startup self-check proves the boundary on your
+machine before the first trial. (The Python API is confined by default too;
+set `LABLOOP_SANDBOX=none` to opt out.)
+
+**The network is off by default.** A proposer that calls a hosted model needs
+`--sandbox-network`; a local or scripted one does not. Off means a compromised
+proposer cannot send what it reads over IP — but Unix-domain sockets stay
+reachable, so it is "no IP egress", not "cannot talk to anything".
+
+A sandboxed proposer can write only the worktree, so evidence it leaves would be
+committed or reverted with the trial. `--sandbox-write PATH` (repeatable) adds
+one dedicated directory outside the worktree for that; it is refused if it is
+inside the worktree, an ancestor of it, or a shared/temporary root such as
+`/tmp` or `/`.
+
+Two things it does not do: reads are open by design (keep secrets off the
+machine), and bubblewrap shares the host kernel — it is not a virtual machine.
+
 ## What the proposer is told
 
 A proposal command that gets no feedback is guessing. Before each attempt

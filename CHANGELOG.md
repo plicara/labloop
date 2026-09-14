@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.0.2 — 2026-09-14
+
+### Hardening the 1.0 sandbox after an independent audit
+
+- **`--sandbox-write` is validated.** It accepted any existing directory —
+  including `/tmp` (which re-exposes the bytecode mirror the sandbox exists to
+  keep unreachable) and `/` (which disables the sandbox). A writable path that is
+  an ancestor of the worktree, or a shared/temporary root, is now refused, and
+  both the worktree and the path are canonicalised so a symlink cannot point the
+  bind back inside the worktree.
+- **The Python API is confined by default**, matching the CLI:
+  `Experiment.sandbox` defaults to `auto` (override with `LABLOOP_SANDBOX`), so a
+  library caller no longer runs the proposer unconfined.
+- **The docs no longer overstate "network off".** The network namespace blocks IP
+  traffic; Unix-domain sockets are filesystem objects and stay reachable, so a
+  same-user local relay can still receive data.
+- **The 1.0.0 notes below are corrected**: one backend (bubblewrap), Linux only;
+  the removed alternatives are not promised, and the README now says run needs
+  bubblewrap by default.
+- **CI exercises the sandbox**: a job installs bubblewrap and runs the sandbox
+  tests, so the released security path is not skipped.
+
 ## 1.0.1 — 2026-09-14
 
 ### A writable evidence channel for the sandboxed proposer
@@ -18,10 +40,9 @@
 
 ### Sandboxing on by default, with the network off
 
-- The propose step runs sandboxed by default. `--sandbox auto` picks the best
-  backend the machine has (macOS Seatbelt, bubblewrap, Landlock; Docker only if
-  named), and the loop refuses to start when none exists rather than running
-  unconfined. `--sandbox none` restores the old behaviour.
+- The propose step runs sandboxed by default, with **bubblewrap** (Linux only);
+  the loop refuses to start when it cannot run rather than running unconfined.
+  `--sandbox none` restores the old behaviour.
 - **The network is off by default** (`--sandbox-network` turns it on). A proposer
   that reads the machine can no longer send what it reads anywhere; a proposing
   agent that calls a hosted model must be given the flag (or a local model used).

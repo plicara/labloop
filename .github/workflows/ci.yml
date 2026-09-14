@@ -37,6 +37,30 @@ jobs:
       - name: Test
         run: pytest -q
 
+  # The released security path — the proposer running inside bubblewrap — is
+  # skipped everywhere bubblewrap is absent, which is every other job. Install
+  # it and relax the user-namespace restriction so the sandbox is really exercised.
+  sandbox:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: python -m pip install --upgrade pip && pip install -e ".[dev]"
+
+      - name: Install bubblewrap and allow unprivileged user namespaces
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+
+      - name: Sandbox tests (bubblewrap)
+        run: pytest -q tests/test_sandbox.py
+
   build:
     runs-on: ubuntu-latest
     steps:
