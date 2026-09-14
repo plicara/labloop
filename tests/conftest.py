@@ -16,6 +16,25 @@ import pytest
 from labloop import Experiment, Goal, Loop
 
 
+def pytest_addoption(parser):
+    parser.addoption("--require-sandbox", action="store_true",
+                     help="Fail before collection unless Bubblewrap passes its real self-check")
+
+
+def pytest_sessionstart(session):
+    if session.config.getoption("--require-sandbox"):
+        import tempfile
+
+        from labloop import SandboxError, resolve_sandbox, verify_sandbox
+
+        try:
+            sandbox = resolve_sandbox("bwrap")
+            with tempfile.TemporaryDirectory(prefix="labloop-ci-") as worktree:
+                verify_sandbox(sandbox, worktree)
+        except SandboxError as exc:
+            raise pytest.UsageError(f"required sandbox unavailable: {exc}") from exc
+
+
 def run_git(*args, cwd):
     """git, checked, captured — the form every test wants."""
     return subprocess.run(

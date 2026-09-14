@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+- Check protected files and the ledger after completed measurements, including baselines, confirmation runs, and noise calibration, before accepting metrics. Discard tampered scores, restore altered ledgers, and identify the violating phase. Preserve preexisting uncommitted baseline work and stop noise calibration without publishing statistics.
+- Explicitly drop all capabilities and detach the controlling terminal in Bubblewrap. Document the snapshot checks' transient-tampering blind spot and a separate, unimplemented evaluator-isolation design; retain the current single backend.
+- Constrain `--sandbox-write` to existing directories below `~/.local/state/labloop/evidence`, excluding the root, the worktree, its ancestors, and symlink redirects outside the allowed area. Existing arbitrary writable paths need migration.
+- Use exclusively owned temporary sandbox probes so startup checks cannot delete preexisting work or evidence files.
+- Restore a proposer-modified ledger before recording `harness_changed`, so forged incumbents do not affect subsequent trials.
+- Kill the original POSIX process group on timeout or interruption, even if its shell has exited; bound output draining when an unconfined detached child retains a pipe.
+- Capture individual untracked proposal files so evaluator artifacts created later in a new directory are not swept into a kept commit.
+- Refresh the active manifest under each trial's lock so interleaved waiting runs retain their own labels and resume specification.
+- Require a working Bubblewrap self-check in sandbox CI and release publishing. Add kernel-facing tests for host and Git writes, network namespaces, detached processes, and evidence surviving keeps and reverts.
+- Make release dry runs read-only, reject untracked files and unverifiable remote state, verify editable source provenance, fix cross-platform wheel smoke setup, and require explicit final publication confirmation. Remove direct workflow-dispatch publishing.
+- Refresh setup, security scope, evidence migration, cookbook network flags, release instructions, and roadmap status; include scripts and audit documentation in source distributions.
+
 ## 1.0.2 — 2026-09-14
 
 ### Hardening the 1.0 sandbox after an independent audit
@@ -19,8 +33,7 @@
 - **The 1.0.0 notes below are corrected**: one backend (bubblewrap), Linux only;
   the removed alternatives are not promised, and the README now says run needs
   bubblewrap by default.
-- **CI exercises the sandbox**: a job installs bubblewrap and runs the sandbox
-  tests, so the released security path is not skipped.
+- **CI adds a sandbox job** that installs Bubblewrap and runs its tests. The availability-based skips still allowed that job to pass without a working backend; the mandatory capability gate is in the unreleased follow-up above.
 
 ## 1.0.1 — 2026-09-14
 
@@ -43,13 +56,11 @@
 - The propose step runs sandboxed by default, with **bubblewrap** (Linux only);
   the loop refuses to start when it cannot run rather than running unconfined.
   `--sandbox none` restores the old behaviour.
-- **The network is off by default** (`--sandbox-network` turns it on). A proposer
-  that reads the machine can no longer send what it reads anywhere; a proposing
-  agent that calls a hosted model must be given the flag (or a local model used).
+- **IP networking is off by default** (`--sandbox-network` turns it on). Unix-domain sockets remain reachable. A proposing agent that calls a hosted model needs the flag or an explicit sandbox opt-out.
 - A startup self-check proves the boundary on the machine before trial 0: a write
   inside the worktree works and a write outside it is denied. This catches a
   "best effort" backend silently running unsandboxed.
-- `--sandbox-exec TEMPLATE` still allows a custom backend, and is verified too.
+- Bubblewrap is the only supported backend. `--sandbox-exec` is not a released option.
 
 ### A protected file can no longer be shadowed
 

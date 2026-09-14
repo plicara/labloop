@@ -7,15 +7,15 @@ instead of improving anything, and published runs show it does: agents have
 overwritten test cases, memorized evaluation answers, and read sibling runs
 through shared git state.
 
-labloop does not prevent that. A shell command can do anything, and claiming
-otherwise would be a stronger promise than this design can keep. It *detects*
-it. Files that define the measurement are digested with SHA-256 before the
-propose command runs and again afterwards; if the digest moved, the metric was
-produced by a different measurement than the incumbent's and the two numbers
-cannot be compared. A number that cannot be compared is not a result.
+labloop detects persistent changes, rather than preventing them. Files that
+define the measurement are digested with SHA-256 before the propose command,
+after it, and after each completed measurement, including confirmation runs,
+baselines, and noise calibration. A changed digest invalidates the metric.
+Interrupted commands do not reach the post-command check.
 
-Recording the digest on each trial is what makes the ledger auditable later:
-two trials carrying the same digest were measured the same way.
+Recording the digest makes the watched files auditable later. Equal digests
+do not prove identical execution: transient edits restored before the check,
+unwatched dependencies, in-memory changes, and forged stdout remain possible.
 
 Bytecode stays in the digest on purpose. A crafted .pyc planted under a
 protected directory can override unchanged source when Python reads it, so
@@ -28,10 +28,9 @@ does not move, while a deliberately planted in-tree .pyc still changes it.
 This is detection, not isolation. The digest covers the protected set, and the
 runner redirects bytecode away from it, but a same-user process can still write
 code the measurement loads from outside that set — a forged .pyc in the
-bytecode mirror, or a package that shadows a protected module. labloop cannot
-sandbox an arbitrary shell command, so it cannot close that class. For an
-adversarial proposer, run the loop under OS isolation and let it write only the
-worktree.
+bytecode mirror, or an unwatched dependency. The propose sandbox constrains
+proposer writes, but measurement still executes on the host. Run the entire
+experiment on a disposable, credential-free machine for adversarial code.
 """
 
 from __future__ import annotations
@@ -56,7 +55,7 @@ _CHUNK = 1 << 16
 
 
 class HarnessMismatchError(RuntimeError):
-    """The incumbent in the ledger was measured by a different harness."""
+    """Measurements cannot be compared under the observed integrity state."""
 
 
 class NoProtectedFilesError(UsageError):

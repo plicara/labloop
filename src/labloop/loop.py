@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import tempfile
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
@@ -78,8 +79,8 @@ class Loop:
     def baseline(self) -> Trial:
         """Measure the tree as it stands, without proposing a change.
 
-        Establishes the incumbent. Recorded as KEPT because it is the state
-        the working tree is actually in — there is nothing to revert to.
+        A successful, integrity-checked measurement establishes the incumbent.
+        Failed or tampered measurements are recorded without advancing it.
         """
         with self.lock:
             return self._baseline()
@@ -88,12 +89,21 @@ class Loop:
         self._check_direction()
         self._record_manifest()
         # Digested before the run, so it describes the tree that was measured.
-        harness = self._harness()
+        files_before = harness_files(self.workdir, self.experiment.protect)
+        harness = combine(files_before)
+        ledger_before, ledger_bytes, ledger_parent = self._snapshot_ledger()
         clean_before = not self.workspace.is_dirty()
         completed = self._measure()
-        metric = self._read_metric(completed.output)
+        tampering = self._tampering(harness, ledger_before, files_before, phase="baseline run")
+        metric = None if tampering else self._read_metric(completed.output)
         note = "baseline"
-        if metric is None or not completed.ok:
+        if tampering:
+            if self._ledger_changed(ledger_before):
+                self._restore_ledger(ledger_bytes, ledger_parent)
+            outcome, note = Outcome.HARNESS_CHANGED, tampering
+            if not clean_before:
+                note += "; preexisting uncommitted work preserved; inspect the tree before retrying"
+        elif metric is None or not completed.ok:
             outcome, metric = self._failure(completed), None
         elif not math.isfinite(metric):
             outcome, note, metric = Outcome.NOT_FINITE, self._not_finite(metric), None
@@ -132,7 +142,7 @@ class Loop:
         )
 
     def measure_noise(self, repeats: int = 5) -> list[float]:
-        """Run the experiment repeatedly without changing anything.
+        """Run repeated, integrity-checked measurements under the ledger lock.
 
         Keep-or-revert assumes a difference in the metric means a difference
         in the code. If the same tree scores differently run to run, the loop
@@ -144,9 +154,23 @@ class Loop:
         if repeats < 2:
             raise UsageError("measuring spread needs at least 2 runs")
 
+        with self.lock:
+            return self._measure_noise(repeats)
+
+    def _measure_noise(self, repeats: int) -> list[float]:
+        files_before = harness_files(self.workdir, self.experiment.protect)
+        harness = combine(files_before)
+        ledger_before, ledger_bytes, ledger_parent = self._snapshot_ledger()
         values: list[float] = []
         for _ in range(repeats):
             completed = self._measure()
+            tampering = self._tampering(harness, ledger_before, files_before, phase="noise run")
+            if tampering:
+                if self._ledger_changed(ledger_before):
+                    self._restore_ledger(ledger_bytes, ledger_parent)
+                raise HarnessMismatchError(
+                    f"{tampering}; noise results discarded. Inspect the tree before retrying."
+                )
             metric = self._read_metric(completed.output)
             if metric is None or not completed.ok or not math.isfinite(metric):
                 raise RuntimeError(
@@ -205,6 +229,9 @@ class Loop:
             # against a number read before the run started would either keep a
             # change the ledger already beat or revert one that beats it.
             with self.lock:
+                # A waiting peer may have recorded another spec since our
+                # previous trial. Keep labels and resume tied to this trial.
+                self._record_manifest()
                 incumbent = self._incumbent()
                 try:
                     trial = self._one_trial(incumbent)
@@ -249,7 +276,7 @@ class Loop:
         index = self.ledger.next_index()
         files_before = harness_files(self.workdir, self.experiment.protect)
         harness = combine(files_before)
-        ledger_before = file_digest(self.ledger.path)
+        ledger_before, ledger_bytes, ledger_parent = self._snapshot_ledger()
 
         def record(outcome: Outcome, duration: float, **fields: object) -> Trial:
             """Every branch below shares these; only the verdict differs."""
@@ -269,6 +296,16 @@ class Loop:
             self.workspace.revert()
             return record(outcome, duration, **fields)
 
+        def reject_tampering(completed: Completed, phase: str) -> Trial | None:
+            tampering = self._tampering(harness, ledger_before, files_before, phase=phase)
+            if tampering is None:
+                return None
+            if self._ledger_changed(ledger_before):
+                self._restore_ledger(ledger_bytes, ledger_parent)
+            return reject(
+                Outcome.HARNESS_CHANGED, spent, note=tampering, stdout_tail=completed.tail
+            )
+
         with self._proposal_env(index, incumbent) as env:
             propose_command = self.experiment.propose or ""
             if self.sandbox is not None:
@@ -287,11 +324,9 @@ class Loop:
         # Checked before the exit status, and before spending the budget on a
         # run whose number would mean nothing anyway. A proposal that moved
         # the measurement is a more serious event than one that crashed.
-        tampering = self._tampering(harness, ledger_before, files_before)
-        if tampering:
-            return reject(
-                Outcome.HARNESS_CHANGED, spent, note=tampering, stdout_tail=proposal.tail
-            )
+        rejected = reject_tampering(proposal, "proposal")
+        if rejected is not None:
+            return rejected
 
         if not proposal.ok:
             # A proposal killed at the budget did not fail, it ran out of
@@ -332,8 +367,11 @@ class Loop:
         proposed_paths = self.workspace.changed_paths()
 
         completed = self._measure()
-        metric = self._read_metric(completed.output)
         spent += completed.duration_seconds
+        rejected = reject_tampering(completed, "run")
+        if rejected is not None:
+            return rejected
+        metric = self._read_metric(completed.output)
 
         if metric is None or not completed.ok:
             return reject(self._failure(completed), spent, stdout_tail=completed.tail)
@@ -356,8 +394,11 @@ class Loop:
 
         if self.experiment.confirm:
             again = self._measure()
-            second = self._read_metric(again.output)
             spent += again.duration_seconds
+            rejected = reject_tampering(again, "confirmation run")
+            if rejected is not None:
+                return rejected
+            second = self._read_metric(again.output)
             shown = f"{second:.6g}" if second is not None else "--"
             note = f"won at {metric:.6g} but measured {shown} on a second run"
 
@@ -545,33 +586,64 @@ class Loop:
     def _harness(self) -> str | None:
         return harness_digest(self.workdir, self.experiment.protect)
 
+    def _snapshot_ledger(self) -> tuple[str | None, bytes | None, Path]:
+        path = self.ledger.path
+        if path.is_symlink() or (path.exists() and not path.is_file()):
+            raise UsageError("the ledger must be a regular file, not a symlink or directory")
+        digest = file_digest(path)
+        return digest, path.read_bytes() if digest is not None else None, path.parent.resolve()
+
+    def _ledger_changed(self, before: str | None) -> bool:
+        return file_digest(self.ledger.path) != before or (
+            before is None and (self.ledger.path.exists() or self.ledger.path.is_symlink())
+        )
+
+    def _restore_ledger(self, contents: bytes | None, parent: Path) -> None:
+        """Replace a modified ledger without following a planted leaf symlink."""
+        if self.ledger.path.parent.resolve() != parent:
+            raise UsageError("ledger directory changed; stopping for manual recovery")
+        if self.ledger.path.is_dir() and not self.ledger.path.is_symlink():
+            raise UsageError("ledger replaced by a directory; stopping for manual recovery")
+        if contents is None:
+            self.ledger.path.unlink(missing_ok=True)
+            return
+        with tempfile.NamedTemporaryFile(dir=parent, delete=False) as backup:
+            backup.write(contents)
+        try:
+            os.replace(backup.name, self.ledger.path)
+        finally:
+            Path(backup.name).unlink(missing_ok=True)
+
     def _tampering(
         self,
         harness: str | None,
         ledger_before: str | None,
         files_before: dict[str, str] | None = None,
+        *,
+        phase: str = "proposal",
     ) -> str | None:
-        """Name what the proposal changed that it had no business changing.
+        """Name which phase changed the protected measurement or ledger.
 
         The ledger is checked unconditionally. It is the source of truth for
         the incumbent, so an agent that can rewrite it can lower the bar it is
         being judged against — and it usually sits in the working tree, where
         a revert may not reach it.
         """
-        if file_digest(self.ledger.path) != ledger_before:
-            return "proposal modified the ledger"
+        if self._ledger_changed(ledger_before):
+            return f"{phase} modified the ledger"
         if harness is None:
             return None
         try:
             after = harness_files(self.workdir, self.experiment.protect)
         except NoProtectedFilesError:
-            return "proposal deleted the protected files"
+            return f"{phase} deleted the protected files"
         if after == files_before:
             return None
         moved = changed_files(files_before, after)
         if moved:
-            return f"proposal modified the harness: {moved}"
-        return "proposal modified the harness"
+            hint = "; keep caches and logs outside protected paths" if phase != "proposal" else ""
+            return f"{phase} modified the harness: {moved}{hint}"
+        return f"{phase} modified the harness"
 
     def _incumbent(self) -> float | None:
         """The metric to beat, read from the ledger rather than memory.

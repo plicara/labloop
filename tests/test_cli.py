@@ -493,6 +493,7 @@ def test_run_refuses_when_git_has_no_identity(project, monkeypatch, capsys):
     monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
     subprocess.run(["git", "config", "--unset", "user.email"], cwd=project)
     subprocess.run(["git", "config", "--unset", "user.name"], cwd=project)
+    subprocess.run(["git", "config", "user.useConfigOnly", "true"], cwd=project, check=True)
     rc = main(["run", "--run", "python train.py", "--metric", "val_loss",
                "--propose", "true", "--trials", "1"])
     err = capsys.readouterr().err

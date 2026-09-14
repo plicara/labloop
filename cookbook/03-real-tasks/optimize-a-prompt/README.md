@@ -225,7 +225,7 @@ run could not have told it from a lucky draw, and would have committed it
 either way. The correct invocation, given what step 1 measured:
 
 ```bash
-labloop run ... --min-delta 0.0449 --confirm
+labloop run ... --sandbox-network --min-delta 0.0449 --confirm
 ```
 
 Better still: **make the metric less noisy.** Thirty cases at three fields is

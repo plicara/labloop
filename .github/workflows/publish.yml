@@ -16,7 +16,6 @@ name: Publish
 on:
   release:
     types: [published]
-  workflow_dispatch:
 
 jobs:
   build:
@@ -33,6 +32,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
           pytest -q
+
+      - name: Require working isolation before shipping
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap
+          if sysctl kernel.apparmor_restrict_unprivileged_userns >/dev/null 2>&1; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
+          ruff check .
+          mypy
+          pytest -q --require-sandbox tests/test_sandbox.py
 
       - name: Build
         run: |

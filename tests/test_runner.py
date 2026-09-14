@@ -8,8 +8,10 @@ next trial competes with them for the machine.
 from __future__ import annotations
 
 import os
+import shlex
 import signal
 import subprocess
+import sys
 import time
 from contextlib import suppress
 
@@ -76,6 +78,15 @@ def test_a_timeout_is_reported_not_raised(tmp_path):
     assert completed.timed_out
     assert not completed.ok
     assert completed.returncode is None
+
+
+@pytest.mark.skipif(os.name != "posix", reason="process groups are POSIX")
+def test_a_timeout_kills_a_child_even_after_the_shell_exits(tmp_path):
+    code = "import signal,time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(4)"
+    command = f"{shlex.quote(sys.executable)} -c {shlex.quote(code)}; true"
+    completed = run_command(command, cwd=tmp_path, timeout=0.5)
+    assert completed.timed_out
+    assert completed.duration_seconds < 3, "a child survived the shell's termination"
 
 
 def test_output_printed_before_a_timeout_survives(tmp_path):

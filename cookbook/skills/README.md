@@ -28,8 +28,10 @@ agent labloop invokes, so the proposer command has to be one that can load
 skills from the project.
 
 ```bash
-labloop run --propose "claude -p 'Improve train.py' --permission-mode acceptEdits" ...
+labloop run --sandbox-network --propose "claude -p 'Improve train.py' --permission-mode acceptEdits" ...
 ```
+
+The default sandbox requires Linux and Bubblewrap. Before using a hosted agent, follow the [current recipe setup](../README.md#running-these-recipes-on-1x), including writable runtime/cache placement. The skill does not configure sandbox permissions or capture transcripts.
 
 ## Why `labloop-proposer` is the interesting one
 
@@ -64,7 +66,7 @@ judgement.
 - **The `reverted` trap.** A change can move the metric the right way and still
   be reverted for missing `--min-delta`. On labloop 0.1.0 the brief said
   *"did not beat 0.2245"* about a change that beat it by 31%; that is
-  [now fixed](../../src/labloop/brief.py), and the skill teaches both the
+  [now fixed](../../../src/labloop/brief.py), and the skill teaches both the
   current message and the check to run on older versions.
 - **The nine outcomes as a routing table.** Each label sends you somewhere
   different; that is measured, not asserted

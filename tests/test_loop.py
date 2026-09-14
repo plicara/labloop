@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shlex
 
 import pytest
 
@@ -55,6 +56,44 @@ def test_ties_are_reverted(tmp_path):
     (trial,) = loop.run(trials=1)
     assert trial.outcome is Outcome.REVERTED, "a tie is not an improvement"
     assert ws.reverts == 1
+
+
+def test_rejected_ledger_tampering_cannot_change_the_next_incumbent(tmp_path):
+    loop, _ = make_loop(tmp_path, run="echo val=1")
+    loop.baseline()
+    ledger = tmp_path / "l.jsonl"
+    trusted = ledger.read_text()
+    records = [json.loads(line) for line in trusted.splitlines()]
+    for entry in records:
+        if entry.get("outcome") == "kept":
+            entry["metric"] = 99
+    forged = "\n".join(json.dumps(entry) for entry in records) + "\n"
+    loop.experiment.propose = f"printf %s {shlex.quote(forged)} > {shlex.quote(str(ledger))}"
+    (tampered,) = loop.run(trials=1)
+    assert tampered.outcome is Outcome.HARNESS_CHANGED
+    assert ledger.read_text().startswith(trusted)
+    loop.experiment.propose = "true"
+    loop.experiment.run = "echo val=9"
+    (next_trial,) = loop.run(trials=1)
+    assert next_trial.incumbent == 1
+    assert next_trial.outcome is Outcome.REVERTED
+
+
+def test_each_trial_uses_its_own_run_manifest_after_a_peer_manifest(tmp_path):
+    loop, _ = make_loop(tmp_path, run="echo val=1")
+    loop.experiment.label = "ours"
+    loop.baseline()
+
+    def peer_manifest(trial):
+        if trial.index == 1:
+            loop.ledger.append_manifest({**loop.experiment.spec(), "label": "peer",
+                                         "direction": "other"})
+
+    loop.reporter = peer_manifest
+    loop.wait_for_lock = True
+    loop.run(trials=2)
+    assert loop.ledger.trial_labels()[2] == "ours"
+    assert loop.ledger.last_manifest()["direction"] == "main"
 
 
 def test_maximize_goal_inverts_the_comparison(tmp_path):

@@ -11,6 +11,12 @@ if you want to see what a loop actually looks like, and
 together. See [PROPOSAL.md](PROPOSAL.md) for what this is and
 [CANDIDATES.md](CANDIDATES.md) for what is not built yet.
 
+## Running these recipes on 1.x
+
+The default proposer sandbox needs Linux, Bubblewrap, and unprivileged user namespaces. See [sandbox setup](../README.md#sandboxing-the-proposer). On other platforms, explicitly set `LABLOOP_SANDBOX=none` only for a trusted experiment. Narrative transcripts are historical recordings; updated commands have not been re-run against paid hosted models.
+
+Hosted proposers need `--sandbox-network`. Their runtime caches must be configured in the worktree or an allowed evidence directory beneath `~/.local/state/labloop/evidence`; grant only the dedicated directory with `--sandbox-write`. The flag does not capture logs or grant arbitrary agent configuration writes. Test your agent's setup before a long run.
+
 ## Tiers
 
 Every recipe declares how far it is verified, because the most useful ones

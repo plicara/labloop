@@ -54,9 +54,8 @@ def run_command(
     #
     # This is a raised bar, not a boundary. A same-user process can discover the
     # prefix under /tmp and race to plant a forged .pyc before the import; and
-    # labloop cannot sandbox an arbitrary shell command. For an adversarial
-    # proposer, run the loop under OS isolation (container/namespace) so the
-    # propose step can write only the worktree.
+    # the propose sandbox does not confine measurement. For adversarial code,
+    # run the entire experiment on a disposable, credential-free host.
     cache_dir: str | None = None
     if not merged_env.get("PYTHONPYCACHEPREFIX"):
         cache_dir = tempfile.mkdtemp(prefix="labloop-pycache-")
@@ -83,7 +82,24 @@ def run_command(
         except subprocess.TimeoutExpired:
             timed_out = True
             _terminate(process)
-            output, _ = process.communicate()
+            try:
+                output, _ = process.communicate(timeout=1)
+            except subprocess.TimeoutExpired as exc:
+                # An unconfined child can escape the group with setsid and
+                # retain the pipe. It must not extend the wall-clock budget.
+                captured = exc.output or b""
+                output = (
+                    captured.decode(errors="replace") if isinstance(captured, bytes) else captured
+                )
+                if process.stdout is not None:
+                    process.stdout.close()
+                process.wait()
+        except BaseException:
+            _terminate(process)
+            process.wait()
+            if process.stdout is not None:
+                process.stdout.close()
+            raise
     finally:
         if cache_dir is not None:
             shutil.rmtree(cache_dir, ignore_errors=True)
@@ -100,13 +116,9 @@ def _terminate(process: subprocess.Popen[str]) -> None:
     """Kill the process and any children it spawned."""
     if os.name == "posix":
         try:
-            group = os.getpgid(process.pid)
-            os.killpg(group, signal.SIGTERM)
-            try:
-                process.wait(timeout=10)
-                return
-            except subprocess.TimeoutExpired:
-                os.killpg(group, signal.SIGKILL)
+            # start_new_session makes the original PID the group ID, even if
+            # the shell has already exited and only its children remain.
+            os.killpg(process.pid, signal.SIGKILL)
             return
         except (ProcessLookupError, PermissionError):
             pass

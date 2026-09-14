@@ -5,8 +5,8 @@ Two formats are supported, tried in this order:
 1. A ``key=value`` or ``key: value`` pair anywhere in the output.
 2. A JSON object on its own line containing ``key``.
 
-The *last* occurrence wins. Training loops print the same key every epoch, and
-the final one is the result.
+The last occurrence within the first matching format wins. A later JSON line
+does not override an earlier key/value pair; callers should use one format.
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ _NUMBER = (
 
 
 def extract_metric(output: str, key: str) -> float:
-    """Return the last value of `key` in `output`.
+    """Return the last value of `key` in the first matching output format.
 
     Raises MetricNotFound if the key never appears, rather than returning a
     sentinel. A missing metric is a broken experiment, not a bad score, and

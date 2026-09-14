@@ -1,8 +1,13 @@
 # Roadmap
 
-Stages 1–6 below shipped as `labloop` 0.1.0 on PyPI (2026-08-02, tag
-`v0.1.0`). They are kept with their shipped notes as the record of what the
-release contains; the open list is at the bottom.
+Stages 1–6 below are the historical 0.1.0 plan and shipped notes, not a description of every current behavior. Current release changes are in [CHANGELOG.md](CHANGELOG.md); operational instructions are in [README.md](README.md).
+
+## Current follow-up after 1.0.2
+
+- Proposer isolation is Linux/Bubblewrap only. The fixed writable evidence boundary and follow-up audit are documented in [the decision log](docs/decision-log.md) and [audit report](docs/audit-2026-09-14.md).
+- With `--wait`, ledger locking is per trial, allowing complete trials from separate worktrees to interleave. Default non-waiting runs hold the lock for the whole run. Experiments do not execute simultaneously against one ledger.
+- `labloop branch` records a research direction and prints worktree instructions; it does not create a Git branch or worktree. `log --tree` remains unimplemented.
+- Measurement still runs outside the proposer sandbox. Completed measurements now check protected files and the ledger before accepting metrics, but transient edits and forged stdout remain possible. The [evaluation-isolation design](docs/evaluation-isolation.md) separates candidate execution from evaluator-owned scoring; it is not implemented. End-to-end containment and Windows process/locking coverage remain separate work, not guarantees of the current release.
 
 The positioning this serves: autoresearch proved the keep-or-revert loop on
 one task (nanochat, `val_bpb`, one GPU, one thread of commits). labloop
@@ -77,10 +82,7 @@ the one to design most carefully:
   from the fork point and blind to the parent's later progress,
   `labloop branch` with worktree instructions, `--direction` on runs,
   per-direction bests in `log`, resume returns to the direction in force.
-- Remaining, deliberately: simultaneous runs still serialize on the
-  per-run ledger lock (`--wait` queues them). True simultaneity needs
-  per-append locking with index coordination — a smaller, separate change
-  now that the semantics exist.
+- Current remaining work: trials execute serially; `--wait` releases the ledger lock between trials. True simultaneous measurement needs index coordination and clearer run-manifest ownership; automatic direction merging remains out of scope.
 
 ## 4. `labloop init` — the first five minutes · **done**
 
@@ -131,9 +133,7 @@ jq". Minimum honest version:
 
 ## After 0.1.0, in rough order
 
-1. **Simultaneous direction runs** — the one deliberate gap in stage 3:
-   runs still serialize on the per-run ledger lock. Needs per-append
-   locking with index coordination.
+1. **Simultaneous direction runs** — trials still execute serially, with `--wait` allowing interleaving between complete trials. Simultaneous measurement needs per-append locking with index coordination.
 2. **Version-bump guard** — the publish workflow should refuse to run when
    the version in `__init__.py` already exists on PyPI, so a forgotten
    bump fails at the gate instead of mid-publish.

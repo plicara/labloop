@@ -2,7 +2,7 @@
 #
 # Cut a release: check everything that can be checked, then tag.
 #
-#   scripts/publish.sh --dry-run     # rehearse; touches nothing
+#   scripts/publish.sh --dry-run     # read-only preflight; print later steps
 #   scripts/publish.sh               # date the changelog, commit, tag, push
 #   scripts/publish.sh --rehearse    # ...and upload to TestPyPI first
 #
@@ -16,6 +16,7 @@
 # the refusals live up front.
 
 set -euo pipefail
+export PYTHONDONTWRITEBYTECODE=1
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
@@ -76,12 +77,14 @@ current=$(git rev-parse --abbrev-ref HEAD)
 [ "$current" = "$BRANCH" ] || die "on branch '$current'; releases are cut from '$BRANCH'"
 ok "on $BRANCH"
 
-git diff --quiet && git diff --cached --quiet || die \
+tree_status=$(git status --porcelain --untracked-files=all) || die "could not inspect working tree"
+[ -z "$tree_status" ] || die \
   "working tree has uncommitted changes; commit or stash them first"
 ok "working tree clean"
 
-git fetch --quiet origin "$BRANCH" --tags
-[ "$(git rev-parse HEAD)" = "$(git rev-parse "origin/$BRANCH")" ] || die \
+remote_head=$(git ls-remote --exit-code --heads origin "refs/heads/$BRANCH") || die \
+  "could not check origin/$BRANCH"
+[ "$(git rev-parse HEAD)" = "${remote_head%%[[:space:]]*}" ] || die \
   "local $BRANCH and origin/$BRANCH have diverged; pull or push first"
 ok "in step with origin/$BRANCH"
 
@@ -92,14 +95,20 @@ if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
 fi
 if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
   die "tag $TAG already exists on origin; bump the version in $VERSION_FILE"
+else
+  [ "$?" = 2 ] || die "could not check tags on origin"
 fi
 ok "$TAG is free"
 
 # The one genuinely permanent check: PyPI never lets a version be reused, even
 # after deletion.
-if curl -fsS -o /dev/null "https://pypi.org/pypi/$PACKAGE/$VERSION/json" 2>/dev/null; then
-  die "$PACKAGE $VERSION is already on PyPI. That number is permanent — bump it."
-fi
+status=$(curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 10 --max-time 30 \
+  "https://pypi.org/pypi/$PACKAGE/$VERSION/json") || die "could not check PyPI"
+case "$status" in
+  200) die "$PACKAGE $VERSION is already on PyPI. That number is permanent — bump it." ;;
+  404) ;;
+  *) die "could not check PyPI (HTTP $status)" ;;
+esac
 ok "$PACKAGE $VERSION is not on PyPI"
 
 python3 -c 'import build, twine' 2>/dev/null || die \
@@ -110,8 +119,8 @@ for tool in pytest ruff mypy; do
 done
 # Checked separately so a fresh clone gets this instead of an ImportError
 # raised from inside tests/conftest.py.
-python3 -c 'import labloop' 2>/dev/null || die \
-  "labloop is not importable; install it first: pip install -e \".[dev]\""
+python3 -c 'import labloop, pathlib; assert pathlib.Path(labloop.__file__).resolve() == pathlib.Path("src/labloop/__init__.py").resolve()' 2>/dev/null || die \
+  "labloop must be imported from this checkout: pip install -e \".[dev]\""
 ok "build, twine, the dev tools, and labloop itself are present"
 
 # ------------------------------------------------------------------- checks
@@ -140,13 +149,16 @@ else
   python3 -m venv "$smoke/venv"
   "$smoke/venv/bin/pip" install --quiet dist/*.whl
   (
-    cd "$smoke"
+    mkdir "$smoke/work"
+    cd "$smoke/work"
     git init -q . && git config user.email release@test && git config user.name release
     echo 'print("val_loss = 2.0")' > train.py
     echo 'frozen' > eval.py
     printf 'labloop.jsonl\n__pycache__/\n' > .gitignore
     git add -A && git commit -qm init
     export PYTHONDONTWRITEBYTECODE=1
+    export LABLOOP_SANDBOX=none
+    export PATH="$smoke/venv/bin:$PATH"
     L="$smoke/venv/bin/labloop"
     installed=$("$L" --version)
     [ "$installed" = "$PACKAGE $VERSION" ] || {
@@ -196,7 +208,6 @@ unreleased = f"## {version} — unreleased"
 dated = f"## {version} — {date}"
 
 if unreleased in text:
-    path.write_text(text.replace(unreleased, dated, 1))
     print("dated")
 elif re.search(rf"^## {re.escape(version)} — \d{{4}}-\d{{2}}-\d{{2}}$", text, re.M):
     print("already-dated")
@@ -210,12 +221,8 @@ PY
 NEEDS_CHANGELOG_COMMIT=0
 case "$changelog_state" in
   dated)
-    ok "dated the $VERSION heading $DATE"
+    ok "$VERSION heading is ready to date $DATE"
     NEEDS_CHANGELOG_COMMIT=1
-    if [ "$DRY_RUN" = 1 ]; then
-      git checkout -- CHANGELOG.md   # leave no trace in a rehearsal
-      printf '    (reverted, this is a dry run)\n'
-    fi
     ;;
   already-dated) ok "$VERSION heading already dated" ;;
 esac
@@ -238,6 +245,14 @@ printf '    Publishing to PyPI happens when you create the GitHub Release.\n'
 confirm "Tag and push $TAG?"
 
 if [ "$NEEDS_CHANGELOG_COMMIT" = 1 ]; then
+  if [ "$DRY_RUN" = 0 ]; then
+    python3 - "$VERSION" "$DATE" <<'PY'
+import pathlib, sys
+version, date = sys.argv[1:]
+path = pathlib.Path("CHANGELOG.md")
+path.write_text(path.read_text().replace(f"## {version} — unreleased", f"## {version} — {date}", 1))
+PY
+  fi
   run git commit -q -m "Date the $VERSION release" CHANGELOG.md
   run git push origin "$BRANCH"
   ok "changelog dated and pushed"
@@ -249,7 +264,10 @@ ok "tagged $TAG"
 
 say "Last step: create the GitHub Release"
 if command -v gh >/dev/null 2>&1; then
+  printf '\nRelease notes:\n%s\n' "$NOTES"
   printf '    gh is installed. Creating the release publishes to PyPI.\n'
+  # --yes may approve tagging, but publication always needs a human gate.
+  ASSUME_YES=0
   confirm "Create the GitHub Release for $TAG now?"
   if [ "$DRY_RUN" = 1 ]; then
     printf '    would run: gh release create %s --title "%s %s" --notes ...\n' \
