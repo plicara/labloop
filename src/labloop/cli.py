@@ -167,15 +167,9 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     run.add_argument(
         "--sandbox",
-        choices=["none", "auto", "bwrap", "landlock", "seatbelt", "docker"],
+        choices=["none", "auto", "bwrap"],
         default=os.environ.get("LABLOOP_SANDBOX", "auto"),
-        help="confine the propose step to the worktree; auto by default (default: auto)",
-    )
-    run.add_argument(
-        "--sandbox-exec",
-        default=None,
-        metavar="TEMPLATE",
-        help="custom sandbox command template containing {command} and optional {workdir}",
+        help="confine the propose step with bubblewrap; auto by default (default: auto)",
     )
     run.add_argument(
         "--sandbox-network",
@@ -463,7 +457,6 @@ def _experiment_command(args: argparse.Namespace) -> int:
         propose_budget=getattr(args, "propose_budget", None),
         label=getattr(args, "label", None),
         sandbox=getattr(args, "sandbox", "none"),
-        sandbox_exec=getattr(args, "sandbox_exec", None),
         sandbox_network=getattr(args, "sandbox_network", False),
     )
     loop = Loop(

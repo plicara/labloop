@@ -1,34 +1,37 @@
-"""Opt-in OS isolation for the propose step.
+"""OS isolation for the propose step, via bubblewrap (Linux only).
 
-labloop *detects* edits to the protected set; it does not, by itself, stop a
-proposer from writing code the measurement later loads from somewhere the digest
-was never pointed at (a `.pyc` in the bytecode mirror, a shim, a shadow package
-outside the worktree). The only real boundary is OS isolation: run the untrusted
-propose step somewhere it can write **only the worktree**, so anything planted
-elsewhere is denied and anything planted inside is part of the diff.
+labloop *detects* edits to the protected set. It cannot stop a proposer writing
+code the measurement later loads from somewhere the digest was never pointed at.
+The boundary is OS isolation: run the untrusted propose step where it can write
+only the worktree.
 
-This module is that boundary. It picks a backend and turns `(command, worktree)`
-into a confined invocation.
+There is exactly **one** backend — bubblewrap — on purpose. Every extra backend
+is another set of escape paths to reason about, and a pure-syscall Landlock
+sandbox we tried could not express the things that actually mattered here
+(hiding the project's git metadata, hiding privileged local sockets, and
+stopping packet traffic, not just web connections). bubblewrap builds a mount
+namespace, a PID namespace, and (optionally) a network namespace, which is what
+closes those.
 
-Backends, best first:
+What bubblewrap gives us, and how this module configures it:
 
-* **bubblewrap** (Linux, if user namespaces work) — namespaces, no daemon, ~ms.
-* **Landlock** (Linux) — unprivileged, no namespaces, no daemon; this ships a
-  small dependency-free wrapper (`_landlock.py`), so it is available out of the box.
-* **Seatbelt** (macOS) — `/usr/bin/sandbox-exec` with a generated profile, the
-  same mechanism Codex, fence and greywall use.
-* **Docker** (explicit only) — the heavy fallback; a daemon and an image.
+* read everything, write only the worktree (`--ro-bind / /`, `--bind <wt> <wt>`);
+* the project's `.git` is bound **read-only**, so a proposer cannot plant a git
+  hook that would then run *outside* the sandbox when labloop itself commits;
+* privileged local sockets (docker/podman/containerd) are masked with
+  `/dev/null`, so a user in the `docker` group — effectively root — is not a
+  way out;
+* a private `/tmp` (a tmpfs), so the bytecode mirror labloop creates under the
+  real `/tmp` is unreachable;
+* a PID namespace and `--die-with-parent`, so a process the proposer detaches
+  cannot outlive the propose step and race the measurement;
+* the network is off by default (`--unshare-net`) and enabled with
+  `--sandbox-network`.
 
-Every backend denies writes outside the worktree, **including `/tmp`**: the
-bytecode mirror labloop itself creates under `/tmp` must not be writable by the
-proposer, or the race this feature exists to close comes back. Scratch is
-redirected inside the worktree.
-
-The CLI defaults to `--sandbox auto`; `--sandbox none` restores the earlier
-behaviour. The network is off by default and turned on with `--sandbox-network`,
-so a compromised proposer cannot exfiltrate what it reads. When isolation is
-requested and no backend is available the loop refuses to start rather than
-running unconfined — a silent fail-open is worse than an error.
+Linux only, by decision: on any other platform `--sandbox auto` refuses to run
+rather than running unconfined. bubblewrap also needs unprivileged user
+namespaces, which some distributions disable; that is detected and reported,
+never worked around.
 """
 from __future__ import annotations
 
@@ -36,28 +39,32 @@ import os
 import shlex
 import shutil
 import subprocess
-import sys
 import tempfile
 from dataclasses import dataclass
-from pathlib import Path
 
 from .runner import run_command
 
 __all__ = [
     "BwrapSandbox",
-    "DockerSandbox",
-    "LandlockSandbox",
     "Sandbox",
     "SandboxError",
-    "SeatbeltSandbox",
-    "TemplateSandbox",
     "available_backends",
     "resolve_sandbox",
     "verify_sandbox",
 ]
 
-_SCRATCH = ".labloop-tmp"          # inside the worktree, so scratch is never a hole
 _SHELL = "/bin/sh"
+
+#: Same-user access to these is root-equivalent (the daemon runs as root and
+#: does the namespaces for you). Masked inside the sandbox when present.
+_SENSITIVE_SOCKETS = (
+    "/run/docker.sock",
+    "/var/run/docker.sock",
+    "/run/podman/podman.sock",
+    "/var/run/podman/podman.sock",
+    "/run/containerd/containerd.sock",
+    "/run/k3s/containerd/containerd.sock",
+)
 
 
 class SandboxError(RuntimeError):
@@ -65,120 +72,50 @@ class SandboxError(RuntimeError):
 
 
 @dataclass(frozen=True)
-class TemplateSandbox:
-    """A caller-supplied command template containing `{command}`/`{workdir}`."""
-
-    name: str
-    template: str
-
-    def wrap(self, command: str, worktree: str, network: bool = False) -> str:
-        return self.template.replace("{workdir}", worktree).replace("{command}", command)
-
-
-@dataclass(frozen=True)
 class BwrapSandbox:
-    """bubblewrap: read-only root, the worktree writable, /tmp mapped inside it."""
+    """A bubblewrap confinement: read all, write only the worktree."""
 
     name: str = "bwrap"
 
-    def wrap(self, command: str, worktree: str, network: bool = False) -> str:
-        wt = shlex.quote(worktree)
-        scratch = shlex.quote(os.path.join(worktree, _SCRATCH))
-        net = "" if network else "--unshare-net "
-        return (
-            f"mkdir -p {scratch} && exec bwrap --die-with-parent --ro-bind / / "
-            f"--dev /dev --proc /proc {net}--bind {wt} {wt} --bind {scratch} /tmp "
-            f"--chdir {wt} --setenv TMPDIR /tmp -- "
-            f"{_SHELL} -c {shlex.quote(command)}"
-        )
-
-
-@dataclass(frozen=True)
-class LandlockSandbox:
-    """Landlock via the bundled dependency-free wrapper (`_landlock.py`)."""
-
-    python: str = sys.executable
-    name: str = "landlock"
-
-    def wrap(self, command: str, worktree: str, network: bool = False) -> str:
-        net = "on" if network else "off"
-        return (
-            f"{shlex.quote(self.python)} -m labloop._landlock {shlex.quote(worktree)} "
-            f"--network {net} -- {_SHELL} -c {shlex.quote(command)}"
-        )
-
-
-_SEATBELT_PROFILE = """(version 1)
-(deny default)
-(allow process*)
-(allow signal (target self))
-(allow sysctl-read)
-(allow mach-lookup)
-{network}(allow file-read*)
-(allow file-write* (subpath "{worktree}"))
-(allow file-write-data (literal "/dev/null") (literal "/dev/stdout")
-                    (literal "/dev/stderr") (literal "/dev/tty")
-                    (literal "/dev/dtracehelper"))
-"""
-
-
-@dataclass(frozen=True)
-class SeatbeltSandbox:
-    """macOS Seatbelt: deny by default, read everywhere, write the worktree."""
-
-    name: str = "seatbelt"
+    def _args(self, command: str, worktree: str, network: bool) -> list[str]:
+        args = [
+            "bwrap",
+            "--die-with-parent",
+            "--unshare-pid",
+            "--ro-bind", "/", "/",
+            "--dev", "/dev",
+            "--proc", "/proc",
+            "--tmpfs", "/tmp",
+            "--bind", worktree, worktree,
+        ]
+        git = os.path.join(worktree, ".git")
+        if os.path.exists(git):
+            args += ["--ro-bind", git, git]           # no hook/refdir planting
+        for socket in _SENSITIVE_SOCKETS:
+            if os.path.exists(socket):
+                args += ["--ro-bind", "/dev/null", socket]
+        if not network:
+            args += ["--unshare-net"]
+        args += ["--chdir", worktree, "--setenv", "TMPDIR", "/tmp",
+                 "--", _SHELL, "-c", "exec " + command]
+        return args
 
     def wrap(self, command: str, worktree: str, network: bool = False) -> str:
-        profile = _SEATBELT_PROFILE.format(
-            worktree=worktree, network="(allow network*)\n" if network else ""
-        )
-        scratch = shlex.quote(os.path.join(worktree, _SCRATCH))
-        return (
-            f"mkdir -p {scratch} && exec env TMPDIR={scratch} "
-            f"/usr/bin/sandbox-exec -p {shlex.quote(profile)} "
-            f"{_SHELL} -c {shlex.quote(command)}"
-        )
+        return "exec " + " ".join(shlex.quote(a) for a in self._args(command, worktree, network))
 
 
-@dataclass(frozen=True)
-class DockerSandbox:
-    """Docker: read-only root, the worktree bind-mounted, ephemeral /tmp."""
-
-    image: str = "python:3.12-slim"
-    name: str = "docker"
-
-    def wrap(self, command: str, worktree: str, network: bool = False) -> str:
-        wt = shlex.quote(worktree)
-        net = "bridge" if network else "none"
-        return (
-            f"exec docker run --rm --init --read-only --cap-drop=ALL "
-            f"--security-opt=no-new-privileges --pids-limit 2048 "
-            f"-v {wt}:{wt}:rw -w {wt} --tmpfs /tmp:rw,exec,nosuid,nodev "
-            f"-e TMPDIR=/tmp --network {net} "
-            f"{self.image} {_SHELL} -c {shlex.quote(command)}"
-        )
+#: One backend, so the sandbox type is just that backend.
+Sandbox = BwrapSandbox
 
 
-# A backend is any of these; a Protocol would only add ceremony here.
-Sandbox = TemplateSandbox | BwrapSandbox | LandlockSandbox | SeatbeltSandbox | DockerSandbox
-
-
-# --- availability probes (each is cheap; results are what matters) ---
+# --- availability ------------------------------------------------------------
 
 def _which(name: str) -> bool:
     return shutil.which(name) is not None
 
 
-def landlock_available() -> bool:
-    """Whether the running kernel has the Landlock LSM enabled."""
-    try:
-        return "landlock" in Path("/sys/kernel/security/lsm").read_text()
-    except OSError:
-        return False
-
-
 def user_namespaces_work() -> bool:
-    """Whether an unprivileged user can map a user namespace (needed by bwrap)."""
+    """Whether an unprivileged user can map a user namespace (bubblewrap needs it)."""
     if not _which("unshare"):
         return False
     return subprocess.run(
@@ -186,77 +123,45 @@ def user_namespaces_work() -> bool:
     ).returncode == 0
 
 
-def seatbelt_available() -> bool:
-    return sys.platform == "darwin" and os.path.exists("/usr/bin/sandbox-exec")
-
-
 def available_backends() -> list[str]:
-    found = []
-    if seatbelt_available():
-        found.append("seatbelt")
     if _which("bwrap") and user_namespaces_work():
-        found.append("bwrap")
-    if landlock_available():
-        found.append("landlock")
-    if _which("docker"):
-        found.append("docker")
-    return found
+        return ["bwrap"]
+    return []
 
 
-def resolve_sandbox(choice: str | None, template: str | None = None) -> Sandbox | None:
-    """Turn `--sandbox`/`--sandbox-exec` into a backend, or None for no isolation.
+def resolve_sandbox(choice: str | None = "auto") -> Sandbox | None:
+    """Turn `--sandbox` into the backend, or None for no isolation.
 
-    Fails loudly when isolation is *requested* but unavailable: a run that asked
-    for a boundary and silently got none is worse off than one that was told no.
+    `auto` and `bwrap` are the same now that there is one backend; both refuse
+    loudly when bubblewrap cannot run, because a proposer that asked to be
+    confined and silently was not is worse off than one that was told no.
     """
-    if template is not None:
-        if "{command}" not in template:
-            raise SandboxError("--sandbox-exec template must contain {command}")
-        return TemplateSandbox("custom", template)
     if choice in (None, "none"):
         return None
-    if choice == "auto":
-        if seatbelt_available():
-            return SeatbeltSandbox()
-        if _which("bwrap") and user_namespaces_work():
-            return BwrapSandbox()
-        if landlock_available():
-            return LandlockSandbox()
-        raise SandboxError(
-            "no sandbox backend available (tried macOS Seatbelt, bubblewrap, Landlock). "
-            "Install bubblewrap, use a Landlock kernel, or --sandbox use an explicit "
-            "backend; refusing to run the proposer unconfined."
-        )
-    if choice == "bwrap":
+    if choice in ("auto", "bwrap"):
         if not _which("bwrap"):
-            raise SandboxError("--sandbox bwrap requested but bwrap is not on PATH")
+            raise SandboxError(
+                "no sandbox backend: bubblewrap (bwrap) is not installed. "
+                "Install it (e.g. `apt install bubblewrap`), or pass --sandbox none "
+                "to run the proposer unconfined."
+            )
         if not user_namespaces_work():
             raise SandboxError(
-                "--sandbox bwrap requested but unprivileged user namespaces are blocked "
-                "(on Ubuntu, kernel.apparmor_restrict_unprivileged_userns=1)"
+                "bubblewrap is installed but unprivileged user namespaces are blocked, "
+                "so it cannot confine anything (on Ubuntu this is "
+                "kernel.apparmor_restrict_unprivileged_userns=1). Enable them, or pass "
+                "--sandbox none to run the proposer unconfined."
             )
         return BwrapSandbox()
-    if choice == "landlock":
-        if not landlock_available():
-            raise SandboxError("--sandbox landlock requested but this kernel has no Landlock LSM")
-        return LandlockSandbox()
-    if choice == "seatbelt":
-        if not seatbelt_available():
-            raise SandboxError("--sandbox seatbelt is macOS-only (/usr/bin/sandbox-exec not found)")
-        return SeatbeltSandbox()
-    if choice == "docker":
-        if not _which("docker"):
-            raise SandboxError("--sandbox docker requested but docker is not on PATH")
-        return DockerSandbox()
-    raise SandboxError(f"unknown sandbox {choice!r}")
+    raise SandboxError(f"unknown sandbox {choice!r} (this build supports: auto, bwrap, none)")
 
 
 def verify_sandbox(sandbox: Sandbox, worktree: str) -> None:
     """Prove the sandbox confines *this* machine before trial 0.
 
-    A "best effort" backend can run completely unsandboxed while reporting
-    success, so the probe must show both halves: a write inside the worktree
-    works, and a write outside it is denied. If either is wrong, refuse.
+    A write inside the worktree must work and a write outside it must be denied.
+    If either is wrong, refuse — a sandbox that silently does nothing is the
+    failure mode this whole feature exists to prevent.
     """
     outside_dir = tempfile.mkdtemp(prefix="labloop-verify-")
     inside = os.path.join(worktree, ".labloop-verify")

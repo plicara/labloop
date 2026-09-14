@@ -73,7 +73,7 @@ class Loop:
         self.direction = direction
         # The propose step is the untrusted one; when a sandbox is configured it
         # is wrapped so it can write only the worktree. `none` is 0.3.0 behaviour.
-        self.sandbox = resolve_sandbox(experiment.sandbox, experiment.sandbox_exec)
+        self.sandbox = resolve_sandbox(experiment.sandbox)
 
     def baseline(self) -> Trial:
         """Measure the tree as it stands, without proposing a change.
