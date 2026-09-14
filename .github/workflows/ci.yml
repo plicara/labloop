@@ -67,6 +67,9 @@ jobs:
           printf 'labloop.jsonl\n__pycache__/\n' > .gitignore
           git add -A && git commit -qm init
           export PYTHONDONTWRITEBYTECODE=1
+          # The wheel smoke test is not adversarial and runners have no bubblewrap;
+          # the sandbox is on by default now, so opt out here explicitly.
+          export LABLOOP_SANDBOX=none
           L=/tmp/smoke/bin/labloop
           $L --version
           $L noise --run "python train.py" --metric val_loss --repeat 2
