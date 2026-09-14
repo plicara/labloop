@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import enum
+import os
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
@@ -138,12 +139,15 @@ class Experiment:
     Recorded in the manifest so the ledger says which setup produced each
     trial. Free text, not identity: it claims nothing and proves nothing.
     """
-    sandbox: str = "none"
+    sandbox: str = field(default_factory=lambda: os.environ.get("LABLOOP_SANDBOX", "auto"))
     """OS isolation for the propose step: `none`, `auto`, or `bwrap`.
 
-    bubblewrap is the only backend. `auto` picks it and refuses when it cannot
-    run. Recorded in the manifest so a run says how it was isolated. `none` is
-    the pre-sandbox behaviour.
+    Defaults to `auto` (overridable with the `LABLOOP_SANDBOX` environment
+    variable), so the library is confined by default just like the CLI — a
+    `Loop(Experiment(...))` built with no arguments must not silently run the
+    proposer unconfined. bubblewrap is the only backend; `auto` picks it and
+    refuses when it cannot run. Recorded in the manifest. `none` restores the
+    pre-sandbox behaviour.
     """
     sandbox_network: bool = False
     """Whether the sandboxed propose step may reach the network. Off by default.

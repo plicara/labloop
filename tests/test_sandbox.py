@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 import pytest
 
 from labloop import (
@@ -163,3 +165,69 @@ def test_run_with_the_sandbox_wraps_and_verifies(project, capsys):
         "--propose", "printf 'x\\n' >> train.py", "--sandbox", "auto", "--trials", "1",
     ]) == 0
     capsys.readouterr()
+
+
+# --- the library default matches the CLI -------------------------------------
+
+def test_the_library_default_is_confined(monkeypatch):
+    monkeypatch.delenv("LABLOOP_SANDBOX", raising=False)
+    assert Experiment(run="true", metric="m", goal=Goal.MAXIMIZE).sandbox == "auto"
+
+
+def test_the_default_is_overridable_by_environment(monkeypatch):
+    monkeypatch.setenv("LABLOOP_SANDBOX", "none")
+    assert Experiment(run="true", metric="m", goal=Goal.MAXIMIZE).sandbox == "none"
+
+
+# --- --sandbox-write is an evidence channel, not a hole ----------------------
+
+def _real(p):
+    return os.path.realpath(str(p))
+
+
+def test_a_dedicated_evidence_dir_is_allowed(tmp_path):
+    from labloop.sandbox import _validate_writable
+    evidence = tmp_path.parent / (tmp_path.name + "-evidence")
+    evidence.mkdir()
+    try:
+        assert _validate_writable(str(evidence), _real(tmp_path)) == _real(evidence)
+    finally:
+        evidence.rmdir()
+
+
+def test_writable_inside_the_worktree_is_refused(tmp_path):
+    from labloop.sandbox import _validate_writable
+    inside = tmp_path / "inside"
+    inside.mkdir()
+    with pytest.raises(SandboxError):
+        _validate_writable(str(inside), _real(tmp_path))
+
+
+def test_writable_that_contains_the_worktree_is_refused(tmp_path):
+    from labloop.sandbox import _validate_writable
+    # tmp_path's parent is an ancestor of the worktree; binding it read-write
+    # would re-open the worktree and everything beside it.
+    with pytest.raises(SandboxError):
+        _validate_writable(str(tmp_path.parent), _real(tmp_path))
+
+
+def test_the_filesystem_root_is_refused(tmp_path):
+    from labloop.sandbox import _validate_writable
+    with pytest.raises(SandboxError):
+        _validate_writable("/", _real(tmp_path))
+
+
+def test_a_shared_or_temporary_root_is_refused(tmp_path):
+    from labloop.sandbox import _validate_writable
+    # Any of these that exists and is not already an ancestor must still be
+    # refused as a shared location rather than a dedicated evidence dir.
+    for root in ("/usr", "/dev", "/proc"):
+        if os.path.isdir(root) and not _real(tmp_path).startswith(_real(root) + os.sep):
+            with pytest.raises(SandboxError):
+                _validate_writable(root, _real(tmp_path))
+
+
+def test_a_missing_writable_is_refused(tmp_path):
+    from labloop.sandbox import _validate_writable
+    with pytest.raises(SandboxError):
+        _validate_writable(str(tmp_path.parent / "nope-does-not-exist"), _real(tmp_path))

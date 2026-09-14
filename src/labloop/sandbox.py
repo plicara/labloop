@@ -25,13 +25,23 @@ What bubblewrap gives us, and how this module configures it:
   real `/tmp` is unreachable;
 * optionally, writable binds outside the worktree (`--sandbox-write`), the one
   sanctioned evidence channel: a sandboxed proposer cannot otherwise leave any
-  record of what it tried, and an audit trail that only exists when the trial
-  is kept is no audit trail at all. A writable dir must live outside both the
-  worktree and the measurement the loop digests.
+  record of what it tried. Each path is canonicalised and validated — refused if
+  it is inside the worktree, an ancestor of it, or a shared/temporary root — so
+  the channel cannot be turned into a broad hole (see `_validate_writable`).
 * a PID namespace and `--die-with-parent`, so a process the proposer detaches
   cannot outlive the propose step and race the measurement;
 * the network is off by default (`--unshare-net`) and enabled with
   `--sandbox-network`.
+
+What this does **not** do:
+
+* The network namespace blocks IP traffic. Unix-domain sockets are filesystem
+  objects and stay reachable, so a same-user process listening on a local socket
+  can still receive what the proposer sends; the masks below cover the
+  root-equivalent container sockets, not every possible local relay. Treat
+  "network off" as "no IP egress", not as "cannot talk to anything".
+* Reads are open by design (fix that with a credential-free host, not here), and
+  bubblewrap shares the host kernel — it is not a virtual machine.
 
 Linux only, by decision: on any other platform `--sandbox auto` refuses to run
 rather than running unconfined. bubblewrap also needs unprivileged user
@@ -77,6 +87,50 @@ class SandboxError(RuntimeError):
     """Isolation was requested but cannot be provided, or failed its self-check."""
 
 
+#: Directories a writable bind must never be: the filesystem root and the
+#: shared/temporary/cache roots. Binding one read-write re-opens a broad area
+#: after the read-only root — `/tmp` exposes the bytecode mirror the sandbox
+#: relies on keeping out of reach, and `/` disables the sandbox entirely.
+_BROAD_ROOTS = frozenset({
+    "/", "/tmp", "/var/tmp", "/var", "/run", "/dev", "/proc", "/sys",
+    "/etc", "/usr", "/usr/local", "/opt", "/srv", "/mnt", "/media", "/root",
+    os.path.realpath(os.path.expanduser("~")),
+})
+
+
+def _validate_writable(path: str, worktree: str) -> str:
+    """Return the real path of a sanctioned writable bind, or raise.
+
+    `--sandbox-write` is an evidence channel, not a general hole: a directory
+    that is neither inside the worktree (the trial would commit or revert it)
+    nor an ancestor of it (which would re-open the worktree and everything beside
+    it read-write), and not a shared or temporary root.
+    """
+    real = os.path.realpath(path)
+    if not os.path.isdir(real):
+        raise SandboxError(
+            f"--sandbox-write {path!r} does not exist — create it first, so a typo "
+            "fails loudly here instead of silently losing the evidence."
+        )
+    if real == worktree or real.startswith(worktree + os.sep):
+        raise SandboxError(
+            f"--sandbox-write {path!r} is inside the worktree — it would be committed "
+            "or reverted with the trial instead of surviving it."
+        )
+    if worktree == real or worktree.startswith(real + os.sep):
+        raise SandboxError(
+            f"--sandbox-write {path!r} is an ancestor of the worktree — binding it "
+            "read-write would re-open the worktree and everything beside it. Point it "
+            "at a dedicated evidence directory that does not contain the worktree."
+        )
+    if real in _BROAD_ROOTS:
+        raise SandboxError(
+            f"--sandbox-write {path!r} is a shared or temporary location, not a "
+            "dedicated evidence directory. Give it a directory of its own."
+        )
+    return real
+
+
 @dataclass(frozen=True)
 class BwrapSandbox:
     """A bubblewrap confinement: read all, write only the worktree."""
@@ -85,9 +139,10 @@ class BwrapSandbox:
 
     def _args(self, command: str, worktree: str, network: bool,
                writable: Sequence[str] = ()) -> list[str]:
-        # Absolute: a relative worktree makes `--chdir` resolve against the
-        # sandbox root, so the write would land on a read-only path.
-        worktree = os.path.abspath(worktree)
+        # Absolute and canonical: a relative worktree makes `--chdir` resolve
+        # against the sandbox root; a symlinked one would let a writable bind
+        # point back inside it past the containment check.
+        worktree = os.path.realpath(worktree)
         # No --tmpfs /tmp: it would mask the worktree whenever the worktree lives
         # under /tmp, and the read-only root already makes the host /tmp
         # unwritable, which is what keeps the bytecode mirror out of reach.
@@ -104,18 +159,7 @@ class BwrapSandbox:
             "--tmpfs", scratch,
         ]
         for path in writable:
-            outside = os.path.realpath(path)
-            if outside == worktree or outside.startswith(worktree + os.sep):
-                raise SandboxError(
-                    f"sandbox-writable {path!r} is inside the worktree — it would be "
-                    "committed or reverted with the trial instead of surviving it. "
-                    "Point --sandbox-write at a directory outside the worktree."
-                )
-            if not os.path.isdir(outside):
-                raise SandboxError(
-                    f"sandbox-writable {path!r} does not exist — create it first, so a "
-                    "typo fails loudly here instead of silently losing the evidence."
-                )
+            outside = _validate_writable(path, worktree)
             args += ["--bind", outside, outside]
         git = os.path.join(worktree, ".git")
         if os.path.exists(git):
@@ -142,7 +186,8 @@ class BwrapSandbox:
         # The outer `exec` is our shell handing off to bwrap; the command itself
         # is NOT prefixed with `exec`, which would swallow any `&&` chain in it
         # (and quietly defeat the self-check, whose probe chains two writes).
-        return "exec " + " ".join(shlex.quote(a) for a in self._args(command, worktree, network, writable))
+        args = self._args(command, worktree, network, writable)
+        return "exec " + " ".join(shlex.quote(a) for a in args)
 
 
 #: One backend, so the sandbox type is just that backend.
@@ -237,7 +282,7 @@ def verify_sandbox(sandbox: Sandbox, worktree: str,
             "the backend is not running; refusing to start"
         )
     if not all(evidenced):
-        missing = [path for path, ok in zip(write_probes, evidenced) if not ok]
+        missing = [path for path, ok in zip(write_probes, evidenced, strict=True) if not ok]
         raise SandboxError(
             f"{sandbox.name} sandbox self-check could not write to the declared "
             f"evidence dir(s) {missing} — every trial's reasoning would be "
