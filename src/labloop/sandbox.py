@@ -78,6 +78,14 @@ class BwrapSandbox:
     name: str = "bwrap"
 
     def _args(self, command: str, worktree: str, network: bool) -> list[str]:
+        # Absolute: a relative worktree makes `--chdir` resolve against the
+        # sandbox root, so the write would land on a read-only path.
+        worktree = os.path.abspath(worktree)
+        # No --tmpfs /tmp: it would mask the worktree whenever the worktree lives
+        # under /tmp, and the read-only root already makes the host /tmp
+        # unwritable, which is what keeps the bytecode mirror out of reach.
+        # Scratch goes inside the worktree instead.
+        scratch = os.path.join(worktree, ".labloop-tmp")
         args = [
             "bwrap",
             "--die-with-parent",
@@ -85,22 +93,27 @@ class BwrapSandbox:
             "--ro-bind", "/", "/",
             "--dev", "/dev",
             "--proc", "/proc",
-            "--tmpfs", "/tmp",
             "--bind", worktree, worktree,
+            "--tmpfs", scratch,
         ]
         git = os.path.join(worktree, ".git")
         if os.path.exists(git):
             args += ["--ro-bind", git, git]           # no hook/refdir planting
         for socket in _SENSITIVE_SOCKETS:
             if os.path.exists(socket):
-                args += ["--ro-bind", "/dev/null", socket]
+                # /var/run is a symlink to /run; bwrap cannot create a mount
+                # point at the symlinked spelling, so mask the real path.
+                args += ["--ro-bind", "/dev/null", os.path.realpath(socket)]
         if not network:
             args += ["--unshare-net"]
-        args += ["--chdir", worktree, "--setenv", "TMPDIR", "/tmp",
-                 "--", _SHELL, "-c", "exec " + command]
+        args += ["--chdir", worktree, "--setenv", "TMPDIR", scratch,
+                 "--", _SHELL, "-c", command]
         return args
 
     def wrap(self, command: str, worktree: str, network: bool = False) -> str:
+        # The outer `exec` is our shell handing off to bwrap; the command itself
+        # is NOT prefixed with `exec`, which would swallow any `&&` chain in it
+        # (and quietly defeat the self-check, whose probe chains two writes).
         return "exec " + " ".join(shlex.quote(a) for a in self._args(command, worktree, network))
 
 
@@ -164,6 +177,7 @@ def verify_sandbox(sandbox: Sandbox, worktree: str) -> None:
     failure mode this whole feature exists to prevent.
     """
     outside_dir = tempfile.mkdtemp(prefix="labloop-verify-")
+    worktree = os.path.abspath(worktree)
     inside = os.path.join(worktree, ".labloop-verify")
     outside = os.path.join(outside_dir, "escape")
     probe = f"touch {shlex.quote(inside)} && echo x > {shlex.quote(outside)}"
