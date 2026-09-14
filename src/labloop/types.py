@@ -151,6 +151,15 @@ class Experiment:
     A proposer that calls a hosted model needs this on; a local or scripted one
     does not. Off means a compromise cannot exfiltrate what it reads.
     """
+    sandbox_writes: tuple[str, ...] = ()
+    """Out-of-tree directories the sandboxed propose step may write to.
+
+    Empty by default: the proposer can write only the worktree. A proposer that
+    must leave evidence (transcripts, reasoning) needs one writable dir outside
+    both the worktree and the digested measurement — inside either, it would be
+    committed, reverted, or digested with the trial instead of surviving it.
+    Recorded in the manifest like the rest of the sandbox spec.
+    """
 
     @property
     def propose_timeout(self) -> float:
@@ -184,6 +193,7 @@ class Experiment:
             "label": self.label,
             "sandbox": self.sandbox,
             "sandbox_network": self.sandbox_network,
+            "sandbox_writes": list(self.sandbox_writes),
         }
 
     @classmethod
@@ -220,3 +230,7 @@ class Experiment:
             self.protect = (self.protect,)
         else:
             self.protect = tuple(self.protect)
+        if isinstance(self.sandbox_writes, str):
+            self.sandbox_writes = (self.sandbox_writes,)
+        else:
+            self.sandbox_writes = tuple(self.sandbox_writes)

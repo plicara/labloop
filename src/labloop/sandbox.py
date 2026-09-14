@@ -23,6 +23,11 @@ What bubblewrap gives us, and how this module configures it:
   way out;
 * a private `/tmp` (a tmpfs), so the bytecode mirror labloop creates under the
   real `/tmp` is unreachable;
+* optionally, writable binds outside the worktree (`--sandbox-write`), the one
+  sanctioned evidence channel: a sandboxed proposer cannot otherwise leave any
+  record of what it tried, and an audit trail that only exists when the trial
+  is kept is no audit trail at all. A writable dir must live outside both the
+  worktree and the measurement the loop digests.
 * a PID namespace and `--die-with-parent`, so a process the proposer detaches
   cannot outlive the propose step and race the measurement;
 * the network is off by default (`--unshare-net`) and enabled with
@@ -40,6 +45,7 @@ import shlex
 import shutil
 import subprocess
 import tempfile
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from .runner import run_command
@@ -77,7 +83,8 @@ class BwrapSandbox:
 
     name: str = "bwrap"
 
-    def _args(self, command: str, worktree: str, network: bool) -> list[str]:
+    def _args(self, command: str, worktree: str, network: bool,
+               writable: Sequence[str] = ()) -> list[str]:
         # Absolute: a relative worktree makes `--chdir` resolve against the
         # sandbox root, so the write would land on a read-only path.
         worktree = os.path.abspath(worktree)
@@ -96,6 +103,20 @@ class BwrapSandbox:
             "--bind", worktree, worktree,
             "--tmpfs", scratch,
         ]
+        for path in writable:
+            outside = os.path.realpath(path)
+            if outside == worktree or outside.startswith(worktree + os.sep):
+                raise SandboxError(
+                    f"sandbox-writable {path!r} is inside the worktree — it would be "
+                    "committed or reverted with the trial instead of surviving it. "
+                    "Point --sandbox-write at a directory outside the worktree."
+                )
+            if not os.path.isdir(outside):
+                raise SandboxError(
+                    f"sandbox-writable {path!r} does not exist — create it first, so a "
+                    "typo fails loudly here instead of silently losing the evidence."
+                )
+            args += ["--bind", outside, outside]
         git = os.path.join(worktree, ".git")
         if os.path.exists(git):
             args += ["--ro-bind", git, git]           # no hook/refdir planting
@@ -116,11 +137,12 @@ class BwrapSandbox:
                  "--", _SHELL, "-c", command]
         return args
 
-    def wrap(self, command: str, worktree: str, network: bool = False) -> str:
+    def wrap(self, command: str, worktree: str, network: bool = False,
+             writable: Sequence[str] = ()) -> str:
         # The outer `exec` is our shell handing off to bwrap; the command itself
         # is NOT prefixed with `exec`, which would swallow any `&&` chain in it
         # (and quietly defeat the self-check, whose probe chains two writes).
-        return "exec " + " ".join(shlex.quote(a) for a in self._args(command, worktree, network))
+        return "exec " + " ".join(shlex.quote(a) for a in self._args(command, worktree, network, writable))
 
 
 #: One backend, so the sandbox type is just that backend.
@@ -175,24 +197,35 @@ def resolve_sandbox(choice: str | None = "auto") -> Sandbox | None:
     raise SandboxError(f"unknown sandbox {choice!r} (this build supports: auto, bwrap, none)")
 
 
-def verify_sandbox(sandbox: Sandbox, worktree: str) -> None:
+def verify_sandbox(sandbox: Sandbox, worktree: str,
+                   writable: Sequence[str] = ()) -> None:
     """Prove the sandbox confines *this* machine before trial 0.
 
     A write inside the worktree must work and a write outside it must be denied.
     If either is wrong, refuse — a sandbox that silently does nothing is the
-    failure mode this whole feature exists to prevent.
+    failure mode this whole feature exists to prevent. Each declared writable
+    dir gets the same treatment in reverse: a write there must work, or the
+    evidence channel is silently broken and every trial's reasoning is lost.
     """
     outside_dir = tempfile.mkdtemp(prefix="labloop-verify-")
     worktree = os.path.abspath(worktree)
     inside = os.path.join(worktree, ".labloop-verify")
     outside = os.path.join(outside_dir, "escape")
-    probe = f"touch {shlex.quote(inside)} && echo x > {shlex.quote(outside)}"
+    write_probes = [
+        os.path.join(os.path.realpath(path), ".labloop-verify-write")
+        for path in writable
+    ]
+    steps = [f"touch {shlex.quote(inside)}"]
+    steps += [f"touch {shlex.quote(path)}" for path in write_probes]
+    steps += [f"echo x > {shlex.quote(outside)}"]
+    probe = " && ".join(steps)
     try:
-        run_command(sandbox.wrap(probe, worktree), cwd=worktree, timeout=60)
+        run_command(sandbox.wrap(probe, worktree, writable=writable), cwd=worktree, timeout=60)
         leaked = os.path.exists(outside)
         confined = os.path.exists(inside)
+        evidenced = [os.path.exists(path) for path in write_probes]
     finally:
-        for path in (inside, outside):
+        for path in (inside, outside, *write_probes):
             try:
                 os.unlink(path)
             except OSError:
@@ -202,6 +235,13 @@ def verify_sandbox(sandbox: Sandbox, worktree: str) -> None:
         raise SandboxError(
             f"{sandbox.name} sandbox self-check could not even write inside the worktree — "
             "the backend is not running; refusing to start"
+        )
+    if not all(evidenced):
+        missing = [path for path, ok in zip(write_probes, evidenced) if not ok]
+        raise SandboxError(
+            f"{sandbox.name} sandbox self-check could not write to the declared "
+            f"evidence dir(s) {missing} — every trial's reasoning would be "
+            "silently lost. Refusing to start."
         )
     if leaked:
         raise SandboxError(

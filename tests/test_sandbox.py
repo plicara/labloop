@@ -55,6 +55,25 @@ def test_it_reads_everything_and_writes_only_the_worktree():
     assert "--unshare-pid" in command          # detached processes cannot outlive it
 
 
+def test_a_declared_writable_dir_is_bound_read_write(tmp_path):
+    work = tmp_path / "work"
+    work.mkdir()
+    out = tmp_path / "evidence"
+    out.mkdir()
+    command = BwrapSandbox().wrap("x", str(work), writable=[str(out)])
+    assert f"--bind {out} {out}" in command
+
+
+def test_a_writable_dir_inside_the_worktree_is_refused(tmp_path):
+    with pytest.raises(SandboxError):
+        BwrapSandbox().wrap("x", str(tmp_path), writable=[str(tmp_path / "out")])
+
+
+def test_a_missing_writable_dir_is_refused(tmp_path):
+    with pytest.raises(SandboxError):
+        BwrapSandbox().wrap("x", str(tmp_path), writable=[str(tmp_path / "nope")])
+
+
 def test_the_network_is_off_by_default():
     assert "--unshare-net" in BwrapSandbox().wrap("x", "/wt")
 
@@ -79,6 +98,12 @@ def test_a_privileged_socket_is_masked(tmp_path, monkeypatch):
 
 # --- validation --------------------------------------------------------------
 
+def test_the_writable_dirs_are_recorded():
+    assert Experiment(run="true", metric="m", goal=Goal.MAXIMIZE,
+                      sandbox_writes=("/logs",)).spec()["sandbox_writes"] == ["/logs"]
+    assert Experiment(run="true", metric="m", goal=Goal.MAXIMIZE).spec()["sandbox_writes"] == []
+
+
 def test_an_experiment_rejects_an_unknown_sandbox():
     with pytest.raises(UsageError):
         Experiment(run="true", metric="m", goal=Goal.MAXIMIZE, sandbox="docker")
@@ -96,7 +121,8 @@ def test_the_self_check_rejects_a_sandbox_that_does_not_confine(tmp_path):
     class Noop:
         name = "noop"
 
-        def wrap(self, command: str, worktree: str, network: bool = False) -> str:
+        def wrap(self, command: str, worktree: str, network: bool = False,
+                 writable=()) -> str:
             return command
 
     with pytest.raises(SandboxError):
@@ -106,6 +132,16 @@ def test_the_self_check_rejects_a_sandbox_that_does_not_confine(tmp_path):
 @pytest.mark.skipif(not HAS_BWRAP, reason="bubblewrap is not available on this machine")
 def test_the_self_check_accepts_bubblewrap(tmp_path):
     verify_sandbox(BwrapSandbox(), str(tmp_path))
+
+
+@pytest.mark.skipif(not HAS_BWRAP, reason="bubblewrap is not available on this machine")
+def test_the_self_check_proves_the_evidence_channel(tmp_path):
+    work = tmp_path / "work"
+    work.mkdir()
+    out = tmp_path / "evidence"
+    out.mkdir()
+    verify_sandbox(BwrapSandbox(), str(work), writable=[str(out)])
+    assert list(out.iterdir()) == []   # the probe cleans up after itself
 
 
 # --- wiring through the CLI --------------------------------------------------

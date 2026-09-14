@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.1 — 2026-09-14
+
+### A writable evidence channel for the sandboxed proposer
+
+- `--sandbox-write PATH` (repeatable) bind-mounts an out-of-tree directory
+  read-write into the sandbox. A sandboxed proposer could otherwise leave no
+  record of what it tried — anything it wrote in-tree would be committed,
+  reverted, or digested with the trial — so an audit trail that only exists
+  for kept trials is no audit trail at all.
+- Refused when inside the worktree or missing, so a typo fails loudly at
+  startup instead of silently losing the evidence. The startup self-check
+  proves the channel too: a write there must work, or the loop refuses.
+- Recorded in the manifest alongside the rest of the sandbox spec.
+
 ## 1.0.0 — 2026-09-13
 
 ### Sandboxing on by default, with the network off

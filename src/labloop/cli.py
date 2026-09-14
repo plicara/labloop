@@ -176,6 +176,15 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="let the sandboxed proposer reach the network (off by default)",
     )
+    run.add_argument(
+        "--sandbox-write",
+        action="append",
+        default=None,
+        metavar="PATH",
+        help="let the sandboxed proposer write to one out-of-tree directory "
+             "(repeatable); refused when inside the worktree or missing. The "
+             "evidence channel for proposer transcripts.",
+    )
 
     noise = sub.add_parser(
         "noise", help="run the experiment repeatedly, unchanged, to measure its spread"
@@ -458,6 +467,7 @@ def _experiment_command(args: argparse.Namespace) -> int:
         label=getattr(args, "label", None),
         sandbox=getattr(args, "sandbox", "none"),
         sandbox_network=getattr(args, "sandbox_network", False),
+        sandbox_writes=tuple(getattr(args, "sandbox_write", None) or ()),
     )
     loop = Loop(
         experiment,

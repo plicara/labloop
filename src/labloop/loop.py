@@ -192,7 +192,8 @@ class Loop:
                 self.workspace.require_clean()
                 self.workspace.require_identity()
             if self.sandbox is not None:
-                verify_sandbox(self.sandbox, str(self.workdir))
+                verify_sandbox(self.sandbox, str(self.workdir),
+                               tuple(self.experiment.sandbox_writes))
             self._record_manifest()
 
         results: list[Trial] = []
@@ -272,7 +273,8 @@ class Loop:
             propose_command = self.experiment.propose or ""
             if self.sandbox is not None:
                 propose_command = self.sandbox.wrap(
-                    propose_command, str(self.workdir), self.experiment.sandbox_network
+                    propose_command, str(self.workdir), self.experiment.sandbox_network,
+                    tuple(self.experiment.sandbox_writes),
                 )
             proposal = run_command(
                 propose_command,
