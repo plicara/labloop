@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.3 — unreleased
 
 - Check protected files and the ledger after completed measurements, including baselines, confirmation runs, and noise calibration, before accepting metrics. Discard tampered scores, restore altered ledgers, and identify the violating phase. Preserve preexisting uncommitted baseline work and stop noise calibration without publishing statistics.
 - Explicitly drop all capabilities and detach the controlling terminal in Bubblewrap. Document the snapshot checks' transient-tampering blind spot and a separate, unimplemented evaluator-isolation design; retain the current single backend.
@@ -33,7 +33,7 @@
 - **The 1.0.0 notes below are corrected**: one backend (bubblewrap), Linux only;
   the removed alternatives are not promised, and the README now says run needs
   bubblewrap by default.
-- **CI adds a sandbox job** that installs Bubblewrap and runs its tests. The availability-based skips still allowed that job to pass without a working backend; the mandatory capability gate is in the unreleased follow-up above.
+- **CI adds a sandbox job** that installs Bubblewrap and runs its tests. The availability-based skips still allowed that job to pass without a working backend; the mandatory capability gate is in the 1.0.3 section above.
 
 ## 1.0.1 — 2026-09-14
 
