@@ -97,7 +97,7 @@ labloop baseline --run "python bench.py" --metric seconds \
 
 labloop run --run "python bench.py" --metric seconds \
   --protect bench.py --protect acceptance_test.py --protect invoices.py \
-  --propose "python propose.py" \
+  --propose "python propose.py" --sandbox-network \
   --min-delta 0.0349 \
   --budget 120 --propose-budget 300 --trials 4
 ```

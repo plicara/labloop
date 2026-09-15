@@ -96,7 +96,7 @@ step 1 — the threshold is a measurement, not a preference.
 ```bash
 labloop run --run "python bench.py" --metric seconds \
   --protect bench.py --protect corpus.py \
-  --propose "python propose.py" \
+  --propose "python propose.py" --sandbox-network \
   --min-delta 0.0727 --confirm \
   --budget 120 --propose-budget 300 --trials 5
 ```

@@ -181,9 +181,8 @@ def _build_parser() -> argparse.ArgumentParser:
         action="append",
         default=None,
         metavar="PATH",
-        help="let the sandboxed proposer write to one out-of-tree directory "
-             "(repeatable); refused when inside the worktree or missing. The "
-             "evidence channel for proposer transcripts.",
+        help="allow writes to an existing directory beneath ~/.local/state/labloop/evidence "
+             "(repeatable); the root itself, worktree, and its ancestors are refused",
     )
 
     noise = sub.add_parser(

@@ -8,13 +8,11 @@ in the shared ledger, and never contaminates another direction's comparisons.
 from __future__ import annotations
 
 import json
-import shlex
-import sys
 import threading
 
 import pytest
 
-from labloop import Experiment, Goal, Ledger, Loop, Outcome, UsageError
+from labloop import Experiment, Goal, Ledger, Loop, Outcome, Trial, UsageError
 from labloop.cli import main
 
 from .conftest import FakeWorkspace
@@ -195,27 +193,20 @@ def test_a_peers_kept_trial_sets_the_bar_for_the_next_trial(tmp_path):
     # a stale in-memory incumbent would have kept the next, worse, change.
     direction_loop(tmp_path, "echo val=10.0", "main").run(trials=1)  # baseline
 
-    # A stand-in peer process: it keeps a 1.0 trial the first time it runs,
-    # then prints a worse 2.0 on the second. Appending to the ledger here is
-    # safe because the run command executes after the tampering check.
-    helper = tmp_path / "peer.py"
-    helper.write_text(
-        "import sys\n"
-        "from labloop import Ledger, Outcome, Trial\n"
-        "ledger = Ledger(sys.argv[1])\n"
-        "if not any(t.note == 'peer' for t in ledger):\n"
-        "    ledger.append(Trial(index=99, outcome=Outcome.KEPT, metric=1.0,\n"
-        "        incumbent=10.0, duration_seconds=0.0, note='peer', direction='main'))\n"
-        "    print('val=5.0')\n"
-        "else:\n"
-        "    print('val=2.0')\n"
-    )
-    ledger_path = tmp_path / "l.jsonl"
-    run = (
-        f"{shlex.quote(sys.executable)} {shlex.quote(str(helper))} "
-        f"{shlex.quote(str(ledger_path))}"
-    )
-    first, second = direction_loop(tmp_path, run, "main").run(trials=2)
+    loop = direction_loop(tmp_path, "echo val=5.0", "main")
+
+    def record_peer_after_trial(trial):
+        # Inject a peer result at the trusted controller boundary, after the
+        # trial is recorded. Measurement commands must never write the ledger.
+        if trial.index == 1:
+            loop.ledger.append(Trial(
+                index=loop.ledger.next_index(), outcome=Outcome.KEPT, metric=1.0,
+                incumbent=5.0, duration_seconds=0.0, note="peer", direction="main",
+            ))
+            loop.experiment.run = "echo val=2.0"
+
+    loop.reporter = record_peer_after_trial
+    first, second = loop.run(trials=2)
 
     assert first.outcome is Outcome.KEPT and first.metric == 5.0
     # 2.0 is worse than the peer's 1.0. A stale incumbent of 5.0 keeps it.

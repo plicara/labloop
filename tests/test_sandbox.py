@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 import os
+import shlex
+import sys
+import time
+from pathlib import Path
 
 import pytest
 
@@ -14,11 +18,53 @@ from labloop import (
     UsageError,
     available_backends,
     resolve_sandbox,
+    run_command,
     verify_sandbox,
 )
 from labloop.cli import main
 
 HAS_BWRAP = bool(available_backends())
+
+
+@pytest.fixture
+def evidence_root(tmp_path_factory, monkeypatch):
+    home = tmp_path_factory.mktemp("evidence-home")
+    root = home / ".local" / "state" / "labloop" / "evidence"
+    root.mkdir(parents=True)
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
+    return root
+
+
+@pytest.mark.parametrize("location", [".ssh", ".config", "arbitrary"])
+def test_writes_outside_the_evidence_root_are_refused(tmp_path, evidence_root, location):
+    outside = tmp_path / location
+    outside.mkdir()
+    with pytest.raises(SandboxError, match="evidence"):
+        BwrapSandbox().wrap("true", str(tmp_path / "work"), writable=[str(outside)])
+
+
+def test_the_evidence_root_itself_is_refused(tmp_path, evidence_root):
+    with pytest.raises(SandboxError):
+        BwrapSandbox().wrap("true", str(tmp_path / "work"), writable=[str(evidence_root)])
+
+
+def test_an_evidence_symlink_cannot_grant_an_outside_directory(tmp_path, evidence_root):
+    outside = tmp_path / "credentials"
+    outside.mkdir()
+    link = evidence_root / "linked"
+    link.symlink_to(outside, target_is_directory=True)
+    with pytest.raises(SandboxError):
+        BwrapSandbox().wrap("true", str(tmp_path / "work"), writable=[str(link)])
+
+
+def test_the_evidence_root_cannot_be_redirected(tmp_path, evidence_root):
+    outside = tmp_path / "credentials"
+    (outside / "run").mkdir(parents=True)
+    evidence_root.rmdir()
+    evidence_root.symlink_to(outside, target_is_directory=True)
+    with pytest.raises(SandboxError):
+        BwrapSandbox().wrap("true", str(tmp_path / "work"),
+                            writable=[str(evidence_root / "run")])
 
 
 # --- selection: one backend, and it fails closed -----------------------------
@@ -57,10 +103,17 @@ def test_it_reads_everything_and_writes_only_the_worktree():
     assert "--unshare-pid" in command          # detached processes cannot outlive it
 
 
-def test_a_declared_writable_dir_is_bound_read_write(tmp_path):
+def test_the_wrapper_explicitly_drops_capabilities_and_detaches_the_terminal():
+    args = shlex.split(BwrapSandbox().wrap("true", "/wt"))
+    assert "--new-session" in args
+    assert "--cap-drop" in args
+    assert args[args.index("--cap-drop") + 1] == "ALL"
+
+
+def test_a_declared_writable_dir_is_bound_read_write(tmp_path, evidence_root):
     work = tmp_path / "work"
     work.mkdir()
-    out = tmp_path / "evidence"
+    out = evidence_root / "run"
     out.mkdir()
     command = BwrapSandbox().wrap("x", str(work), writable=[str(out)])
     assert f"--bind {out} {out}" in command
@@ -131,19 +184,119 @@ def test_the_self_check_rejects_a_sandbox_that_does_not_confine(tmp_path):
         verify_sandbox(Noop(), str(tmp_path))
 
 
+def test_the_self_check_preserves_existing_files(tmp_path, evidence_root):
+    work = tmp_path / "work"
+    work.mkdir()
+    evidence = evidence_root / "run"
+    evidence.mkdir()
+    inside = work / ".labloop-verify"
+    outside = evidence / ".labloop-verify-write"
+    inside.write_text("user work")
+    outside.write_text("user evidence")
+
+    class Unavailable:
+        name = "unavailable"
+
+        def wrap(self, command, worktree, network=False, writable=()):
+            raise SandboxError("unavailable")
+
+    with pytest.raises(SandboxError, match="unavailable"):
+        verify_sandbox(Unavailable(), str(work), writable=[str(evidence)])
+    assert inside.read_text() == "user work"
+    assert outside.read_text() == "user evidence"
+
+
 @pytest.mark.skipif(not HAS_BWRAP, reason="bubblewrap is not available on this machine")
 def test_the_self_check_accepts_bubblewrap(tmp_path):
     verify_sandbox(BwrapSandbox(), str(tmp_path))
 
 
 @pytest.mark.skipif(not HAS_BWRAP, reason="bubblewrap is not available on this machine")
-def test_the_self_check_proves_the_evidence_channel(tmp_path):
+def test_the_self_check_proves_the_evidence_channel(tmp_path, evidence_root):
     work = tmp_path / "work"
     work.mkdir()
-    out = tmp_path / "evidence"
+    out = evidence_root / "run"
     out.mkdir()
     verify_sandbox(BwrapSandbox(), str(work), writable=[str(out)])
     assert list(out.iterdir()) == []   # the probe cleans up after itself
+
+
+@pytest.mark.skipif(not HAS_BWRAP, reason="bubblewrap is not available on this machine")
+def test_bubblewrap_cannot_write_host_files_or_git_metadata(project, tmp_path_factory):
+    outside = tmp_path_factory.mktemp("host") / "sentinel"
+    outside.write_text("host data")
+    sandbox = BwrapSandbox()
+    read = run_command(sandbox.wrap(f"cat {shlex.quote(str(outside))}", str(project)),
+                       cwd=project)
+    assert read.ok and read.output.strip() == "host data"
+    for target in (outside, project / ".git" / "config"):
+        before = target.read_bytes()
+        write = run_command(sandbox.wrap(f"echo changed > {shlex.quote(str(target))}",
+                                         str(project)), cwd=project)
+        assert not write.ok
+        assert target.read_bytes() == before
+
+
+@pytest.mark.skipif(not HAS_BWRAP, reason="bubblewrap is not available on this machine")
+def test_bubblewrap_uses_a_private_network_namespace(tmp_path):
+    host = os.readlink("/proc/self/ns/net")
+    result = run_command(BwrapSandbox().wrap("readlink /proc/self/ns/net", str(tmp_path)),
+                         cwd=tmp_path)
+    assert result.ok
+    assert result.output.strip() != host
+
+
+@pytest.mark.skipif(not HAS_BWRAP, reason="bubblewrap is not available on this machine")
+def test_bubblewrap_drops_capabilities_and_has_no_controlling_terminal(tmp_path):
+    code = '''import os
+from pathlib import Path
+status = dict(line.split(":", 1) for line in Path("/proc/self/status").read_text().splitlines())
+for field in ("CapEff", "CapPrm", "CapBnd"):
+    assert int(status[field].strip(), 16) == 0, (field, status[field])
+try:
+    fd = os.open("/dev/tty", os.O_RDWR)
+except OSError:
+    pass
+else:
+    os.close(fd)
+    raise AssertionError("sandbox has a controlling terminal")
+'''
+    command = f"{shlex.quote(sys.executable)} -c {shlex.quote(code)}"
+    result = run_command(BwrapSandbox().wrap(command, str(tmp_path)), cwd=tmp_path)
+    assert result.ok, result.output
+
+
+@pytest.mark.skipif(not HAS_BWRAP, reason="bubblewrap is not available on this machine")
+def test_a_detached_sandbox_child_cannot_write_after_the_proposal(tmp_path):
+    marker = tmp_path / "late"
+    ready = tmp_path / "ready"
+    code = (f"import time,pathlib; pathlib.Path({str(ready)!r}).touch(); "
+            f"time.sleep(1); pathlib.Path({str(marker)!r}).touch()")
+    command = f"setsid {shlex.quote(sys.executable)} -c {shlex.quote(code)} >/dev/null 2>&1 &"
+    command += f" while [ ! -e {shlex.quote(str(ready))} ]; do sleep 0.01; done"
+    result = run_command(BwrapSandbox().wrap(command, str(tmp_path)), cwd=tmp_path, timeout=5)
+    assert result.ok
+    assert ready.exists()
+    time.sleep(1.5)
+    assert not marker.exists()
+
+
+@pytest.mark.skipif(not HAS_BWRAP, reason="bubblewrap is not available on this machine")
+def test_evidence_survives_both_kept_and_reverted_trials(project, evidence_root):
+    from labloop import Ledger, Outcome
+
+    evidence = evidence_root / "run"
+    evidence.mkdir()
+    assert main(["baseline", "--run", "python train.py", "--metric", "val_loss"]) == 0
+    for metric, outcome in ((1, Outcome.KEPT), (3, Outcome.REVERTED)):
+        code = shlex.quote(f'print("val_loss = {metric}")\n')
+        note = evidence / str(metric)
+        proposal = f"printf %s {code} > train.py && echo evidence > {shlex.quote(str(note))}"
+        assert main(["run", "--run", "python train.py", "--metric", "val_loss",
+                     "--propose", proposal, "--sandbox", "bwrap", "--sandbox-write",
+                     str(evidence), "--trials", "1"]) == 0
+        assert Ledger(project / "labloop.jsonl").trials()[-1].outcome is outcome
+        assert note.read_text().strip() == "evidence"
 
 
 # --- wiring through the CLI --------------------------------------------------
@@ -156,6 +309,16 @@ def test_run_refuses_when_bubblewrap_is_unavailable(project, monkeypatch, capsys
     ])
     assert rc == 2
     assert "bubblewrap" in capsys.readouterr().err
+
+
+def test_cli_refuses_arbitrary_writable_directories(project, monkeypatch, capsys):
+    monkeypatch.setattr("labloop.sandbox._which", lambda name: True)
+    monkeypatch.setattr("labloop.sandbox.user_namespaces_work", lambda: True)
+    rc = main(["run", "--run", "python train.py", "--metric", "val_loss",
+               "--propose", "true", "--sandbox", "bwrap", "--sandbox-write",
+               str(project.parent), "--trials", "1"])
+    assert rc == 2
+    assert ".local/state/labloop/evidence" in capsys.readouterr().err
 
 
 @pytest.mark.skipif(not HAS_BWRAP, reason="bubblewrap is not available on this machine")
@@ -185,30 +348,32 @@ def _real(p):
     return os.path.realpath(str(p))
 
 
-def test_a_dedicated_evidence_dir_is_allowed(tmp_path):
+def test_a_dedicated_evidence_dir_is_allowed(tmp_path, evidence_root):
     from labloop.sandbox import _validate_writable
-    evidence = tmp_path.parent / (tmp_path.name + "-evidence")
+    evidence = evidence_root / "run"
     evidence.mkdir()
     try:
-        assert _validate_writable(str(evidence), _real(tmp_path)) == _real(evidence)
+        assert _validate_writable(str(evidence), _real(tmp_path / "work")) == _real(evidence)
     finally:
         evidence.rmdir()
 
 
-def test_writable_inside_the_worktree_is_refused(tmp_path):
+def test_writable_inside_the_worktree_is_refused(evidence_root):
     from labloop.sandbox import _validate_writable
-    inside = tmp_path / "inside"
-    inside.mkdir()
-    with pytest.raises(SandboxError):
-        _validate_writable(str(inside), _real(tmp_path))
+    work = evidence_root / "work"
+    inside = work / "inside"
+    inside.mkdir(parents=True)
+    with pytest.raises(SandboxError, match="inside the worktree"):
+        _validate_writable(str(inside), _real(work))
 
 
-def test_writable_that_contains_the_worktree_is_refused(tmp_path):
+def test_writable_that_contains_the_worktree_is_refused(evidence_root):
     from labloop.sandbox import _validate_writable
-    # tmp_path's parent is an ancestor of the worktree; binding it read-write
-    # would re-open the worktree and everything beside it.
-    with pytest.raises(SandboxError):
-        _validate_writable(str(tmp_path.parent), _real(tmp_path))
+    evidence = evidence_root / "run"
+    work = evidence / "work"
+    work.mkdir(parents=True)
+    with pytest.raises(SandboxError, match="ancestor of the worktree"):
+        _validate_writable(str(evidence), _real(work))
 
 
 def test_the_filesystem_root_is_refused(tmp_path):

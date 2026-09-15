@@ -103,8 +103,10 @@ class Experiment:
 
     `protect` names the files that define the measurement — the evaluation
     script, the held-out data, whatever `run` reads to arrive at a number.
-    They are digested before and after each proposal, and a trial that moved
-    them is recorded as such instead of scored.
+    They are digested before and after each proposal and after each completed
+    measurement, including baselines, confirmation, and noise calibration.
+    A changed protected set invalidates the metric; matching snapshots cannot
+    detect a transient change restored before the command exits.
 
     `brief` controls whether each proposal is handed the trial history to read.
 
@@ -153,7 +155,7 @@ class Experiment:
     """Whether the sandboxed propose step may reach the network. Off by default.
 
     A proposer that calls a hosted model needs this on; a local or scripted one
-    does not. Off means a compromise cannot exfiltrate what it reads.
+    does not. Off blocks IP traffic; filesystem Unix sockets remain reachable.
     """
     sandbox_writes: tuple[str, ...] = ()
     """Out-of-tree directories the sandboxed propose step may write to.
@@ -162,7 +164,8 @@ class Experiment:
     must leave evidence (transcripts, reasoning) needs one writable dir outside
     both the worktree and the digested measurement — inside either, it would be
     committed, reverted, or digested with the trial instead of surviving it.
-    Recorded in the manifest like the rest of the sandbox spec.
+    Each must exist beneath ~/.local/state/labloop/evidence; the root itself
+    and redirects outside it are refused. Recorded in the manifest.
     """
 
     @property

@@ -2,8 +2,8 @@
 
 labloop *detects* edits to the protected set. It cannot stop a proposer writing
 code the measurement later loads from somewhere the digest was never pointed at.
-The boundary is OS isolation: run the untrusted propose step where it can write
-only the worktree.
+This module confines only the propose step. Measurement runs on the host and
+can execute proposed code: use a disposable host for adversarial experiments.
 
 There is exactly **one** backend — bubblewrap — on purpose. Every extra backend
 is another set of escape paths to reason about, and a pure-syscall Landlock
@@ -21,15 +21,17 @@ What bubblewrap gives us, and how this module configures it:
 * privileged local sockets (docker/podman/containerd) are masked with
   `/dev/null`, so a user in the `docker` group — effectively root — is not a
   way out;
-* a private `/tmp` (a tmpfs), so the bytecode mirror labloop creates under the
-  real `/tmp` is unreachable;
+* scratch tmpfs at `<worktree>/.labloop-tmp`, exposed as TMPDIR; the host /tmp
+  stays readable but read-only, keeping the bytecode mirror unwritable;
 * optionally, writable binds outside the worktree (`--sandbox-write`), the one
   sanctioned evidence channel: a sandboxed proposer cannot otherwise leave any
-  record of what it tried. Each path is canonicalised and validated — refused if
-  it is inside the worktree, an ancestor of it, or a shared/temporary root — so
-  the channel cannot be turned into a broad hole (see `_validate_writable`).
+  record of what it tried. Only existing directories beneath the fixed
+  ~/.local/state/labloop/evidence root are eligible, and neither the worktree
+  nor its ancestors may be granted (see `_validate_writable`).
 * a PID namespace and `--die-with-parent`, so a process the proposer detaches
   cannot outlive the propose step and race the measurement;
+* explicit removal of all capabilities (`--cap-drop ALL`) and a new session
+  (`--new-session`) detached from the controlling terminal;
 * the network is off by default (`--unshare-net`) and enabled with
   `--sandbox-network`.
 
@@ -56,7 +58,9 @@ import shutil
 import subprocess
 import tempfile
 from collections.abc import Sequence
+from contextlib import ExitStack
 from dataclasses import dataclass
+from pathlib import Path
 
 from .runner import run_command
 
@@ -87,26 +91,21 @@ class SandboxError(RuntimeError):
     """Isolation was requested but cannot be provided, or failed its self-check."""
 
 
-#: Directories a writable bind must never be: the filesystem root and the
-#: shared/temporary/cache roots. Binding one read-write re-opens a broad area
-#: after the read-only root — `/tmp` exposes the bytecode mirror the sandbox
-#: relies on keeping out of reach, and `/` disables the sandbox entirely.
-_BROAD_ROOTS = frozenset({
-    "/", "/tmp", "/var/tmp", "/var", "/run", "/dev", "/proc", "/sys",
-    "/etc", "/usr", "/usr/local", "/opt", "/srv", "/mnt", "/media", "/root",
-    os.path.realpath(os.path.expanduser("~")),
-})
-
-
 def _validate_writable(path: str, worktree: str) -> str:
     """Return the real path of a sanctioned writable bind, or raise.
 
-    `--sandbox-write` is an evidence channel, not a general hole: a directory
-    that is neither inside the worktree (the trial would commit or revert it)
-    nor an ancestor of it (which would re-open the worktree and everything beside
-    it read-write), and not a shared or temporary root.
+    Only existing strict descendants of the fixed evidence root are eligible.
+    Resolve the home directory first, but refuse redirection of the evidence
+    root itself; a symlink to ~/.ssh must never turn credentials into evidence.
     """
     real = os.path.realpath(path)
+    worktree = os.path.realpath(worktree)
+    root = Path.home().resolve() / ".local" / "state" / "labloop" / "evidence"
+    if root.resolve() != root or root not in Path(real).parents:
+        raise SandboxError(
+            f"--sandbox-write {path!r} must be a dedicated directory beneath {root}. "
+            "The evidence root itself and symlinks redirecting it are not allowed."
+        )
     if not os.path.isdir(real):
         raise SandboxError(
             f"--sandbox-write {path!r} does not exist — create it first, so a typo "
@@ -122,11 +121,6 @@ def _validate_writable(path: str, worktree: str) -> str:
             f"--sandbox-write {path!r} is an ancestor of the worktree — binding it "
             "read-write would re-open the worktree and everything beside it. Point it "
             "at a dedicated evidence directory that does not contain the worktree."
-        )
-    if real in _BROAD_ROOTS:
-        raise SandboxError(
-            f"--sandbox-write {path!r} is a shared or temporary location, not a "
-            "dedicated evidence directory. Give it a directory of its own."
         )
     return real
 
@@ -150,7 +144,9 @@ class BwrapSandbox:
         scratch = os.path.join(worktree, ".labloop-tmp")
         args = [
             "bwrap",
+            "--new-session",
             "--die-with-parent",
+            "--cap-drop", "ALL",
             "--unshare-pid",
             "--ro-bind", "/", "/",
             "--dev", "/dev",
@@ -244,7 +240,7 @@ def resolve_sandbox(choice: str | None = "auto") -> Sandbox | None:
 
 def verify_sandbox(sandbox: Sandbox, worktree: str,
                    writable: Sequence[str] = ()) -> None:
-    """Prove the sandbox confines *this* machine before trial 0.
+    """Check basic write confinement on this machine before trial 0.
 
     A write inside the worktree must work and a write outside it must be denied.
     If either is wrong, refuse — a sandbox that silently does nothing is the
@@ -252,30 +248,28 @@ def verify_sandbox(sandbox: Sandbox, worktree: str,
     dir gets the same treatment in reverse: a write there must work, or the
     evidence channel is silently broken and every trial's reasoning is lost.
     """
-    outside_dir = tempfile.mkdtemp(prefix="labloop-verify-")
-    worktree = os.path.abspath(worktree)
-    inside = os.path.join(worktree, ".labloop-verify")
-    outside = os.path.join(outside_dir, "escape")
-    write_probes = [
-        os.path.join(os.path.realpath(path), ".labloop-verify-write")
-        for path in writable
-    ]
-    steps = [f"touch {shlex.quote(inside)}"]
-    steps += [f"touch {shlex.quote(path)}" for path in write_probes]
-    steps += [f"echo x > {shlex.quote(outside)}"]
-    probe = " && ".join(steps)
-    try:
+    worktree = os.path.realpath(worktree)
+    writable = tuple(_validate_writable(path, worktree) for path in writable)
+    # Own every probe directory exclusively. Fixed filenames could overwrite
+    # user evidence, or falsely pass the check when a marker already existed.
+    with ExitStack() as cleanup:
+        def probe_in(parent: str | None = None) -> str:
+            directory = cleanup.enter_context(
+                tempfile.TemporaryDirectory(prefix=".labloop-verify-", dir=parent)
+            )
+            return os.path.join(directory, "probe")
+
+        inside = probe_in(worktree)
+        outside = probe_in()
+        write_probes = [probe_in(path) for path in writable]
+        steps = [f"touch {shlex.quote(inside)}"]
+        steps += [f"touch {shlex.quote(path)}" for path in write_probes]
+        steps += [f"echo x > {shlex.quote(outside)}"]
+        probe = " && ".join(steps)
         run_command(sandbox.wrap(probe, worktree, writable=writable), cwd=worktree, timeout=60)
         leaked = os.path.exists(outside)
         confined = os.path.exists(inside)
         evidenced = [os.path.exists(path) for path in write_probes]
-    finally:
-        for path in (inside, outside, *write_probes):
-            try:
-                os.unlink(path)
-            except OSError:
-                pass
-        shutil.rmtree(outside_dir, ignore_errors=True)
     if not confined:
         raise SandboxError(
             f"{sandbox.name} sandbox self-check could not even write inside the worktree — "

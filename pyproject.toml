@@ -9,7 +9,6 @@ license-files = ["LICENSE"]
 authors = [{ name = "Plicara Labs" }]
 keywords = ["research", "experiments", "agents", "machine-learning", "ablation"]
 classifiers = [
-  "Development Status :: 3 - Alpha",
   "Intended Audience :: Science/Research",
   "Intended Audience :: Developers",
   "Programming Language :: Python :: 3",
@@ -58,6 +57,8 @@ include = [
   "tests",
   "experiments",
   "cookbook",
+  "docs",
+  "scripts",
   "README.md",
   "CHANGELOG.md",
   "ROADMAP.md",

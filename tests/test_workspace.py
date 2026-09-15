@@ -47,6 +47,19 @@ def test_an_untracked_file_makes_it_dirty(repo):
     assert GitWorkspace(repo).is_dirty() is True
 
 
+def test_a_new_directory_does_not_sweep_later_artifacts_into_the_commit(repo):
+    model = repo / "new_model"
+    model.mkdir()
+    (model / "model.py").write_text("pass\n")
+    workspace = GitWorkspace(repo)
+    proposed = workspace.changed_paths()
+    (model / "checkpoint.bin").write_bytes(b"evaluation artifact")
+    workspace.commit("proposal", proposed)
+    tracked = git("ls-files", cwd=repo).splitlines()
+    assert "new_model/model.py" in tracked
+    assert "new_model/checkpoint.bin" not in tracked
+
+
 def test_revert_undoes_an_edit(repo):
     (repo / "train.py").write_text("changed\n")
     GitWorkspace(repo).revert()
@@ -312,6 +325,7 @@ def _unset_identity(repo, monkeypatch):
     monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
     subprocess.run(["git", "config", "--unset", "user.email"], cwd=repo)
     subprocess.run(["git", "config", "--unset", "user.name"], cwd=repo)
+    subprocess.run(["git", "config", "user.useConfigOnly", "true"], cwd=repo, check=True)
 
 
 def test_a_missing_git_identity_is_refused(repo, monkeypatch):

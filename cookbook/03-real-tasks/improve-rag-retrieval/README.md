@@ -111,7 +111,7 @@ uses different words.
 ```bash
 labloop run --run "python evaluate.py" --metric ndcg --goal maximize \
   --protect evaluate.py --protect queries.py --protect corpus.py \
-  --propose "python propose.py" \
+  --propose "python propose.py" --sandbox-network \
   --budget 120 --propose-budget 300 --trials 4
 ```
 

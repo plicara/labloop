@@ -56,10 +56,12 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq bubblewrap
-          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          if sysctl kernel.apparmor_restrict_unprivileged_userns >/dev/null 2>&1; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
 
       - name: Sandbox tests (bubblewrap)
-        run: pytest -q tests/test_sandbox.py
+        run: pytest -q --require-sandbox tests/test_sandbox.py
 
   build:
     runs-on: ubuntu-latest

@@ -19,6 +19,8 @@ was kept, and the reverted attempts are most of the information.
 pip install labloop
 ```
 
+The default proposer sandbox requires Linux, Bubblewrap, and working unprivileged user namespaces. On macOS or Windows, `run` requires an explicit `--sandbox none` opt-out; use it only with code you trust. See [sandbox setup and limitations](#sandboxing-the-proposer). Hosted-model proposers also need `--sandbox-network`.
+
 ## Use
 
 In a fresh repository, `labloop init` gitignores the ledger, writes a
@@ -51,7 +53,7 @@ best val_loss: 2.201 (trial 4)
 
 `+` kept, `-` reverted, `T` timed out, `!` crashed, `?` no metric found,
 `~` the metric was `nan` or `inf`, `=` the proposal changed nothing,
-`H` the proposal changed the harness, `^` interrupted.
+`H` the proposal or measurement changed the harness or ledger, `^` interrupted.
 
 The first step is not ceremony. Keep-or-revert is only as good as the metric
 holding still, and [most of what can go wrong](#check-your-metric-holds-still)
@@ -91,7 +93,7 @@ incumbent. Anything else is discarded:
 | `no_metric` | Ran clean but printed no metric. |
 | `not_finite` | The metric was `nan` or `inf`. Nothing compares to it. |
 | `no_change` | The proposal edited nothing, so there was nothing to measure. |
-| `harness_changed` | The proposal edited the thing doing the measuring. |
+| `harness_changed` | The proposal or measurement changed protected files or the ledger; its metric was discarded. |
 | `interrupted` | Stopped by hand partway through. |
 
 Four details that matter:
@@ -106,16 +108,9 @@ Four details that matter:
   uncommitted work would be destroyed.
 - **A metric from a changed harness is not a result.** See below.
 
-`--budget` is how long the experiment may run. An agent that thinks for longer
-than the experiment takes is ordinary, so give the proposal its own with
-`--propose-budget SECONDS` rather than raising both. Either one that overruns
-is killed with its whole process group and recorded as `timed_out`, so a
-training script's workers can't survive to contend with the next trial.
+`--budget` is how long the experiment may run. An agent that thinks for longer than the experiment takes is ordinary, so give the proposal its own with `--propose-budget SECONDS` rather than raising both. Either one that overruns is killed with its POSIX process group and recorded as `timed_out`. An unconfined child can escape that group by creating a new session; the proposer sandbox's PID namespace closes that route on Linux. Measurement commands run outside that namespace. Windows termination is best-effort and is not covered by the Linux CI matrix.
 
-One loop per ledger, enforced. A second `labloop run` against a ledger already
-in use is refused with the holder's pid rather than allowed to interleave
-trial indices; pass `--wait` to queue behind it instead. The lock dies with
-its process, so a crashed run cannot leave a stale one.
+Only one trial executes against a ledger at a time. By default, `run` holds the lock for its entire run and refuses a competing writer with the holder's pid. With `--wait`, it waits for access and releases the lock between trials, so waiting runs can interleave complete trials, with no fairness guarantee. The lock dies with its process. This is a same-host advisory lock: do not run simultaneous writers on different machines against a shared ledger.
 
 It also stops when it stops learning. Ten trials in a row that produce no metric
 at all — a mistyped `propose` command, an agent that never applies its edit —
@@ -141,10 +136,7 @@ carry their direction, indices stay globally unique, and `labloop log`
 reports each direction's best side by side. A proposer's brief contains only
 its own direction's history.
 
-Two directions cannot run at the same instant yet: the ledger lock
-serializes runs, so simultaneous loops queue (`--wait`) rather than
-interleave. Alternating runs, or runs from different machines at different
-times, work today.
+Directions using `--wait` share a per-trial ledger lock: their commands do not execute simultaneously, but waiting loops in separate worktrees can alternate complete trials. A default, non-waiting run holds the lock until its full run finishes. Read-only queries need no lock. Do not run simultaneous directions in the same worktree.
 
 ## Crashes and resuming
 
@@ -164,8 +156,7 @@ the field named: comparing a `val_loss` being minimized against an
 
 ## Reading the metric
 
-Two formats, no configuration. The last occurrence wins, so printing every
-epoch is fine.
+Two formats, no configuration. The last `key=value` or `key: value` occurrence wins. If there are no such pairs, the last matching JSON-line value wins. Use one format consistently: a later JSON line does not override an earlier key/value pair.
 
 ```
 val_loss = 1.234        # key=value or key: value
@@ -236,8 +227,7 @@ command can reach the evaluator. Agents take that route: published runs have
 seen them overwrite test cases and memorize evaluation answers rather than
 improve anything.
 
-Name the files that define the measurement and labloop digests them with
-SHA-256 before and after each proposal:
+Name the files that define the measurement and labloop digests them with SHA-256 before the proposal, after the proposal, and after each completed measurement, including confirmation runs. Baselines and noise calibration also check their protected files before and after measurement:
 
 ```bash
 labloop run \
@@ -259,62 +249,52 @@ whole subtree, which is usually what frozen evaluation data needs. Renames,
 deletions, and added files all move the digest, because memorizing answers
 means adding files and not only editing them.
 
-**This detects, it does not prevent.** A shell command can do anything, and
-claiming otherwise would be a promise this design can't keep. What labloop
-gives you is that such a trial is recorded as `harness_changed` instead of
-scored, and that every trial carries the digest of how it was measured — so
-two trials with the same digest are comparable, and you can prove it after the
-fact. The ledger itself is checked the same way on every trial, without being
-declared: it holds the incumbent, and an agent that can rewrite it doesn't need
-to beat it.
+**Digests detect changes to the watched files; they do not prove measurement validity.** A changed protected set produces `harness_changed` instead of a score, even if the command also failed or timed out. The note identifies the phase: `proposal`, `run`, `confirmation run`, or `baseline run`. The ledger is checked at the same points without needing `--protect`; detected rewrites, deletions, and leaf symlink replacements are restored from trusted pre-command bytes before recording the rejection. If its directory was redirected or the ledger was replaced by a directory, recovery stops for manual inspection.
+
+Baselines reject a changed harness without creating a new incumbent. A baseline that started with a clean Git tree restores that tree; one that started dirty preserves uncommitted work and asks you to inspect it. Noise calibration holds the ledger lock across all repeats, aborts on a protected-file or ledger change, and returns no statistics or trial records. It restores an altered ledger (or removes one created by the command), but leaves the worktree for inspection.
+
+Matching digests establish only that files matched at the check points. They cannot detect a command that changes a file, uses it, and restores it before exiting. They also cannot authenticate stdout metrics, prevent monkey-patching, or cover unwatched dependencies. Interrupted commands do not reach these post-command checks. The [evaluation-isolation proposal](docs/evaluation-isolation.md) describes a stronger boundary; it is not implemented.
 
 If the incumbent in your ledger was measured under a different digest, the loop
 stops rather than compare two numbers that came from different measurements.
 
-Patterns matching nothing are an error, not a silent pass — a typo there would
-quietly disable the whole check. When something does move, the trial names the
-file, so `proposal modified the harness: data/holdout.csv` tells you where to
-look.
+If the complete protect set matches no files, startup fails. Individual unmatched patterns alongside valid matches are not currently rejected, so check each path. When something moves, the trial names the file: `proposal modified the harness: data/holdout.csv` tells you where to look.
 
-**Protect the measurement, not the directory it lives in.** If your evaluator
-writes a cache or a log inside a protected path, that path stops being stable
-and the loop will refuse to compare against its own earlier trials. Caches are
-artifacts; keep them somewhere you are not protecting.
+**Protect the measurement, not the directory it lives in.** If your evaluator writes a cache or a log inside a protected path, the current measurement is rejected. Caches are artifacts; keep them somewhere you are not protecting.
 
 ## Sandboxing the proposer
 
-Digesting detects a proposal that edits the measurement; it cannot stop one
-that writes code the measurement later loads from somewhere the digest was never
-pointed at. For that, the propose step itself is confined.
+Only the `--propose` command is sandboxed. The `--run` measurement command executes on the host and can load code the proposer just changed. For adversarial or unknown code, run the entire experiment on a disposable, credential-free machine or VM; this proposer sandbox is not end-to-end containment.
 
-On Linux, labloop runs the propose command inside **bubblewrap**: it can read the
-whole machine, write only the worktree, and gets its own process and network
-namespaces. The project's `.git` is bound read-only and the root-equivalent
-container sockets are masked, so the obvious escapes are closed at the kernel.
-This is the default; `--sandbox none` opts out.
+On Linux, labloop runs the propose command inside **bubblewrap**: it can read the whole machine, write the worktree and explicitly granted evidence directories, and gets its own process and network namespaces. The project's `.git` is bound read-only and known Docker, Podman, and containerd socket paths are masked. Custom socket paths are not covered. This is the default; `--sandbox none` opts out.
+
+The wrapper explicitly drops all Linux capabilities (`--cap-drop ALL`) and starts a new session (`--new-session`) to detach from the controlling terminal. These harden the proposer boundary; they do not sandbox the measurement command.
 
 It needs bubblewrap and unprivileged user namespaces:
 
 ```bash
 sudo apt install bubblewrap
-sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0   # Ubuntu 24.04+
 ```
 
-Without them the loop **refuses to start** rather than quietly running the
-proposer unconfined, and a startup self-check proves the boundary on your
-machine before the first trial. (The Python API is confined by default too;
-set `LABLOOP_SANDBOX=none` to opt out.)
+Some Ubuntu installations restrict unprivileged user namespaces through AppArmor. Follow your host's administrator-approved policy; disabling `kernel.apparmor_restrict_unprivileged_userns` is a machine-wide security change, not an application-local setting. CI changes it only on disposable runners.
+
+Without them the loop **refuses to start**. A startup self-check verifies a worktree write, a denied outside write, and each declared evidence write before trials begin. It is a capability check, not a comprehensive security proof. The Python API is confined by default too; `LABLOOP_SANDBOX=none` opts out.
 
 **The network is off by default.** A proposer that calls a hosted model needs
 `--sandbox-network`; a local or scripted one does not. Off means a compromised
 proposer cannot send what it reads over IP — but Unix-domain sockets stay
 reachable, so it is "no IP egress", not "cannot talk to anything".
 
-A sandboxed proposer can write only the worktree, so evidence it leaves would be
-committed or reverted with the trial. `--sandbox-write PATH` (repeatable) adds
-one dedicated directory outside the worktree for that; it is refused if it is
-inside the worktree, an ancestor of it, or a shared/temporary root such as
-`/tmp` or `/`.
+A sandboxed proposer's durable evidence belongs under the fixed root `~/.local/state/labloop/evidence`. `--sandbox-write PATH` (repeatable) grants an existing strict descendant of that root, outside the worktree and not an ancestor of it. The root itself is refused. Symlinks cannot redirect the root or grant directories outside it, and both the evidence path and worktree are canonicalized before checking.
+
+```bash
+mkdir -p "$HOME/.local/state/labloop/evidence/my-experiment"
+labloop run --run "python train.py" --metric val_loss \
+  --propose "my-agent --edit train.py" --sandbox-network \
+  --sandbox-write "$HOME/.local/state/labloop/evidence/my-experiment"
+```
+
+Tell the proposer where to write its transcripts; the flag grants access but does not create or capture logs. Choose a separate directory per experiment and treat its contents as untrusted proposer output. Agent caches must be configured inside the worktree or a permitted evidence directory; arbitrary writes to `~/.config` or credential directories are not supported. Existing manifests that grant other locations must be replaced by a new `run` invocation with an allowed path before using `resume`.
 
 Two things it does not do: reads are open by design (keep secrets off the
 machine), and bubblewrap shares the host kernel — it is not a virtual machine.
@@ -366,10 +346,7 @@ either way, so it never dirties the tree or lands in a commit.
 
 ## What gets committed
 
-A kept trial commits exactly two things: the change the proposal made, and
-`labloop-history.jsonl` — a sparse decision log with one compact line per
-trial, reverted ones included, so the research record travels with the
-repository while the bulky output tails stay in the local ledger.
+A kept trial commits the paths changed by the proposal and `labloop-history.jsonl` — a sparse decision log with one compact line per trial, reverted ones included. Paths are captured before measurement, including individual files in newly created directories. Their contents are committed after measurement: an evaluator that modifies a proposed file changes what gets committed. Keep evaluator artifacts in separate paths.
 
 Nothing else. Whatever the run produced beyond the proposed change —
 checkpoints, logs, caches — is discarded after the trial is judged, exactly as
@@ -415,7 +392,7 @@ rather than scrollback.
 
 ## Status
 
-Alpha. The API will change. Stdlib only, no dependencies.
+Released as 1.x. The Python package uses only the standard library; the default proposer isolation additionally requires Linux and Bubblewrap. See [the audit notes](docs/audit-2026-09-14.md) for verification scope and known limitations.
 
 ## License
 

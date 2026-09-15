@@ -8,18 +8,19 @@ cd labloop
 pip install -e ".[dev]"
 ```
 
-Stdlib only at runtime — the package has zero dependencies, and keeping it
-that way is a feature. `pytest`, `ruff` and `mypy` are dev-only.
+The Python runtime is standard-library only. `pytest`, `ruff` and `mypy` are dev-only; install `build` and `twine` too for release preflight. The default proposer sandbox separately requires Linux, Bubblewrap, and working unprivileged user namespaces.
 
 ## The checks
 
-Everything CI runs, runnable locally:
+Run the portable checks from an environment with the editable package and dev tools installed:
 
 ```bash
-pytest -q            # the suite; ~255 tests, about 30 seconds
+pytest -q            # portable suite; sandbox integrations skip without Bubblewrap
 ruff check .         # lint
 mypy                 # strict, src only; the package ships py.typed
 ```
+
+On Linux, also run `pytest -q --require-sandbox tests/test_sandbox.py`. This first executes the real sandbox self-check and fails if isolation is unavailable; both the sandbox CI job and release publishing require it. Ordinary tests opt out of the default sandbox through a test fixture. That makes portable tests useful, but passing them alone does not verify Linux isolation.
 
 ## How changes are made here
 
@@ -66,15 +67,14 @@ built wheel end to end in a clean venv, because `twine check` validates
 metadata and not that the wheel contains the package.
 
 ```bash
-scripts/publish.sh --dry-run     # rehearse; touches nothing
+scripts/publish.sh --dry-run     # read-only preflight; print later steps
 scripts/publish.sh --rehearse    # upload to TestPyPI on the way
 scripts/publish.sh               # date the changelog, commit, tag, push
 ```
 
-It stops at the tag. Publishing to PyPI happens when you create the GitHub
-Release, which is what `publish.yml` triggers on — a version number is
-permanent, so the last step before one becomes permanent is a human reading
-the release notes.
+The dry run performs read-only local and remote preflight checks; it prints, rather than executes, tests, builds, uploads, commits, and pushes. A normal run tests and builds first. Its wheel smoke test explicitly opts out of proposer isolation to check packaging on platforms without Bubblewrap.
+
+After tagging, the script offers to publish the GitHub Release if `gh` is installed, displays the notes, and requires confirmation even with `--yes`. Otherwise it prints browser instructions. Publishing that release triggers `publish.yml`, which runs portable checks and mandatory Linux sandbox tests before uploading to PyPI. There is no manual workflow-dispatch publishing shortcut. No local rehearsal proves that external publishing succeeded; verify the installed release afterward.
 
 ## Commit messages
 

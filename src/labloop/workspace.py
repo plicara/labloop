@@ -164,7 +164,7 @@ class GitWorkspace:
         which silently turned ` M train.py` into `rain.py`.
         """
         result = subprocess.run(
-            ["git", "status", "--porcelain", "-z"],
+            ["git", "status", "--porcelain", "-z", "--untracked-files=all"],
             cwd=str(self._toplevel()),
             capture_output=True,
             text=True,
