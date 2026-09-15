@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- The publish workflow runs the same duplicate-version gate as the release script: a browser-created GitHub Release for a version already on PyPI now fails at the gate instead of mid-upload. The check lives in `scripts/check_pypi_version.sh`, shared by both paths to publication.
+
 ## 1.0.3 — 2026-09-15
 
 - Check protected files and the ledger after completed measurements, including baselines, confirmation runs, and noise calibration, before accepting metrics. Discard tampered scores, restore altered ledgers, and identify the violating phase. Preserve preexisting uncommitted baseline work and stop noise calibration without publishing statistics.

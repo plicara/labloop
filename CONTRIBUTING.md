@@ -74,7 +74,7 @@ scripts/publish.sh               # date the changelog, commit, tag, push
 
 The dry run performs read-only local and remote preflight checks; it prints, rather than executes, tests, builds, uploads, commits, and pushes. A normal run tests and builds first. Its wheel smoke test explicitly opts out of proposer isolation to check packaging on platforms without Bubblewrap.
 
-After tagging, the script offers to publish the GitHub Release if `gh` is installed, displays the notes, and requires confirmation even with `--yes`. Otherwise it prints browser instructions. Publishing that release triggers `publish.yml`, which runs portable checks and mandatory Linux sandbox tests before uploading to PyPI. There is no manual workflow-dispatch publishing shortcut. No local rehearsal proves that external publishing succeeded; verify the installed release afterward.
+After tagging, the script offers to publish the GitHub Release if `gh` is installed, displays the notes, and requires confirmation even with `--yes`. Otherwise it prints browser instructions. Publishing that release triggers `publish.yml`, which first refuses a version already on PyPI (the same `scripts/check_pypi_version.sh` gate the script uses), then runs portable checks and mandatory Linux sandbox tests before uploading. There is no manual workflow-dispatch publishing shortcut. No local rehearsal proves that external publishing succeeded; verify the installed release afterward.
 
 ## Commit messages
 

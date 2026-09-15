@@ -23,6 +23,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # A GitHub Release can be created in the browser without running
+      # scripts/publish.sh, so the workflow repeats its most permanent
+      # preflight: refuse a version PyPI already holds, before anything
+      # is built or uploaded.
+      - name: Refuse a version that already exists on PyPI
+        run: |
+          VERSION=$(python3 - src/labloop/__init__.py <<'PY'
+          import pathlib, re, sys
+          match = re.search(r'^__version__ = "([^"]+)"', pathlib.Path(sys.argv[1]).read_text(), re.M)
+          if not match:
+              sys.exit(f"no __version__ found in {sys.argv[1]}")
+          print(match.group(1))
+          PY
+          )
+          bash scripts/check_pypi_version.sh labloop "$VERSION"
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

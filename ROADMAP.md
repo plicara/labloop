@@ -134,9 +134,7 @@ jq". Minimum honest version:
 ## After 0.1.0, in rough order
 
 1. **Simultaneous direction runs** — trials still execute serially, with `--wait` allowing interleaving between complete trials. Simultaneous measurement needs per-append locking with index coordination.
-2. **Version-bump guard** — the publish workflow should refuse to run when
-   the version in `__init__.py` already exists on PyPI, so a forgotten
-   bump fails at the gate instead of mid-publish.
+2. **Version-bump guard · done** — the publish workflow now runs the shared PyPI duplicate check (`scripts/check_pypi_version.sh`) before building, so a forgotten bump fails at the gate; the release script calls the same script.
 3. **Windows CI** — the msvcrt lock path is shipped best-effort and
    untested; a windows-latest matrix entry would make it a claim.
 

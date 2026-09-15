@@ -16,8 +16,10 @@ import pytest
 def release_checkout(tmp_path):
     root = tmp_path / "checkout"
     (root / "scripts").mkdir(parents=True)
-    shutil.copyfile(Path(__file__).parents[1] / "scripts" / "publish.sh",
-                    root / "scripts" / "publish.sh")
+    scripts_dir = Path(__file__).parents[1] / "scripts"
+    shutil.copyfile(scripts_dir / "publish.sh", root / "scripts" / "publish.sh")
+    shutil.copyfile(scripts_dir / "check_pypi_version.sh",
+                    root / "scripts" / "check_pypi_version.sh")
     package = root / "src" / "labloop"
     package.mkdir(parents=True)
     (package / "__init__.py").write_text('__version__ = "99.0.0"\n')
@@ -42,12 +44,14 @@ esac
 ''')
     git.chmod(0o755)
     curl = bin_dir / "curl"
-    curl.write_text('#!/bin/sh\n[ "$LABLOOP_TEST_CURL_FAIL" = 1 ] && exit 7\nprintf 404\n')
+    curl.write_text('#!/bin/sh\n[ "$LABLOOP_TEST_CURL_FAIL" = 1 ] && exit 7\n'
+                    'printf %s "$LABLOOP_TEST_CURL_STATUS"\n')
     curl.chmod(0o755)
     env = {**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}",
            "PYTHONPATH": str(root / "src"),
            "LABLOOP_RELEASE_CALLS": str(tmp_path / "calls"),
-           "LABLOOP_TEST_DIRTY": "", "LABLOOP_TEST_CURL_FAIL": "0"}
+           "LABLOOP_TEST_DIRTY": "", "LABLOOP_TEST_CURL_FAIL": "0",
+           "LABLOOP_TEST_CURL_STATUS": "404"}
     env.pop("PYTHONDONTWRITEBYTECODE", None)
     return root, env
 
@@ -83,3 +87,24 @@ def test_release_preflight_does_not_treat_network_failure_as_an_available_versio
     result = run_preflight(root, env)
     assert result.returncode != 0
     assert "could not check PyPI" in result.stderr
+
+
+def test_release_preflight_refuses_a_version_already_on_pypi(release_checkout):
+    root, env = release_checkout
+    env["LABLOOP_TEST_CURL_STATUS"] = "200"
+    result = run_preflight(root, env)
+    assert result.returncode != 0
+    assert "already on PyPI" in result.stderr
+    assert "permanent" in result.stderr
+
+
+def test_the_publish_workflow_runs_the_same_duplicate_version_gate(release_checkout):
+    """The workflow repeats the gate: the shared script must be wired in
+    ahead of the upload action, so a browser-created release fails at the
+    gate instead of mid-publish."""
+    root, _ = release_checkout
+    workflow = (Path(__file__).parents[1] / ".github" / "workflows" / "publish.yml").read_text()
+    assert "check_pypi_version.sh" in workflow
+    assert workflow.index("check_pypi_version.sh") < workflow.index("gh-action-pypi-publish")
+    subprocess.run(["bash", "-n", str(root / "scripts" / "check_pypi_version.sh")],
+                   check=True, timeout=10)

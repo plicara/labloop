@@ -101,14 +101,9 @@ fi
 ok "$TAG is free"
 
 # The one genuinely permanent check: PyPI never lets a version be reused, even
-# after deletion.
-status=$(curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 10 --max-time 30 \
-  "https://pypi.org/pypi/$PACKAGE/$VERSION/json") || die "could not check PyPI"
-case "$status" in
-  200) die "$PACKAGE $VERSION is already on PyPI. That number is permanent — bump it." ;;
-  404) ;;
-  *) die "could not check PyPI (HTTP $status)" ;;
-esac
+# after deletion. The check lives in scripts/check_pypi_version.sh, shared
+# with publish.yml, so both paths to publication refuse the same way.
+bash scripts/check_pypi_version.sh "$PACKAGE" "$VERSION"
 ok "$PACKAGE $VERSION is not on PyPI"
 
 python3 -c 'import build, twine' 2>/dev/null || die \
