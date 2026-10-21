@@ -13,7 +13,7 @@ from . import __version__
 from .integrity import HarnessMismatchError, NoProtectedFilesError
 from .ledger import Ledger
 from .lock import LedgerLockedError
-from .loop import Loop, StalledError
+from .loop import Loop, StalledError, UnusableRunError
 from .metrics import MetricAmbiguous
 from .sandbox import SandboxError
 from .types import Experiment, Goal, Outcome, Trial, UsageError
@@ -289,6 +289,7 @@ def main(argv: list[str] | None = None) -> int:
         NotAGitRepositoryError,
         SandboxError,
         StalledError,
+        UnusableRunError,
         UsageError,
     ) as exc:
         # Bad input, not a bug. A traceback here reads as the tool breaking

@@ -250,9 +250,13 @@ def test_noise_offers_both_thresholds_and_says_what_each_costs(project, capsys):
     assert "discard real improvements" in out
 
 
-def test_noise_on_a_broken_experiment_says_so(project):
-    with pytest.raises(RuntimeError, match="usable val_loss"):
-        main(["noise", "--run", "exit 1", "--metric", "val_loss"])
+def test_noise_on_a_broken_experiment_says_so_and_shows_why(project, capsys):
+    code = main(["noise", "--run", "echo the real reason; exit 1", "--metric", "val_loss"])
+    err = capsys.readouterr().err
+    assert code == 2
+    assert "usable val_loss" in err
+    assert "the real reason" in err
+    assert "Traceback" not in err
 
 
 def test_log_replays_the_ledger_and_counts_outcomes(project, capsys):

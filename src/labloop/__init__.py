@@ -21,7 +21,7 @@ most of the signal.
 from .integrity import HarnessMismatchError, NoProtectedFilesError, harness_digest
 from .ledger import Ledger
 from .lock import LedgerLock, LedgerLockedError
-from .loop import Loop, StalledError
+from .loop import Loop, StalledError, UnusableRunError
 from .metrics import MetricAmbiguous, MetricNotFound, extract_metric
 from .runner import Completed, run_command
 from .sandbox import (
@@ -61,6 +61,7 @@ __all__ = [
     "NoProtectedFilesError",
     "Outcome",
     "StalledError",
+    "UnusableRunError",
     "Trial",
     "UsageError",
     "Workspace",

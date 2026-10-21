@@ -31,13 +31,17 @@ from .sandbox import resolve_sandbox, verify_sandbox
 from .types import Experiment, Goal, Outcome, Trial, UsageError
 from .workspace import GitWorkspace, Workspace
 
-__all__ = ["Loop", "StalledError"]
+__all__ = ["Loop", "StalledError", "UnusableRunError"]
 
 Reporter = Callable[[Trial], None]
 
 
 class StalledError(RuntimeError):
     """Trial after trial produced no measurement, so the run was stopped."""
+
+
+class UnusableRunError(RuntimeError):
+    """A calibration run produced no usable metric; the message carries its output."""
 
 
 class Loop:
@@ -174,9 +178,12 @@ class Loop:
                 )
             metric = self._read_metric(completed.output)
             if metric is None or not completed.ok or not math.isfinite(metric):
-                raise RuntimeError(
+                # The output is the only clue to why, and noise records no
+                # trial that would keep it.
+                raise UnusableRunError(
                     f"the run command did not produce a usable {self.experiment.metric} "
-                    f"(exit {completed.returncode}); fix that before measuring its spread"
+                    f"(exit {completed.returncode}); fix that before measuring its spread. "
+                    f"Its output ended:\n{completed.tail}"
                 )
             values.append(metric)
         return values

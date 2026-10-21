@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `labloop noise` on a run that yields no usable metric now exits 2 with the command's output tail instead of a traceback that hid it. The new `UnusableRunError` is exported.
+- The test suite passes when labloop itself runs it: an autouse fixture clears `PYTHONPYCACHEPREFIX` and the `LABLOOP_*` brief variables, which three tests read from the outer loop's environment.
 - Always give the bubblewrap proposer its own user namespace (`--unshare-user`). Run as real root, as in containers, CI, and cloud agent sandboxes, bwrap previously skipped the user namespace, so `--cap-drop ALL` emptied the effective set but left a full capability bounding set in the host namespace. Found by dogfooding labloop as root, where `test_bubblewrap_drops_capabilities_and_has_no_controlling_terminal` failed; CI runs the sandbox job unprivileged and never saw it.
 
 ## 1.0.5 — 2026-09-16
