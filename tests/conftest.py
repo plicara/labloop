@@ -62,6 +62,19 @@ def _no_sandbox_by_default(monkeypatch):
     monkeypatch.setenv("LABLOOP_SANDBOX", "none")
 
 
+@pytest.fixture(autouse=True)
+def _not_inside_a_loop(monkeypatch):
+    """The suite must pass when labloop itself runs it.
+
+    A measurement inherits PYTHONPYCACHEPREFIX from the runner, and a proposer
+    inherits the brief variables; tests that assert the defaults would read
+    the outer loop's values instead. Found by dogfooding labloop on itself.
+    """
+    for name in ("PYTHONPYCACHEPREFIX", "LABLOOP_BRIEF", "LABLOOP_TRIAL", "LABLOOP_METRIC",
+                 "LABLOOP_GOAL", "LABLOOP_INCUMBENT"):
+        monkeypatch.delenv(name, raising=False)
+
+
 @pytest.fixture
 def project(tmp_path, monkeypatch):
     """A committed git repo whose experiment prints val_loss, as cwd.
