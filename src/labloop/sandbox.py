@@ -147,6 +147,11 @@ class BwrapSandbox:
             "--new-session",
             "--die-with-parent",
             "--cap-drop", "ALL",
+            # Explicit, not implied: run as real root (containers, CI, cloud
+            # agents), bwrap skips the user namespace, and --cap-drop then
+            # empties the effective set but leaves the bounding set full in the
+            # host namespace. Unprivileged runs already get a user namespace.
+            "--unshare-user",
             "--unshare-pid",
             "--ro-bind", "/", "/",
             "--dev", "/dev",

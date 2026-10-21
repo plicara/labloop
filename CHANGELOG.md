@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Always give the bubblewrap proposer its own user namespace (`--unshare-user`). Run as real root, as in containers, CI, and cloud agent sandboxes, bwrap previously skipped the user namespace, so `--cap-drop ALL` emptied the effective set but left a full capability bounding set in the host namespace. Found by dogfooding labloop as root, where `test_bubblewrap_drops_capabilities_and_has_no_controlling_terminal` failed; CI runs the sandbox job unprivileged and never saw it.
+
 ## 1.0.5 — 2026-09-16
 
 - Close two adversarial-review holes in the 1.0.4 guards, both reproduced:
