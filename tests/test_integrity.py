@@ -140,7 +140,9 @@ def test_unprotected_files_do_not_move_the_digest(tmp_path):
 def test_self_check_import_leaves_the_digest_unchanged(tmp_path, monkeypatch):
     # Explicit about the override: drop any ambient PYTHONPYCACHEPREFIX so
     # this exercises run_command's default injection, not the test env's.
+    # Bytecode must actually be written, or "outside the tree" is vacuous.
     monkeypatch.delenv("PYTHONPYCACHEPREFIX", raising=False)
+    monkeypatch.delenv("PYTHONDONTWRITEBYTECODE", raising=False)
     write(tmp_path, "evals/check.py", "VALUE = 1\n")
     before = harness_digest(tmp_path, ["evals"])
 
