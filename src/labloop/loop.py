@@ -19,7 +19,6 @@ from .integrity import (
     changed_files,
     combine,
     file_digest,
-    harness_digest,
     harness_files,
     import_shadow,
 )
@@ -240,9 +239,12 @@ class Loop:
                 # A waiting peer may have recorded another spec since our
                 # previous trial. Keep labels and resume tied to this trial.
                 self._record_manifest()
-                incumbent = self._incumbent()
+                # One digest pass serves the incumbent check and the trial's
+                # own before-snapshot: nothing writes to the tree in between.
+                files_before = harness_files(self.workdir, self.experiment.protect)
+                incumbent = self._incumbent(files_before)
                 try:
-                    trial = self._one_trial(incumbent)
+                    trial = self._one_trial(incumbent, files_before)
                 except KeyboardInterrupt:
                     # An overnight run stopped by hand is still a trial that
                     # happened. Recording it before re-raising keeps the ledger's
@@ -280,9 +282,8 @@ class Loop:
                 )
         return results
 
-    def _one_trial(self, incumbent: float | None) -> Trial:
+    def _one_trial(self, incumbent: float | None, files_before: dict[str, str] | None) -> Trial:
         index = self.ledger.next_index()
-        files_before = harness_files(self.workdir, self.experiment.protect)
         harness = combine(files_before)
         ledger_before, ledger_bytes, ledger_parent = self._snapshot_ledger()
 
@@ -600,9 +601,6 @@ class Loop:
         finally:
             Path(handle.name).unlink(missing_ok=True)
 
-    def _harness(self) -> str | None:
-        return harness_digest(self.workdir, self.experiment.protect)
-
     def _snapshot_ledger(self) -> tuple[str | None, bytes | None, Path]:
         path = self.ledger.path
         if path.is_symlink() or (path.exists() and not path.is_file()):
@@ -677,7 +675,7 @@ class Loop:
             return f"{phase} modified the harness: {moved}{hint}"
         return f"{phase} modified the harness"
 
-    def _incumbent(self) -> float | None:
+    def _incumbent(self, files: dict[str, str] | None) -> float | None:
         """The metric to beat, read from the ledger rather than memory.
 
         Refuses an incumbent that a different harness produced: those two
@@ -690,7 +688,7 @@ class Loop:
         if best is None:
             return None
 
-        current = self._harness()
+        current = combine(files)
         if current is not None and best.harness is not None and best.harness != current:
             raise HarnessMismatchError(
                 f"trial {best.index} was measured by a different harness "
