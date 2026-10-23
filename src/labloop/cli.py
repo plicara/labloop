@@ -8,6 +8,7 @@ import os
 import statistics
 import sys
 from pathlib import Path
+from typing import Any
 
 from . import __version__
 from .integrity import HarnessMismatchError, NoProtectedFilesError
@@ -67,8 +68,29 @@ def _report(trial: Trial) -> None:
         line += f"  ({trial.note})"
     print(line, flush=True)
 
+    if trial.change:
+        print(f"      {_change_line(trial.change)}", flush=True)
     if trial.outcome in _DIAGNOSE and (reason := _last_line(trial.stdout_tail)):
         print(f"      {reason}", flush=True)
+
+
+def _change_line(change: list[dict[str, Any]], files: int = 3) -> str:
+    """`loop.py (_one_trial) +4/-2, integrity.py +10/-8`: what the trial touched."""
+    parts = []
+    shown = [entry for entry in change if entry.get("path")]
+    for entry in shown[:files]:
+        part = entry["path"]
+        if entry.get("where"):
+            part += f" ({', '.join(entry['where'][:2])})"
+        if entry.get("added") is None:
+            part += " binary"
+        else:
+            part += f" +{entry['added']}/-{entry['removed']}"
+        parts.append(part)
+    more = len(shown) - len(parts) + sum(entry.get("more", 0) for entry in change)
+    if more:
+        parts.append(f"{more} more")
+    return ", ".join(parts)
 
 
 def _positive(value: str) -> int:

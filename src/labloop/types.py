@@ -78,6 +78,22 @@ class Trial:
     advancing its own incumbent. Every pre-existing ledger is one direction
     named main, which is also the default when nobody asks for more.
     """
+    change: list[dict[str, Any]] | None = None
+    """What the proposal changed, as labloop read it from git before measuring.
+
+    One entry per file: `path`, `status`, `added` and `removed` line counts
+    (None for binary), and `where`, the enclosing definitions git names in its
+    hunk headers. Derived from the tree, not from anything the proposer said,
+    so it can go in the brief: a reverted idea is otherwise invisible to the
+    next attempt, which then proposes it again. None when no change reached
+    measurement.
+    """
+    confirmation: float | None = None
+    """The confirmation run's metric, when `confirm` asked for one."""
+    proposal_tail: str = ""
+    """The end of the proposal command's own output, for the human reading the
+    ledger. Never put in the brief: it is the proposer's free text, and the
+    brief is labloop's account, not a channel between attempts."""
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
