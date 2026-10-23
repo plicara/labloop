@@ -18,6 +18,10 @@ The proposer was headless Claude Code (`claude -p`) inside labloop's default san
 
 The two directions differ by 5 ms, inside one standard deviation; this run does not separate the models on quality. It does separate them on cost, by about 3.7×.
 
+**Independent check.** After the run, the timing half of the bench ran outside labloop on clean checkouts of the baseline and both bests, interleaved round-robin for eight rounds. Both bests were faster than the baseline in 8 of 8 paired rounds: −18.1% (Sonnet) and −17.9% (Haiku), against −22% and −20% claimed in the ledger, and indistinguishable from each other (244.3 against 244.9 ms mean). The keeps are real and slightly overstated. Absolute numbers were about 35% higher than inside the loop (baseline mean 298 ms, sd 8.5), so only interleaved comparisons are meaningful here; labloop's incumbent is a past measurement, not an interleaved one, and slow drift over a long run can bias keeps either way. Whether the threshold discarded real gains could not be checked, because reverted diffs are not recorded.
+
+The loop's bookkeeping held: each direction's branch has exactly its two kept commits, each touching only `src/` and the decision log; both worktrees were clean after every revert, including the three voided trials; each trial was judged against the latest keep of its own direction. The ledger does not record the confirmation run's value, so the documented "incumbent advances to the weaker of the two" could not be audited.
+
 Both directions independently found the same two improvements, in the same order:
 
 1. Walk protected directories with `os.scandir` instead of `Path.rglob` plus a `relative_to` per file (Sonnet trial 4, Haiku trial 16; −7% and −8%). Checked against `rglob` on Python 3.10, 3.12 and 3.13, symlinked directories included: same file set.
