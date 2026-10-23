@@ -41,7 +41,7 @@ Fixed on this branch:
 
 Open, needing a decision:
 
-- **The brief does not say what a trial changed.** It reports "the direction worked, the margin was too small" without naming the direction, and the ledger keeps the run's output, not the proposal's. Repeated attempts above are the cost. A diffstat and the proposer's closing lines per history entry would address it.
+- **The brief did not say what a trial changed.** It reported "the direction worked, the margin was too small" without naming the direction, and the ledger kept the run's output, not the proposal's. Addressed in `6788d70` (see [the decision](../../.plicara/decisions/2026-10-23-brief-records-what-changed.md)) and tested in run 2 below.
 - **`--guard-imports` over-matches.** It flags stdlib-named paths at any depth among all ignored files, pre-existing ones included, so an in-tree `.venv` (`_pytest/doctest.py`) or the bytecode of a tracked submodule (`mypkg/types.py`) fails every trial. Flagging only paths absent at run start would keep the 1.0.5 `.gitignore` bypass closed.
 - **A flagged shadow wedges the run.** The guard rejects the trial but never removes the ignored file it flagged, so every later trial fails until `--give-up-after`. Here an operator-written `.pyc` voided Sonnet trials 5 to 7; the guard blamed the proposal because it cannot tell who wrote it.
 - **`labloop baseline` exits 0 when the baseline is not kept**, so a script cannot tell from the exit status.
@@ -57,6 +57,46 @@ Operating labloop with Claude Code as the proposer:
 - A nested `claude -p` inherits the parent session's environment, including its session id.
 - Never run code in a live worktree during a run: anything it writes is attributed to the trial in progress.
 
+## Run 2: does recording the change reduce repeats?
+
+**Setup (2026-10-23).** The same benchmark, models, trial budgets, prompt, shell-less tool set and threshold procedure as run 1, against labloop `6788d70`: run 1's two verified speedups merged, plus the brief recording each trial's `change` and a `tried` table, and the proposer skill explaining both. The judge was again a pinned install of that commit. Noise over six runs had a standard deviation of 3.22 ms against run 1's 13.94, so `--min-delta` was 3.22: a quieter machine, and a lower bar for keeps.
+
+| Direction | Trials | Kept | Ledger claimed | Interleaved A/B | Proposer cost |
+| --- | --- | --- | --- | --- | --- |
+| baseline | | | 188.71 ms | | |
+| Sonnet 5.5 | 10 | 2 | −8.0% | −4.4%, faster in 7/8 rounds | $1.08 |
+| Haiku 5.5 | 9 (+1 killed, +1 interrupted) | 3 | −24.2% | −5.9%, faster in 7/8 rounds | $0.26 |
+
+Repeats, scored two ways with the same method for both runs. Location repeats come from [`repeats.py`](repeats.py), which replays each proposer's edits from its transcript and names the enclosing definition; idea repeats are a hand classification of each attempt's own summary.
+
+| Non-kept attempts repeating an earlier failure | Run 1 | Run 2 |
+| --- | --- | --- |
+| Sonnet, by location | 5 of 8 | 6 of 8 |
+| Sonnet, by idea | 4 or 5 of 8 | 5 of 8 |
+| Haiku first 9 trials, by location | 5 of 7 | 1 of 6 |
+| Haiku first 9 trials, by idea | 5 of 7 | 1 of 4 edits, plus 2 deliberate no-edits |
+
+**What this shows, and what it does not.**
+
+- Sonnet repeated ideas as often as before. It read `tried`, acknowledged the earlier attempt, and re-proposed the digest I/O idea four more times, reasoning that the earlier gain may have been lost in noise. Location data says where an attempt went, not that its idea was settled.
+- That reasoning is sometimes right: Sonnet's concurrent-digest idea was reverted by confirmation in trial 4, repeated in trial 6, and kept in trial 9. Run 1's two most-repeated ideas, string paths in the digest loop and dropping `is_dirty()`, were both kept under run 2's lower threshold, and measured outside the loop they are real but small: 6.2 and 2.6 ms.
+- Haiku repeated far less and twice declined to edit rather than repeat, but the comparison is contaminated: Haiku trials 11, 15, 17 and 18 read this write-up, which was committed into the tree they worked in and names run 1's ideas and thresholds. Of Haiku's uncontaminated non-kept edits, one of three repeated an idea. The sample cannot separate the brief's effect from the write-up's.
+
+**The loop overstated its gains.** Measured one step at a time outside the loop, Haiku's three keeps saved 2.3 ms (faster in 5 of 8 rounds), 6.2 ms (7 of 8) and 2.6 ms (5 of 8), where the ledger credited 17.7, 15.0 and 13.0 ms. All three were measured before the container restart, so restart drift does not explain it; the likely cause is the machine speeding up slowly over the hour, so later trials compared well against a baseline measured early. Noise calibrated over seven minutes of back-to-back runs cannot see drift over an hour, and `--confirm` re-measures the candidate, never the incumbent. In run 1 the overstatement was a few points; here it was about four times the real gain.
+
+**Restart drift stopped the run.** A container restart killed Haiku trial 17 mid-proposal; `labloop resume` refused the unjudged tree with the right recovery command and continued. Afterwards the incumbent's own tree measured 164.7 to 169.7 ms against the 143.04 recorded before the restart, about 17% slower, so no remaining trial could keep anything. Re-running a baseline cannot reset the bar, because the incumbent is the best kept metric ever recorded. Haiku was stopped after nine trials; trial 20 is recorded as interrupted.
+
+New findings:
+
+- **Comparisons are unpaired across time.** The candidate is measured now and the incumbent was measured earlier, so drift becomes progress or regression. Measuring the incumbent tree beside each candidate, or re-measuring it on each confirmation, would make the comparison immune to drift at the cost of one more run per trial.
+- **The incumbent cannot be re-measured.** After a machine change, the only options are a new ledger or a new direction, which loses the history and `tried`.
+- **Results committed to the tree reach the proposer.** Proposers read the whole repository, so a write-up of the last run is in effect a memory file. Keep notes outside the tree under study, or publish them after the run.
+- **A killed run leaves no trace.** SIGKILL records nothing, so the next trial reuses the index; a wrapper that names evidence files by `$LABLOOP_TRIAL` overwrites the killed attempt's transcript unless moved first.
+- **`resume` cannot choose a direction.** It continues the direction of the newest manifest.
+- **`where` attribution is approximate.** git names the definition above a hunk, so an edit at the top of a function is attributed to the one before it.
+- **The confirmation note works.** Two lucky draws were caught with both numbers on record (Sonnet trials 4 and 10: 167.82 then 177.38, 156.83 then 170.93).
+- One finding withdrawn: run 1's driver logs report `exit 0` for every run because `$?` followed a `$(date)` substitution. labloop itself exits 130 on interrupt.
+
 ## Reproducing
 
 The bench needs bubblewrap and runs in about 70 s:
@@ -65,4 +105,4 @@ The bench needs bubblewrap and runs in about 70 s:
 uv run --locked --extra dev python experiments/self_overhead/bench.py
 ```
 
-The driver scripts, proposer wrapper and prompt were operator files outside the repository, as were the ledger and transcripts.
+The driver scripts, proposer wrapper and prompt were operator files outside the repository, as were the ledgers and transcripts. Score repeats with `python3 experiments/self_overhead/repeats.py LEDGER EVIDENCE_ROOT PREFIX . START_COMMIT`.

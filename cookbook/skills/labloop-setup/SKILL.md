@@ -123,3 +123,22 @@ Two things that will stop you before trial 1:
   `--propose-budget` is for the agent, which normally thinks for far longer
   than the experiment runs. Sharing one number means either killing the agent
   mid-thought or handing the experiment minutes it cannot use.
+
+## While it runs, and after
+
+Learned by running labloop on itself:
+
+- **Do not run code in the live worktree.** Anything it writes, bytecode
+  included, is attributed to the trial in progress. Verify a kept change in a
+  separate checkout.
+- **Keep notes about the experiment outside the tree under study.** The
+  proposer reads the whole repository, so a committed write-up of the last
+  run is a memory file for the next one. Publish it after the run.
+- **Check the gains outside the loop.** The incumbent is a past measurement,
+  so slow drift reads as progress. Before trusting a run's total, time the
+  baseline and the final commit interleaved, round-robin, in clean checkouts.
+  In one dogfood run the ledger claimed −24% and the interleaved check found
+  −6%.
+- **After a machine change, start a new ledger.** The incumbent cannot be
+  re-measured, so a slower machine reverts every later trial and a faster one
+  keeps flukes.
