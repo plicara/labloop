@@ -105,8 +105,15 @@ class Trial:
 
     @property
     def bar(self) -> float | None:
-        """The number this trial had to beat: re-measured when paired."""
-        return self.remeasured if self.remeasured is not None else self.incumbent
+        """The number this trial's recorded metric was judged against.
+
+        The confirmation's own incumbent measurement when there was one, else
+        the incumbent re-measured before the proposal, else the ledger's.
+        """
+        for reference in (self.confirmation_reference, self.remeasured):
+            if reference is not None:
+                return reference
+        return self.incumbent
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)

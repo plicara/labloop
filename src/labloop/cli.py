@@ -63,7 +63,7 @@ def _report(trial: Trial) -> None:
     if trial.direction != "main":
         line += f"  [{trial.direction}]"
     if trial.remeasured is not None:
-        line += f"  vs {trial.remeasured:.6g} now"
+        line += f"  vs {trial.bar:.6g} now"
     if trial.commit:
         line += f"  {trial.commit}"
     if trial.note:

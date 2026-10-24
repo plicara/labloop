@@ -463,7 +463,89 @@ class Loop:
 
         confirmation: float | None = None
         confirmed_note = ""
+        credited_bar = bar
+        fresh_pair = False
         if self.experiment.confirm:
+            # Paired, the confirmation gets its own incumbent measurement. The
+            # first comparison selected this trial, partly on the luck of one
+            # incumbent draw; reusing that draw lets a slow one pass both runs.
+            # A fresh pair took no part in the selection, so its difference is
+            # the gain worth crediting.
+            fresh_pair = remeasured is not None and hasattr(self.workspace, "set_aside")
+            if fresh_pair:
+                label = f"labloop trial {index}"
+
+                def bring_back() -> str:
+                    """Restore the proposal; '' if it is back, else where it is."""
+                    try:
+                        self.workspace.restore(label)  # type: ignore[attr-defined]
+                        return ""
+                    except RuntimeError as exc:
+                        self.workspace.revert()
+                        return f"; the proposal is in `git stash list` as {label!r} ({exc})"
+
+                try:
+                    self.workspace.set_aside(proposed_paths, label)  # type: ignore[attr-defined]
+                except RuntimeError as exc:
+                    return reject(
+                        Outcome.FAILED,
+                        spent,
+                        metric=metric,
+                        note=f"won at {metric:.6g} but could not be set aside to "
+                        f"re-measure the incumbent: {exc}",
+                        stdout_tail=completed.tail,
+                    )
+                reference = self._measure()
+                spent += reference.duration_seconds
+                tampering = self._tampering(
+                    harness, ledger_before, files_before, phase="incumbent confirmation run"
+                )
+                if tampering is not None:
+                    if self._ledger_changed(ledger_before):
+                        self._restore_ledger(ledger_bytes, ledger_parent)
+                    lost = bring_back()
+                    return reject(
+                        Outcome.HARNESS_CHANGED,
+                        spent,
+                        note=tampering + lost,
+                        stdout_tail=reference.tail,
+                    )
+                try:
+                    reference_metric = self._read_metric(reference.output)
+                except MetricAmbiguous as exc:
+                    lost = bring_back()
+                    return reject(
+                        Outcome.FAILED,
+                        spent,
+                        metric=metric,
+                        note=f"incumbent confirmation run: {exc}{lost}",
+                        stdout_tail=reference.tail,
+                    )
+                lost = bring_back()
+                if (
+                    reference_metric is None
+                    or not reference.ok
+                    or not math.isfinite(reference_metric)
+                ):
+                    return reject(
+                        Outcome.FAILED,
+                        spent,
+                        metric=metric,
+                        note=f"the incumbent gave no usable {self.experiment.metric} when "
+                        f"measured again for the confirmation{lost}",
+                        stdout_tail=reference.tail,
+                    )
+                if lost:
+                    return record(
+                        Outcome.FAILED,
+                        spent,
+                        metric=metric,
+                        confirmation_reference=reference_metric,
+                        note=f"won at {metric:.6g} but could not be restored{lost}",
+                        stdout_tail=reference.tail,
+                    )
+                credited_bar = reference_metric
+
             again = self._measure()
             spent += again.duration_seconds
             rejected = reject_tampering(again, "confirmation run")
@@ -477,13 +559,20 @@ class Loop:
                     Outcome.REVERTED, spent, metric=None, note=note, stdout_tail=again.tail
                 )
             shown = f"{second:.6g}" if second is not None else "--"
-            note = f"won at {metric:.6g} but measured {shown} on a second run"
+            if fresh_pair:
+                note = (
+                    f"won at {metric:.6g} vs {bar:.6g}, then measured {shown} vs "
+                    f"{credited_bar:.6g} on a fresh pair"
+                )
+            else:
+                note = f"won at {metric:.6g} but measured {shown} on a second run"
 
             if second is None or not again.ok or not math.isfinite(second):
                 return reject(
                     Outcome.REVERTED, spent, metric=None, note=note, stdout_tail=again.tail
                 )
-            if not self._beats(second, bar):
+            pair = {"confirmation_reference": credited_bar} if fresh_pair else {}
+            if not self._beats(second, credited_bar):
                 return reject(
                     Outcome.REVERTED,
                     spent,
@@ -491,22 +580,31 @@ class Loop:
                     confirmation=second,
                     note=note,
                     stdout_tail=again.tail,
+                    **pair,
                 )
             confirmation = second
 
-            # The incumbent advances to the weaker of the two. A lucky draw
-            # would otherwise set a bar that only luck can clear, which is the
-            # mechanism that walks a noisy metric downwards.
-            pick = max if self.experiment.goal is Goal.MINIMIZE else min
-            first, metric = metric, pick(metric, second)
-            confirmed_note = f"confirmed: {first:.6g} then {second:.6g}; kept the weaker"
+            if fresh_pair:
+                # Credited from the pair that played no part in selecting it.
+                first, metric = metric, second
+                confirmed_note = (
+                    f"confirmed on a fresh pair: {second:.6g} vs {credited_bar:.6g}; "
+                    f"credited that, not the first win ({first:.6g} vs {bar:.6g})"
+                )
+            else:
+                # The incumbent advances to the weaker of the two. A lucky draw
+                # would otherwise set a bar that only luck can clear, which is
+                # the mechanism that walks a noisy metric downwards.
+                pick = max if self.experiment.goal is Goal.MINIMIZE else min
+                first, metric = metric, pick(metric, second)
+                confirmed_note = f"confirmed: {first:.6g} then {second:.6g}; kept the weaker"
 
         message = f"labloop: {self.experiment.metric} {metric:.6g}"
-        if bar is not None:
-            message += f" (was {bar:.6g})"
+        if credited_bar is not None:
+            message += f" (was {credited_bar:.6g})"
 
         try:
-            history = self._write_history(index, metric, bar, change, confirmed_note)
+            history = self._write_history(index, metric, credited_bar, change, confirmed_note)
             commit = self.workspace.commit(message, [*proposed_paths, history])
         except RuntimeError as exc:
             # A pre-commit hook that rejects the change, or any other reason
@@ -534,6 +632,7 @@ class Loop:
             metric=metric,
             commit=commit,
             confirmation=confirmation,
+            confirmation_reference=credited_bar if fresh_pair else None,
             note=confirmed_note,
             stdout_tail=completed.tail,
         )
