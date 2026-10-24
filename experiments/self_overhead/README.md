@@ -97,6 +97,38 @@ New findings:
 - **The confirmation note works.** Two lucky draws were caught with both numbers on record (Sonnet trials 4 and 10: 167.82 then 177.38, 156.83 then 170.93).
 - One finding withdrawn: run 1's driver logs report `exit 0` for every run because `$?` followed a `$(date)` substitution. labloop itself exits 130 on interrupt.
 
+## Run 3: does paired measurement make the claims true?
+
+**Setup (2026-10-24).** As run 2, against labloop `f6becd9`, with `--paired` added and `--min-delta` set to √2 times the noise standard deviation (7.99 ms, so 11.30), because a paired comparison is a difference of two runs. The run branches carried one local commit removing this write-up and the decision records, so no proposer could read earlier results; a search of the remaining documentation found no optimization idea named in it.
+
+| Direction | Trials | Kept | Paired claim | Interleaved A/B | Proposer cost |
+| --- | --- | --- | --- | --- | --- |
+| baseline | | | 196.34 ms | | |
+| Sonnet 5.5 | 10 | 1 (`git ls-files`, trial 10) | −7.2% | −1.0%, faster in 7/8 rounds | $1.26 |
+| Haiku 5.5 | 8 judged (+3 failed) | 1 (string paths, trial 18) | −11.3% | −2.1%, faster in 6/8 rounds | $0.21 |
+
+Pairing did what it was built to do about drift. The incumbent re-measured between 183.9 and 220.3 ms over the run while the ledger held 196.34; Sonnet's keep measured 204.34, worse than the recorded baseline, and could not have been kept against it.
+
+**It did not make the claims true.** The two keeps were judged against the two slowest of 21 incumbent re-measurements (220.3 and 215.6 ms, median 203.9). One incumbent draw is the bar for both the candidate's first run and its confirmation, so a slow draw lets both pass: the confirmation is not independent of the decision, and the loop selects for unlucky references. Both keeps are real, faster in most interleaved rounds, but each was credited with five to seven times its size. See [the follow-up decision](../../.plicara/decisions/2026-10-24-paired-confirmation-reuses-its-reference.md).
+
+**Repeats, with no proposer able to read earlier results.** Sonnet repeated a failed location in 6 of 9 non-kept trials, as in runs 1 and 2; it tried concurrent hashing three times after it regressed by a third each time. Haiku repeated in 3 of 7. Recording the change in the brief does not measurably stop Sonnet repeating itself; for Haiku the uncontaminated effect is at most modest.
+
+**How it ended.** The account's usage limit refused every proposal from Haiku trial 19 on, and `--give-up-after 3` stopped the run after three failed proposals. Under `--paired` each of those still cost a full incumbent measurement first, because the re-measurement precedes the proposal. Haiku trial 13 may have been perturbed: the operator ran the test suite while it measured.
+
+## Across the three runs
+
+| | Run 1 | Run 2 | Run 3 |
+| --- | --- | --- | --- |
+| labloop | `d45f943` | `6788d70`: brief records changes | `f6becd9`: and `--paired` |
+| `--min-delta` | 13.94 (1 sd) | 3.22 (1 sd) | 11.30 (√2 sd) |
+| Keeps, both directions | 4 | 5 | 2 |
+| Ledger's gain vs interleaved | −22%/−20% vs −18% | −8%/−24% vs −4%/−6% | −7%/−11% vs −1%/−2% |
+| Sonnet, non-kept repeating a failed location | 5 of 8 | 6 of 8 | 6 of 9 |
+| Haiku, non-kept repeating a failed location | 11 of 13 | 1 of 7 (contaminated) | 3 of 7 |
+| Proposer cost | $1.91 | $1.34 | $1.47 |
+
+What holds across all three: keep-or-revert, the git bookkeeping and the tamper checks behaved correctly in every run, and every keep that was checked outside the loop was a real speedup. What does not hold: the size the ledger credits a keep with. Every run overstated it, and the two changes meant to help, recording the change and pairing the measurement, did not fix that. Until a confirmation measures the incumbent independently, a run's total is an upper bound to verify, not a result.
+
 ## Reproducing
 
 The bench needs bubblewrap and runs in about 70 s:
