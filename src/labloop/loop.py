@@ -298,6 +298,8 @@ class Loop:
         # carries them, whichever branch decides the verdict.
         change: list[dict[str, Any]] | None = None
         proposal_tail = ""
+        remeasured: float | None = None
+        spent = 0.0
 
         def record(outcome: Outcome, duration: float, **fields: object) -> Trial:
             """Every branch below shares these; only the verdict differs."""
@@ -313,6 +315,7 @@ class Loop:
                         "metric": None,
                         "change": change,
                         "proposal_tail": proposal_tail,
+                        "remeasured": remeasured,
                         **fields,
                     },
                 )
@@ -332,6 +335,37 @@ class Loop:
                 Outcome.HARNESS_CHANGED, spent, note=tampering, stdout_tail=completed.tail
             )
 
+        if self.experiment.paired and incumbent is not None:
+            # The tree is the incumbent's commit until the proposal runs, so
+            # this is the incumbent measured on the machine as it is now. The
+            # candidate is judged against it, minutes apart rather than hours.
+            reference = self._measure()
+            spent += reference.duration_seconds
+            rejected = reject_tampering(reference, "incumbent run")
+            if rejected is not None:
+                return rejected
+            try:
+                remeasured = self._read_metric(reference.output)
+            except MetricAmbiguous as exc:
+                return reject(
+                    Outcome.FAILED, spent, note=f"incumbent run: {exc}", stdout_tail=reference.tail
+                )
+            if remeasured is None or not reference.ok or not math.isfinite(remeasured):
+                remeasured = None
+                return reject(
+                    Outcome.FAILED,
+                    spent,
+                    note=(
+                        f"the incumbent's own tree gave no usable {self.experiment.metric} "
+                        "when re-measured, so there was nothing to judge a proposal against"
+                    ),
+                    stdout_tail=reference.tail,
+                )
+            if self.workspace.is_dirty():
+                # Artifacts of the re-measurement, not part of any proposal.
+                self.workspace.revert()
+        bar = remeasured if remeasured is not None else incumbent
+
         with self._proposal_env(index, incumbent) as env:
             propose_command = self.experiment.propose or ""
             if self.sandbox is not None:
@@ -345,7 +379,7 @@ class Loop:
                 timeout=self.experiment.propose_timeout,
                 env=env,
             )
-        spent = proposal.duration_seconds
+        spent += proposal.duration_seconds
         proposal_tail = proposal.tail[-_PROPOSAL_TAIL:]
 
         # Checked before the exit status, and before spending the budget on a
@@ -418,12 +452,12 @@ class Loop:
                 stdout_tail=completed.tail,
             )
 
-        if not self._beats(metric, incumbent):
+        if not self._beats(metric, bar):
             return reject(
                 Outcome.REVERTED,
                 spent,
                 metric=metric,
-                note=self._shortfall(metric, incumbent),
+                note=self._shortfall(metric, bar),
                 stdout_tail=completed.tail,
             )
 
@@ -449,7 +483,7 @@ class Loop:
                 return reject(
                     Outcome.REVERTED, spent, metric=None, note=note, stdout_tail=again.tail
                 )
-            if not self._beats(second, incumbent):
+            if not self._beats(second, bar):
                 return reject(
                     Outcome.REVERTED,
                     spent,
