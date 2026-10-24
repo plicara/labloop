@@ -35,11 +35,12 @@ def test_remeasured_survives_the_ledger_round_trip():
     assert "bar" not in trial.to_dict(), "derived, so not stored"
 
 
-def test_the_confirmation_reference_survives_the_ledger_round_trip():
+def test_the_confirmation_and_estimate_references_survive_the_ledger_round_trip():
     trial = Trial(index=1, outcome=Outcome.KEPT, metric=1.5, incumbent=2.0,
                   duration_seconds=1.0, remeasured=1.8, confirmation=1.6,
-                  confirmation_reference=1.9)
+                  confirmation_reference=1.9, estimate_reference=1.7)
     assert Trial.from_dict(trial.to_dict()) == trial
+    assert trial.bar == 1.7, "the metric is judged against the reference it was paired with"
 
 
 def test_paired_is_off_by_default_and_recorded_in_the_manifest():
