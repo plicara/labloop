@@ -234,6 +234,8 @@ second run. Neither makes a noisy metric safe. They make it less wrong.
 
 A difference between two runs is noisier than one run: about 1.4 times the standard deviation `noise` reports. Under `--paired`, set `--min-delta` with that in mind.
 
+**What `--paired` does not fix.** The incumbent is measured once per trial, and that one number is the bar for both the first run and the `--confirm` run. When it comes out slow by chance, both candidate runs clear it, so the loop selects trials whose reference was unlucky. In the run that tested it, the only two keeps out of 21 trials were judged against the two slowest incumbent measurements; the ledger credited them with 7.2% and 11.3% where an interleaved check found 1.0% and 2.1%. Pairing removes drift over hours, not this. Until a confirmation also re-measures the incumbent, treat a ledger's totals as an upper bound and check the final commit against the baseline interleaved, outside the loop.
+
 ## Protecting the measurement
 
 A keep-or-revert loop rewards whatever moves the metric, and your `propose`
