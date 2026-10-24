@@ -12,7 +12,7 @@ import sys
 
 from labloop import Experiment, Loop, Outcome, Trial
 from labloop.brief import build
-from labloop.cli import main
+from labloop.cli import _summarize, main
 
 from .conftest import make_loop
 from .conftest import run_git as git
@@ -205,3 +205,12 @@ def test_paired_from_the_command_line_survives_resume(project, capsys):
     trials = [json.loads(line) for line in (project / "labloop.jsonl").read_text().splitlines()
               if '"outcome"' in line]
     assert trials[-1]["remeasured"] == 1.5, "resume kept pairing: the incumbent was re-measured"
+
+
+def test_a_paired_run_ends_on_its_latest_keep_not_a_stale_best(tmp_path, capsys):
+    # Recorded 1.0 on a fast machine; it slowed, and 1.8 beat the incumbent's 2.0.
+    loop, _, _ = paired_loop(tmp_path, 1.0, 2.0, 1.8)
+    loop.baseline()
+    loop.run(trials=1)
+    _summarize(loop)
+    assert capsys.readouterr().out.strip() == "latest kept val: 1.8 (trial 1)"

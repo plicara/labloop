@@ -95,6 +95,28 @@ def _change_line(change: list[dict[str, Any]], files: int = 3) -> str:
     return ", ".join(parts)
 
 
+def _summarize(loop: Loop) -> None:
+    """Close a run with the number its direction now stands at.
+
+    Under `--paired` that is the latest keep: each one beat its incumbent
+    measured beside it, while the best number ever recorded may come from a
+    faster machine and no longer describes the tree.
+    """
+    metric = loop.experiment.metric
+    if loop.experiment.paired:
+        kept = [
+            t for t in loop.ledger
+            if t.direction == loop.direction and t.outcome is Outcome.KEPT and t.metric is not None
+        ]
+        if kept:
+            latest = kept[-1]
+            print(f"\nlatest kept {metric}: {latest.metric:.6g} (trial {latest.index})")
+        return
+    best = loop.ledger.best(loop.experiment.goal, direction=loop.direction)
+    if best and best.metric is not None:
+        print(f"\nbest {metric}: {best.metric:.6g} (trial {best.index})")
+
+
 def _positive(value: str) -> int:
     number = int(value)
     if number < 1:
@@ -371,9 +393,7 @@ def _resume(args: argparse.Namespace) -> int:
     )
     loop.run(trials=args.trials)
 
-    best = loop.ledger.best(experiment.goal)
-    if best and best.metric is not None:
-        print(f"\nbest {experiment.metric}: {best.metric:.6g} (trial {best.index})")
+    _summarize(loop)
     return 0
 
 
@@ -533,9 +553,7 @@ def _experiment_command(args: argparse.Namespace) -> int:
     else:
         loop.run(trials=args.trials)
 
-    best = loop.ledger.best(experiment.goal)
-    if best and best.metric is not None:
-        print(f"\nbest {experiment.metric}: {best.metric:.6g} (trial {best.index})")
+    _summarize(loop)
     return 0
 
 
