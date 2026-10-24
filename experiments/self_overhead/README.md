@@ -115,19 +115,34 @@ Pairing did what it was built to do about drift. The incumbent re-measured betwe
 
 **How it ended.** The account's usage limit refused every proposal from Haiku trial 19 on, and `--give-up-after 3` stopped the run after three failed proposals. Under `--paired` each of those still cost a full incumbent measurement first, because the re-measurement precedes the proposal. Haiku trial 13 may have been perturbed: the operator ran the test suite while it measured.
 
-## Across the three runs
+## Run 4: the fresh pair and the third-pair estimate
 
-| | Run 1 | Run 2 | Run 3 |
-| --- | --- | --- | --- |
-| labloop | `d45f943` | `6788d70`: brief records changes | `f6becd9`: and `--paired` |
-| `--min-delta` | 13.94 (1 sd) | 3.22 (1 sd) | 11.30 (√2 sd) |
-| Keeps, both directions | 4 | 5 | 2 |
-| Ledger's gain vs interleaved | −22%/−20% vs −18% | −8%/−24% vs −4%/−6% | −7%/−11% vs −1%/−2% |
-| Sonnet, non-kept repeating a failed location | 5 of 8 | 6 of 8 | 6 of 9 |
-| Haiku, non-kept repeating a failed location | 11 of 13 | 1 of 7 (contaminated) | 3 of 7 |
-| Proposer cost | $1.91 | $1.34 | $1.47 |
+**Setup (2026-10-24).** Ten Haiku 5.5 trials against labloop `e5415c7` (1.1.0), with `--paired --confirm` now confirming on a fresh incumbent-candidate pair and estimating each keep's gain on a third pair. Same benchmark, prompt, tools and threshold rule as run 3; noise standard deviation 5.12 ms, so `--min-delta` 7.23. The run branch again carried one local commit removing the write-ups, the simulation results and the decision records.
 
-What holds across all three: keep-or-revert, the git bookkeeping and the tamper checks behaved correctly in every run, and each run's final commit was faster than its baseline when checked outside the loop; individual keeps were sometimes too small to tell from noise. What does not hold: the size the ledger credits a keep with. Every run overstated it, and the two changes meant to help, recording the change and pairing the measurement, did not fix that. Until a confirmation measures the incumbent independently, a run's total is an upper bound to verify, not a result.
+| Trials | Kept | Rejected by the fresh pair | Loop's estimate for the keep | Interleaved A/B (12 rounds) | Proposer cost |
+| --- | --- | --- | --- | --- | --- |
+| 10 (1 no-change) | 1 (string paths, trial 4) | 2 (trials 3 and 9) | −7.66 ms (−5.7%) | −1.18 ms (−0.6%), 95% CI −4.21 to +1.86, faster in 5/12 | $0.21 |
+
+**The decision side worked with real agents.** Trials 3 and 9 won their first comparison by 10.0 and 8.0 ms; with the proposal set aside, the fresh pair showed them 6.2 and 2.8 ms slower, and both were reverted. The one keep won twice, by 10.4 and 19.9 ms. Every set-aside was restored, and no stash entry or stray commit was left.
+
+**The estimate behaved as designed, and one keep cannot validate it.** The third pair put the keep's gain at 7.66 ms, smaller than either winning pair, as the selection argument predicts. Outside the loop it measured 1.18 ms, an interval that includes zero. One paired difference has a standard deviation of about 7.2 ms here, so 7.66 against a truth near 1 is within one standard deviation of noise: unbiased on average, as the simulation shows, is not precise per keep. Run 3's failure was different in kind, a systematic five-to-sevenfold overstatement across keeps. With a single keep, run 4 can rule out neither. The same change measured 6.2 ms in run 2's interleaved check, so its true size is small and uncertain.
+
+## Across the four runs
+
+| | Run 1 | Run 2 | Run 3 | Run 4 |
+| --- | --- | --- | --- | --- |
+| labloop | `d45f943` | `6788d70`: brief records changes | `f6becd9`: and `--paired` | `e5415c7`: fresh pair and third-pair estimate |
+| Directions | Sonnet, Haiku | Sonnet, Haiku | Sonnet, Haiku | Haiku only |
+| `--min-delta` | 13.94 (1 sd) | 3.22 (1 sd) | 11.30 (√2 sd) | 7.23 (√2 sd) |
+| Keeps | 4 | 5 | 2 | 1 |
+| Ledger's gain vs interleaved | −22%/−20% vs −18% | −8%/−24% vs −4%/−6% | −7%/−11% vs −1%/−2% | −5.7% vs −0.6% (one keep) |
+| Sonnet, non-kept repeating a failed location | 5 of 8 | 6 of 8 | 6 of 9 | |
+| Haiku, non-kept repeating a failed location | 11 of 13 | 1 of 7 (contaminated) | 3 of 7 | |
+| Proposer cost | $1.91 | $1.34 | $1.47 | $0.21 |
+
+What holds across all four: keep-or-revert, the git bookkeeping and the tamper checks behaved correctly in every run. In runs 1 to 3 each final commit was faster than its baseline when checked outside the loop; run 4's one keep was too small to tell from noise, as individual keeps sometimes were before. What does not hold: the size the ledger credits a keep with. Every run overstated it, and the two changes meant to help, recording the change and pairing the measurement, did not fix that. Until a confirmation measures the incumbent independently, a run's total is an upper bound to verify, not a result.
+
+After run 3, `--paired --confirm` was changed to confirm on a fresh incumbent-candidate pair and record the gain from a third pair measured after the verdict; [the simulation](../paired_confirmation/RESULTS.md) shows its credited gains unbiased within one standard error. Run 4 tested it with real agents: the fresh pair rejected two first-round winners, and the single keep's estimate was within its own noise of the interleaved check.
 
 ## Reproducing
 

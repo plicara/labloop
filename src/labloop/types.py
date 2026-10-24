@@ -97,11 +97,28 @@ class Trial:
     remeasured: float | None = None
     """The incumbent's tree measured again just before this trial's proposal,
     under `paired`. `incumbent` stays the number the ledger holds."""
+    confirmation_reference: float | None = None
+    """Under `paired` with `confirm`, the incumbent measured once more for the
+    confirmation, with the proposal set aside: the confirmation compares
+    `confirmation` against this, independently of the first comparison."""
+    estimate_reference: float | None = None
+    """Under `paired` with `confirm`, the incumbent measured a third time after
+    the trial was already kept. With `metric`, the candidate's third run, it
+    forms a pair no verdict depended on, so `estimate_reference - metric` is an
+    unbiased estimate of the gain. Any pair that also decided the keep only
+    survives when it came out lucky, and overstates."""
 
     @property
     def bar(self) -> float | None:
-        """The number this trial had to beat: re-measured when paired."""
-        return self.remeasured if self.remeasured is not None else self.incumbent
+        """The number this trial's recorded metric was judged against.
+
+        The incumbent measured for the gain estimate when there was one, else
+        for the confirmation, else before the proposal, else the ledger's.
+        """
+        for reference in (self.estimate_reference, self.confirmation_reference, self.remeasured):
+            if reference is not None:
+                return reference
+        return self.incumbent
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)

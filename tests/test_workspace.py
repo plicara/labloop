@@ -350,3 +350,79 @@ def test_untracked_paths_from_a_subdirectory(subdir_repo):
     _, sub = subdir_repo
     (sub / "hashlib.py").write_text("shadow\n")
     assert GitWorkspace(sub).untracked_paths() == ["hashlib.py"]
+
+
+# --- setting a proposal aside to measure the incumbent ---------------------
+
+
+@pytest.fixture
+def proposed(tmp_path):
+    """A repo whose tree holds a proposal: one edit, one new file, one deletion."""
+    for args in (("init", "-q", "."), ("config", "user.email", "t@t.test"),
+                 ("config", "user.name", "t")):
+        subprocess.run(["git", *args], cwd=tmp_path, check=True, capture_output=True)
+    (tmp_path / "keep.py").write_text("x = 1\n")
+    (tmp_path / "gone.py").write_text("y = 1\n")
+    (tmp_path / "blob.bin").write_bytes(b"a\0b")
+    (tmp_path / ".gitignore").write_text("cache/\n")
+    subprocess.run(["git", "add", "-A"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", "-qm", "base"], cwd=tmp_path, check=True)
+    (tmp_path / "keep.py").write_text("x = 2\n")
+    (tmp_path / "new" ).mkdir()
+    (tmp_path / "new" / "mod.py").write_text("z = 1\n")
+    (tmp_path / "gone.py").unlink()
+    (tmp_path / "blob.bin").write_bytes(b"c\0d")
+    return tmp_path
+
+
+def test_set_aside_leaves_the_incumbents_tree_and_restore_brings_the_proposal_back(proposed):
+    ws = GitWorkspace(proposed)
+    paths = ws.changed_paths()
+    (proposed / "artifact.log").write_text("from the candidate's run")
+
+    ws.set_aside(paths, "labloop trial 7")
+    assert not ws.is_dirty(), "the incumbent's tree, artifacts swept"
+    assert (proposed / "keep.py").read_text() == "x = 1\n"
+    assert (proposed / "gone.py").exists()
+    assert not (proposed / "new" / "mod.py").exists()
+
+    ws.restore("labloop trial 7")
+    assert ws.changed_paths() == paths
+    assert (proposed / "keep.py").read_text() == "x = 2\n"
+    assert (proposed / "new" / "mod.py").read_text() == "z = 1\n"
+    assert not (proposed / "gone.py").exists()
+    assert (proposed / "blob.bin").read_bytes() == b"c\0d"
+    assert not (proposed / "artifact.log").exists()
+    listed = subprocess.run(["git", "stash", "list"], cwd=proposed, capture_output=True,
+                            text=True).stdout
+    assert listed == "", "the stash entry is consumed"
+
+
+def test_ignored_inputs_stay_put_while_the_incumbent_is_measured(proposed):
+    # A local dataset is gitignored; the incumbent must be measured with it.
+    (proposed / "cache").mkdir()
+    (proposed / "cache" / "data.csv").write_text("1,2\n")
+    ws = GitWorkspace(proposed)
+    ws.set_aside(ws.changed_paths(), "labloop trial 1")
+    assert (proposed / "cache" / "data.csv").exists()
+    ws.restore("labloop trial 1")
+
+
+def test_a_users_stash_is_never_popped(proposed):
+    ws = GitWorkspace(proposed)
+    subprocess.run(["git", "stash", "push", "-qm", "my work"], cwd=proposed, check=True)
+    with pytest.raises(RuntimeError, match="not 'labloop trial 3'"):
+        ws.restore("labloop trial 3")
+    listed = subprocess.run(["git", "stash", "list"], cwd=proposed, capture_output=True,
+                            text=True).stdout
+    assert "my work" in listed
+
+
+def test_setting_aside_nothing_fails_rather_than_arming_a_wrong_restore(proposed):
+    ws = GitWorkspace(proposed)
+    subprocess.run(["git", "stash", "push", "-qum", "my work"], cwd=proposed, check=True)
+    with pytest.raises(RuntimeError, match="nothing was set aside"):
+        ws.set_aside(["keep.py"], "labloop trial 4")
+    listed = subprocess.run(["git", "stash", "list"], cwd=proposed, capture_output=True,
+                            text=True).stdout
+    assert listed.count("\n") == 1 and "my work" in listed
