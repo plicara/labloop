@@ -10,6 +10,8 @@ from __future__ import annotations
 import json
 import sys
 
+import pytest
+
 from labloop import Experiment, Loop, Outcome, Trial
 from labloop.brief import build
 from labloop.cli import _summarize, main
@@ -279,17 +281,17 @@ def test_an_unlucky_incumbent_draw_no_longer_carries_the_confirmation(
     assert stash_list(project) == ""
 
 
-def test_a_real_gain_is_kept_and_credited_from_the_fresh_pair(project, tmp_path_factory):
-    loop = two_trees(project, tmp_path_factory, incumbent=[2.0, 2.0, 2.1],
-                     candidate=[1.0, 1.5])
+def test_a_gain_won_twice_is_kept_and_estimated_on_a_third_pair(project, tmp_path_factory):
+    loop = two_trees(project, tmp_path_factory, incumbent=[2.0, 2.0, 2.1, 2.2],
+                     candidate=[1.0, 1.5, 1.6])
     (trial,) = loop.run(trials=1)
     assert trial.outcome is Outcome.KEPT
-    assert trial.metric == 1.5, "credited from the fresh pair, not the first win"
-    assert trial.confirmation_reference == 2.1
-    assert trial.bar == 2.1
-    assert "credited that, not the first win (1 vs 2)" in trial.note
+    assert (trial.remeasured, trial.confirmation, trial.confirmation_reference) == (2.0, 1.5, 2.1)
+    assert (trial.metric, trial.estimate_reference) == (1.6, 2.2), "the third pair"
+    assert trial.bar == 2.2
+    assert "gain estimated on a third pair: 1.6 vs 2.2" in trial.note
     assert git("log", "-1", "--format=%s", cwd=project).strip() == (
-        "labloop: val_loss 1.5 (was 2.1)"
+        "labloop: val_loss 1.6 (was 2.2)"
     )
     assert "candidate.txt" in git("show", "--name-only", "--format=", "HEAD", cwd=project)
     assert stash_list(project) == ""
@@ -302,7 +304,7 @@ def test_an_incumbent_that_fails_its_second_measurement_fails_the_trial_cleanly(
                      candidate=[1.0, 1.0])
     (trial,) = loop.run(trials=1)
     assert trial.outcome is Outcome.FAILED
-    assert "measured again for the confirmation" in trial.note
+    assert "incumbent confirmation run: the incumbent gave no usable val_loss" in trial.note
     assert not (project / "candidate.txt").exists()
     assert git("status", "--porcelain", cwd=project) == ""
     assert stash_list(project) == ""
@@ -326,3 +328,33 @@ def test_a_users_own_stash_survives_paired_confirmations(project, tmp_path_facto
     loop.run(trials=2)
     listed = stash_list(project)
     assert listed.count("\n") == 1 and "my work" in listed
+
+
+def test_the_estimate_does_not_reopen_the_verdict(project, tmp_path_factory):
+    # Won twice, then the third pair shows no gain. The third pair measures the
+    # kept change; letting it veto would make it one more lucky-survivor test.
+    loop = two_trees(project, tmp_path_factory, incumbent=[2.0, 2.0, 2.0, 2.0],
+                     candidate=[1.0, 1.0, 2.3])
+    (trial,) = loop.run(trials=1)
+    assert trial.outcome is Outcome.KEPT
+    assert trial.bar - trial.metric == pytest.approx(-0.3), "an honest, unflattering estimate"
+
+
+def test_a_candidate_that_fails_its_estimate_run_is_not_kept(project, tmp_path_factory):
+    loop = two_trees(project, tmp_path_factory, incumbent=[2.0, 2.0, 2.0],
+                     candidate=[1.0, 1.0, "fail"])
+    (trial,) = loop.run(trials=1)
+    assert trial.outcome is Outcome.FAILED
+    assert "estimate run" in trial.note
+    assert git("status", "--porcelain", cwd=project) == ""
+    assert stash_list(project) == ""
+
+
+def test_tampering_during_the_incumbent_estimate_run_is_caught(project, tmp_path_factory):
+    loop = two_trees(project, tmp_path_factory, incumbent=[2.0, 2.0, 2.0, 2.0],
+                     candidate=[1.0, 1.0, 1.0], tamper_on=3)
+    (trial,) = loop.run(trials=1)
+    assert trial.outcome is Outcome.HARNESS_CHANGED
+    assert "incumbent estimate run modified the harness: eval.py" in trial.note
+    assert git("status", "--porcelain", cwd=project) == ""
+    assert stash_list(project) == ""

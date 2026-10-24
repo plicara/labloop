@@ -465,18 +465,25 @@ class Loop:
         confirmed_note = ""
         credited_bar = bar
         fresh_pair = False
+        confirmation_reference: float | None = None
+        estimate_reference: float | None = None
         if self.experiment.confirm:
             # Paired, the confirmation gets its own incumbent measurement. The
             # first comparison selected this trial, partly on the luck of one
             # incumbent draw; reusing that draw lets a slow one pass both runs.
-            # A fresh pair took no part in the selection, so its difference is
-            # the gain worth crediting.
             fresh_pair = remeasured is not None and hasattr(self.workspace, "set_aside")
-            if fresh_pair:
-                label = f"labloop trial {index}"
+            label = f"labloop trial {index}"
+
+            def incumbent_aside(phase: str) -> float | Trial:
+                """Measure the incumbent's tree with the proposal set aside.
+
+                Returns the number, or the rejected trial: tampering, an
+                unusable number, or a proposal that could not be restored.
+                Every path either brings the proposal back or names its stash.
+                """
+                nonlocal spent
 
                 def bring_back() -> str:
-                    """Restore the proposal; '' if it is back, else where it is."""
                     try:
                         self.workspace.restore(label)  # type: ignore[attr-defined]
                         return ""
@@ -487,64 +494,41 @@ class Loop:
                 try:
                     self.workspace.set_aside(proposed_paths, label)  # type: ignore[attr-defined]
                 except RuntimeError as exc:
-                    return reject(
-                        Outcome.FAILED,
-                        spent,
-                        metric=metric,
-                        note=f"won at {metric:.6g} but could not be set aside to "
-                        f"re-measure the incumbent: {exc}",
-                        stdout_tail=completed.tail,
-                    )
+                    return reject(Outcome.FAILED, spent, metric=metric,
+                                  note=f"{phase}: could not set the proposal aside: {exc}",
+                                  stdout_tail=completed.tail)
                 reference = self._measure()
                 spent += reference.duration_seconds
-                tampering = self._tampering(
-                    harness, ledger_before, files_before, phase="incumbent confirmation run"
-                )
+                tampering = self._tampering(harness, ledger_before, files_before, phase=phase)
                 if tampering is not None:
                     if self._ledger_changed(ledger_before):
                         self._restore_ledger(ledger_bytes, ledger_parent)
                     lost = bring_back()
-                    return reject(
-                        Outcome.HARNESS_CHANGED,
-                        spent,
-                        note=tampering + lost,
-                        stdout_tail=reference.tail,
-                    )
+                    return reject(Outcome.HARNESS_CHANGED, spent,
+                                  note=tampering + lost, stdout_tail=reference.tail)
                 try:
-                    reference_metric = self._read_metric(reference.output)
+                    value = self._read_metric(reference.output)
                 except MetricAmbiguous as exc:
                     lost = bring_back()
-                    return reject(
-                        Outcome.FAILED,
-                        spent,
-                        metric=metric,
-                        note=f"incumbent confirmation run: {exc}{lost}",
-                        stdout_tail=reference.tail,
-                    )
+                    return reject(Outcome.FAILED, spent, metric=metric,
+                                  note=f"{phase}: {exc}{lost}", stdout_tail=reference.tail)
                 lost = bring_back()
-                if (
-                    reference_metric is None
-                    or not reference.ok
-                    or not math.isfinite(reference_metric)
-                ):
-                    return reject(
-                        Outcome.FAILED,
-                        spent,
-                        metric=metric,
-                        note=f"the incumbent gave no usable {self.experiment.metric} when "
-                        f"measured again for the confirmation{lost}",
-                        stdout_tail=reference.tail,
-                    )
+                if value is None or not reference.ok or not math.isfinite(value):
+                    return reject(Outcome.FAILED, spent, metric=metric,
+                                  note=f"{phase}: the incumbent gave no usable "
+                                  f"{self.experiment.metric}{lost}",
+                                  stdout_tail=reference.tail)
                 if lost:
-                    return record(
-                        Outcome.FAILED,
-                        spent,
-                        metric=metric,
-                        confirmation_reference=reference_metric,
-                        note=f"won at {metric:.6g} but could not be restored{lost}",
-                        stdout_tail=reference.tail,
-                    )
-                credited_bar = reference_metric
+                    return record(Outcome.FAILED, spent, metric=metric,
+                                  note=f"won at {metric:.6g} but could not be restored{lost}",
+                                  stdout_tail=reference.tail)
+                return value
+
+            if fresh_pair:
+                measured = incumbent_aside("incumbent confirmation run")
+                if isinstance(measured, Trial):
+                    return measured
+                confirmation_reference = credited_bar = measured
 
             again = self._measure()
             spent += again.duration_seconds
@@ -571,7 +555,7 @@ class Loop:
                 return reject(
                     Outcome.REVERTED, spent, metric=None, note=note, stdout_tail=again.tail
                 )
-            pair = {"confirmation_reference": credited_bar} if fresh_pair else {}
+            pair = {"confirmation_reference": confirmation_reference} if fresh_pair else {}
             if not self._beats(second, credited_bar):
                 return reject(
                     Outcome.REVERTED,
@@ -585,11 +569,37 @@ class Loop:
             confirmation = second
 
             if fresh_pair:
-                # Credited from the pair that played no part in selecting it.
-                first, metric = metric, second
+                # Kept on two independent wins. Either pair, reported as the
+                # gain, would overstate it: a pair only gets here by passing a
+                # threshold, so the ones that do skew lucky. A third pair, taken
+                # after the verdict and never compared to anything, does not.
+                # Candidate first this time, to balance the order of pair two.
+                third = self._measure()
+                spent += third.duration_seconds
+                rejected = reject_tampering(third, "estimate run")
+                if rejected is not None:
+                    return rejected
+                try:
+                    estimate = self._read_metric(third.output)
+                except MetricAmbiguous as exc:
+                    return reject(Outcome.FAILED, spent, metric=second,
+                                  note=f"estimate run: {exc}", stdout_tail=third.tail)
+                if estimate is None or not third.ok or not math.isfinite(estimate):
+                    return reject(
+                        Outcome.FAILED, spent, metric=second,
+                        note=f"won twice, then the candidate gave no usable "
+                        f"{self.experiment.metric} on its estimate run",
+                        stdout_tail=third.tail,
+                    )
+                measured = incumbent_aside("incumbent estimate run")
+                if isinstance(measured, Trial):
+                    return measured
+                estimate_reference = credited_bar = measured
+                first, metric = metric, estimate
                 confirmed_note = (
-                    f"confirmed on a fresh pair: {second:.6g} vs {credited_bar:.6g}; "
-                    f"credited that, not the first win ({first:.6g} vs {bar:.6g})"
+                    f"won twice ({first:.6g} vs {bar:.6g}, {second:.6g} vs "
+                    f"{confirmation_reference:.6g}); gain estimated on a third pair: "
+                    f"{estimate:.6g} vs {estimate_reference:.6g}"
                 )
             else:
                 # The incumbent advances to the weaker of the two. A lucky draw
@@ -632,7 +642,8 @@ class Loop:
             metric=metric,
             commit=commit,
             confirmation=confirmation,
-            confirmation_reference=credited_bar if fresh_pair else None,
+            confirmation_reference=confirmation_reference,
+            estimate_reference=estimate_reference,
             note=confirmed_note,
             stdout_tail=completed.tail,
         )
