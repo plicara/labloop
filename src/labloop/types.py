@@ -97,6 +97,11 @@ class Trial:
     remeasured: float | None = None
     """The incumbent's tree measured again just before this trial's proposal,
     under `paired`. `incumbent` stays the number the ledger holds."""
+    confirmation_reference: float | None = None
+    """Under `paired` with `confirm`, the incumbent measured once more for the
+    confirmation, with the proposal set aside. The confirmation compares
+    `confirmation` against this, two measurements that played no part in
+    selecting the trial, so their difference is the gain worth reporting."""
 
     @property
     def bar(self) -> float | None:
