@@ -16,7 +16,7 @@ from labloop import Experiment, Loop, Outcome, Trial
 from labloop.brief import build
 from labloop.cli import _summarize, main
 
-from .conftest import make_loop
+from .conftest import make_loop, replace_text
 from .conftest import run_git as git
 
 
@@ -162,7 +162,7 @@ def test_the_remeasurements_artifacts_never_reach_the_proposal(project):
     git("commit", "-qm", "cache", cwd=project)
     loop = Loop(
         Experiment(run="python train.py", metric="val_loss", paired=True,
-                   propose="sed -i 's/2.0/1.0/' train.py"),
+                   propose=replace_text("train.py", "2.0", "1.0")),
         workdir=project,
     )
     loop.baseline()
@@ -207,7 +207,7 @@ def test_the_commit_names_the_number_it_beat(tmp_path):
 def test_paired_from_the_command_line_survives_resume(project, capsys):
     main(["baseline", "--run", "python train.py", "--metric", "val_loss"])
     main(["run", "--run", "python train.py", "--metric", "val_loss", "--paired",
-          "--propose", "sed -i 's/2.0/1.5/' train.py", "--trials", "1"])
+          "--propose", replace_text("train.py", "2.0", "1.5"), "--trials", "1"])
     out = capsys.readouterr().out
     assert "vs 2 now" in out, "the line shows what the trial was judged against"
 
