@@ -62,8 +62,8 @@ counter = pathlib.Path(sys.argv[1])
 n = int(counter.read_text()) if counter.exists() else 0
 counter.write_text(str(n + 1))
 quality = float(pathlib.Path("quality.txt").read_text())
-print(f"m = {quality + random.Random(f'{sys.argv[2]}:{n}').gauss(0, %r):.6f}")
-""" % SIGMA
+print(f"m = {quality + random.Random(f'{sys.argv[2]}:{n}').gauss(0, SIGMA):.6f}")
+""".replace("SIGMA", repr(SIGMA))
 
 PROPOSE = """\
 import pathlib
