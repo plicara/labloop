@@ -21,20 +21,25 @@ Two consequences that change how you should work:
 
 ## First: read the brief
 
-`$LABLOOP_BRIEF` holds a path to JSON describing every trial so far.
-
-```bash
-cat "$LABLOOP_BRIEF"
-```
+`$LABLOOP_BRIEF` holds a path to JSON describing every trial so far. Read it
+with whatever you have: `cat "$LABLOOP_BRIEF"` in a shell, or your file-reading
+tool on that path. It lives outside the working tree on purpose, so an agent
+that restricts reads to its working directory needs that directory granted
+(for Claude Code, `--add-dir "$(dirname "$LABLOOP_BRIEF")"`).
 
 ```json
 {
   "trial": 6, "metric": "val_loss", "goal": "minimize",
   "incumbent": 0.2651, "protected": ["eval.py"],
   "counts": {"kept": 3, "reverted": 2, "failed": 1},
+  "tried": [
+    {"path": "train.py", "where": "schedule", "outcomes": {"reverted": 2}, "trials": [2, 4]}
+  ],
   "history": [
     {"index": 2, "outcome": "reverted", "metric": 0.4424,
-     "why": "reverted: val_loss 0.442413 did not beat 0.434422; lower is better"},
+     "why": "reverted: val_loss 0.442413 did not beat 0.434422; lower is better",
+     "change": [{"path": "train.py", "status": "modified", "added": 3,
+                 "removed": 1, "where": ["schedule"]}]},
     {"index": 5, "outcome": "failed", "metric": null,
      "why": "reverted: the command exited non-zero",
      "output_tail": "NameError: name 'this' is not defined\n"}
@@ -42,7 +47,7 @@ cat "$LABLOOP_BRIEF"
 }
 ```
 
-Read three things before you touch anything:
+Read four things before you touch anything:
 
 1. **`incumbent` and `goal`** — the number to beat and which direction is
    better. There is no partial credit and **a tie reverts**.
@@ -50,6 +55,12 @@ Read three things before you touch anything:
    is the field you cannot reconstruct yourself.
 3. **`history[].output_tail`** — on failures, the actual traceback. Read it
    before re-attempting anything near that code.
+4. **`tried` and `history[].change`** — where earlier attempts changed the
+   code and how each ended. If the place you were about to change has been
+   tried and reverted several times, the idea has very likely been had already;
+   pick a different place, or say in your output why your attempt differs.
+   `where` names definitions, not ideas: two different ideas in one function
+   share an entry.
 
 If `$LABLOOP_BRIEF` is unset, fall back to `$LABLOOP_METRIC`, `$LABLOOP_GOAL`,
 `$LABLOOP_INCUMBENT` (empty when nothing has been measured yet) and
@@ -97,8 +108,9 @@ nothing**. A human decides that, not this trial.
 Run the experiment command yourself before ending the attempt. A trial that
 crashes produces `failed` — no metric, no information, one trial gone.
 
-If you cannot run it (no permission, too slow), re-read your diff for the
-things that produce `failed`: syntax, imports, a renamed symbol used elsewhere.
+If you cannot run it (no shell, no permission, too slow), re-read your diff
+for the things that produce `failed`: syntax, imports, a renamed symbol used
+elsewhere, and any test that pins the behavior you changed.
 
 ## Reading the outcome of your last attempt
 

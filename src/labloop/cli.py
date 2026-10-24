@@ -8,12 +8,13 @@ import os
 import statistics
 import sys
 from pathlib import Path
+from typing import Any
 
 from . import __version__
 from .integrity import HarnessMismatchError, NoProtectedFilesError
 from .ledger import Ledger
 from .lock import LedgerLockedError
-from .loop import Loop, StalledError
+from .loop import Loop, StalledError, UnusableRunError
 from .metrics import MetricAmbiguous
 from .sandbox import SandboxError
 from .types import Experiment, Goal, Outcome, Trial, UsageError
@@ -61,14 +62,59 @@ def _report(trial: Trial) -> None:
     )
     if trial.direction != "main":
         line += f"  [{trial.direction}]"
+    if trial.remeasured is not None:
+        line += f"  vs {trial.remeasured:.6g} now"
     if trial.commit:
         line += f"  {trial.commit}"
     if trial.note:
         line += f"  ({trial.note})"
     print(line, flush=True)
 
+    if trial.change:
+        print(f"      {_change_line(trial.change)}", flush=True)
     if trial.outcome in _DIAGNOSE and (reason := _last_line(trial.stdout_tail)):
         print(f"      {reason}", flush=True)
+
+
+def _change_line(change: list[dict[str, Any]], files: int = 3) -> str:
+    """`loop.py (_one_trial) +4/-2, integrity.py +10/-8`: what the trial touched."""
+    parts = []
+    shown = [entry for entry in change if entry.get("path")]
+    for entry in shown[:files]:
+        part = entry["path"]
+        if entry.get("where"):
+            part += f" ({', '.join(entry['where'][:2])})"
+        if entry.get("added") is None:
+            part += " binary"
+        else:
+            part += f" +{entry['added']}/-{entry['removed']}"
+        parts.append(part)
+    more = len(shown) - len(parts) + sum(entry.get("more", 0) for entry in change)
+    if more:
+        parts.append(f"{more} more")
+    return ", ".join(parts)
+
+
+def _summarize(loop: Loop) -> None:
+    """Close a run with the number its direction now stands at.
+
+    Under `--paired` that is the latest keep: each one beat its incumbent
+    measured beside it, while the best number ever recorded may come from a
+    faster machine and no longer describes the tree.
+    """
+    metric = loop.experiment.metric
+    if loop.experiment.paired:
+        kept = [
+            t for t in loop.ledger
+            if t.direction == loop.direction and t.outcome is Outcome.KEPT and t.metric is not None
+        ]
+        if kept:
+            latest = kept[-1]
+            print(f"\nlatest kept {metric}: {latest.metric:.6g} (trial {latest.index})")
+        return
+    best = loop.ledger.best(loop.experiment.goal, direction=loop.direction)
+    if best and best.metric is not None:
+        print(f"\nbest {metric}: {best.metric:.6g} (trial {best.index})")
 
 
 def _positive(value: str) -> int:
@@ -166,6 +212,12 @@ def _build_parser() -> argparse.ArgumentParser:
         "--confirm",
         action="store_true",
         help="re-run before keeping a change, and keep it only if it wins twice",
+    )
+    run.add_argument(
+        "--paired",
+        action="store_true",
+        help="re-measure the incumbent before each proposal and judge against that, "
+        "so drift on the machine is not read as progress (one more run per trial)",
     )
     run.add_argument(
         "--no-brief",
@@ -289,6 +341,7 @@ def main(argv: list[str] | None = None) -> int:
         NotAGitRepositoryError,
         SandboxError,
         StalledError,
+        UnusableRunError,
         UsageError,
     ) as exc:
         # Bad input, not a bug. A traceback here reads as the tool breaking
@@ -340,9 +393,7 @@ def _resume(args: argparse.Namespace) -> int:
     )
     loop.run(trials=args.trials)
 
-    best = loop.ledger.best(experiment.goal)
-    if best and best.metric is not None:
-        print(f"\nbest {experiment.metric}: {best.metric:.6g} (trial {best.index})")
+    _summarize(loop)
     return 0
 
 
@@ -475,6 +526,7 @@ def _experiment_command(args: argparse.Namespace) -> int:
         protect=tuple(args.protect or ()),
         brief=getattr(args, "brief", True),
         confirm=getattr(args, "confirm", False),
+        paired=getattr(args, "paired", False),
         min_delta=args.min_delta,
         strict_metric=getattr(args, "strict_metric", False),
         guard_imports=getattr(args, "guard_imports", False),
@@ -501,9 +553,7 @@ def _experiment_command(args: argparse.Namespace) -> int:
     else:
         loop.run(trials=args.trials)
 
-    best = loop.ledger.best(experiment.goal)
-    if best and best.metric is not None:
-        print(f"\nbest {experiment.metric}: {best.metric:.6g} (trial {best.index})")
+    _summarize(loop)
     return 0
 
 

@@ -27,6 +27,10 @@ RECENT = 20
 """Trials included. Enough to show a pattern, bounded so a long run still fits
 in a context window."""
 
+TRIED = 25
+"""Locations listed in `tried`. It summarizes the whole direction, not only the
+recent window, so an idea reverted forty trials ago still counts."""
+
 _TAIL = 800
 
 
@@ -49,6 +53,7 @@ def build(
         "protected": list(experiment.protect),
         "budget_seconds": experiment.budget_seconds,
         "counts": _counts(history),
+        "tried": _tried(history),
         "history": [_entry(t, experiment) for t in recent_trials],
     }
 
@@ -79,6 +84,33 @@ def _counts(history: Sequence[Trial]) -> dict[str, int]:
     return {name: n for name, n in counts.items() if n}
 
 
+def _tried(history: Sequence[Trial]) -> list[dict[str, Any]]:
+    """Where earlier proposals changed the code, and how each attempt there ended.
+
+    The history says that trial 12 was reverted; this says that four trials
+    have now changed `_digest_file` and none survived. Without it a proposer
+    re-derives the same idea from the same profile and spends a trial
+    rediscovering the verdict. Keyed by file and definition, from the change
+    labloop recorded, so it reports where attempts landed and never what an
+    attempt claimed about itself.
+    """
+    spots: dict[tuple[str, str | None], dict[str, Any]] = {}
+    for trial in history:
+        for entry in trial.change or ():
+            path = entry.get("path")
+            if not path:
+                continue
+            for name in entry.get("where") or [None]:
+                spot = spots.setdefault(
+                    (path, name), {"path": path, "where": name, "outcomes": {}, "trials": []}
+                )
+                outcome = trial.outcome.value
+                spot["outcomes"][outcome] = spot["outcomes"].get(outcome, 0) + 1
+                spot["trials"].append(trial.index)
+    ranked = sorted(spots.values(), key=lambda s: (-len(s["trials"]), s["path"], s["where"] or ""))
+    return ranked[:TRIED]
+
+
 def _entry(trial: Trial, experiment: Experiment) -> dict[str, Any]:
     entry: dict[str, Any] = {
         "index": trial.index,
@@ -88,6 +120,10 @@ def _entry(trial: Trial, experiment: Experiment) -> dict[str, Any]:
     }
     if trial.commit:
         entry["commit"] = trial.commit
+    # The change as labloop read it from the tree. The proposer's own output
+    # (`proposal_tail`) never comes here: the brief is labloop's account.
+    if trial.change:
+        entry["change"] = trial.change
     # Output only where it explains something. A trial that produced a number
     # is explained by the number.
     if trial.outcome in (
@@ -113,14 +149,23 @@ def _why(trial: Trial, experiment: Experiment) -> str:
 
 
 def _why_verdict(trial: Trial, experiment: Experiment) -> str:
-    """The trial was judged on its merits; explain the judgement."""
+    """The trial was judged on its merits; explain the judgement.
+
+    Against `trial.bar`: under `paired` that is the incumbent re-measured
+    before the proposal, the number the verdict was actually reached on.
+    """
     metric, goal = experiment.metric, experiment.goal
     if trial.outcome is Outcome.KEPT:
-        if trial.incumbent is None:
+        if trial.bar is None:
             return f"kept: first measurement of {metric}, nothing to beat yet"
-        return f"kept: {metric} {trial.metric:.6g} beat {trial.incumbent:.6g}"
+        return f"kept: {metric} {trial.metric:.6g} beat {trial.bar:.6g}"
 
-    if trial.metric == trial.incumbent:
+    if trial.confirmation is not None or trial.metric is None:
+        # Won the first measurement and lost the second; the note holds both
+        # numbers. Phrasing it as "did not beat" would hide that it won once.
+        return f"reverted: {trial.note or 'no usable confirmation'}; a single win is not trusted"
+
+    if trial.metric == trial.bar:
         return (
             f"reverted: {metric} {trial.metric:.6g} tied the incumbent, and a "
             "tie is not an improvement"
@@ -133,12 +178,12 @@ def _why_verdict(trial: Trial, experiment: Experiment) -> str:
     if (
         experiment.min_delta
         and trial.metric is not None
-        and trial.incumbent is not None
-        and goal.is_better(trial.metric, trial.incumbent)
+        and trial.bar is not None
+        and goal.is_better(trial.metric, trial.bar)
     ):
-        gain = abs(trial.incumbent - trial.metric)
+        gain = abs(trial.bar - trial.metric)
         return (
-            f"reverted: {metric} {trial.metric:.6g} beat {trial.incumbent:.6g} "
+            f"reverted: {metric} {trial.metric:.6g} beat {trial.bar:.6g} "
             f"by {gain:.6g}, but --min-delta needs more than "
             f"{experiment.min_delta:.6g}; the direction worked, the margin was "
             "too small to trust"
@@ -147,7 +192,7 @@ def _why_verdict(trial: Trial, experiment: Experiment) -> str:
     direction = "lower" if goal is Goal.MINIMIZE else "higher"
     return (
         f"reverted: {metric} {trial.metric:.6g} did not beat "
-        f"{trial.incumbent:.6g}; {direction} is better"
+        f"{trial.bar:.6g}; {direction} is better"
     )
 
 

@@ -13,7 +13,7 @@ import threading
 import pytest
 
 from labloop import Experiment, Goal, Ledger, Loop, Outcome, Trial, UsageError
-from labloop.cli import main
+from labloop.cli import _summarize, main
 
 from .conftest import FakeWorkspace
 
@@ -400,3 +400,16 @@ def test_direction_names_reach_usage_error_not_traceback(project):
     with pytest.raises(SystemExit):
         main(["branch"])  # missing name: argparse's job
     assert main(["branch", "  ", "--from-trial", "1"]) == 2
+
+
+def test_a_directions_run_ends_on_its_own_best_not_another_directions(tmp_path, capsys):
+    # Found by dogfooding: a run on a forked direction closed with the parent's
+    # best, so the summary named a trial the run never touched.
+    direction_loop(tmp_path, "echo val=2.0", "main").run(trials=1)
+    Ledger(tmp_path / "l.jsonl").append_fork("variant", from_index=0)
+    direction_loop(tmp_path, "echo val=0.5", "main").run(trials=1)  # parent is best overall
+    variant = direction_loop(tmp_path, "echo val=1.0", "variant")
+    variant.run(trials=1)
+
+    _summarize(variant)
+    assert capsys.readouterr().out.strip() == "best val: 1 (trial 2)"

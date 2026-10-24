@@ -78,6 +78,30 @@ class Trial:
     advancing its own incumbent. Every pre-existing ledger is one direction
     named main, which is also the default when nobody asks for more.
     """
+    change: list[dict[str, Any]] | None = None
+    """What the proposal changed, as labloop read it from git before measuring.
+
+    One entry per file: `path`, `status`, `added` and `removed` line counts
+    (None for binary), and `where`, the enclosing definitions git names in its
+    hunk headers. Derived from the tree, not from anything the proposer said,
+    so it can go in the brief: a reverted idea is otherwise invisible to the
+    next attempt, which then proposes it again. None when no change reached
+    measurement.
+    """
+    confirmation: float | None = None
+    """The confirmation run's metric, when `confirm` asked for one."""
+    proposal_tail: str = ""
+    """The end of the proposal command's own output, for the human reading the
+    ledger. Never put in the brief: it is the proposer's free text, and the
+    brief is labloop's account, not a channel between attempts."""
+    remeasured: float | None = None
+    """The incumbent's tree measured again just before this trial's proposal,
+    under `paired`. `incumbent` stays the number the ledger holds."""
+
+    @property
+    def bar(self) -> float | None:
+        """The number this trial had to beat: re-measured when paired."""
+        return self.remeasured if self.remeasured is not None else self.incumbent
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
@@ -157,6 +181,16 @@ class Experiment:
     guard off. Recorded in the manifest.
     """
     give_up_after: int = 10
+    paired: bool = False
+    """Re-measure the incumbent's tree before each proposal and judge the
+    candidate against that, not against the number in the ledger.
+
+    The ledger's number was measured earlier, sometimes hours earlier, and a
+    machine that speeds up or slows down in between turns drift into progress
+    or regression. Dogfooding labloop on itself, the ledger credited one run
+    with four times the gain an interleaved check found. Paired, the two
+    numbers being compared are minutes apart. Costs one run per trial.
+    """
     propose_budget: float | None = None
     label: str | None = None
     """Who or what proposed these trials, e.g. a model name.
@@ -221,6 +255,7 @@ class Experiment:
             "strict_metric": self.strict_metric,
             "guard_imports": self.guard_imports,
             "give_up_after": self.give_up_after,
+            "paired": self.paired,
             "propose_budget": self.propose_budget,
             "label": self.label,
             "sandbox": self.sandbox,

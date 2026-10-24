@@ -44,9 +44,13 @@ labloop run \
 ```
 [+] trial   0        2.431    41.2s          (baseline)
 [+] trial   1        2.298    38.9s  a1f4c02
-[-] trial   2        2.355    39.4s
+      train.py (schedule) +4/-2
+[-] trial   2        2.355    39.4s  (did not beat 2.298)
+      train.py (Block) +12/-3
 [T] trial   3           --   300.0s
+      train.py (forward) +30/-8
 [+] trial   4        2.201    40.1s  7bd9e13
+      train.py (schedule) +2/-1
 
 best val_loss: 2.201 (trial 4)
 ```
@@ -222,6 +226,16 @@ They work on different halves of the problem, and are cheaper together than
 `--confirm` alone — `--min-delta` rejects most candidates before they earn a
 second run. Neither makes a noisy metric safe. They make it less wrong.
 
+### Drift is a different problem
+
+`noise` measures how far back-to-back runs disagree. It cannot see a machine that speeds up or slows down over an hour, and the incumbent in the ledger may have been measured an hour before the candidate it judges. A machine that gets faster then reads as progress; one that gets slower, after a reboot or a noisy neighbour, reverts every later trial because nothing can beat a number measured on a faster machine. When labloop optimized itself, the ledger credited one run with −24% where an interleaved check of the same commits found −6%, and a container restart left a direction unable to keep anything.
+
+`--paired` re-measures the incumbent's tree before each proposal and judges the candidate against that, so the two numbers being compared are minutes apart. It costs one more run per trial. The ledger keeps both: `incumbent` is the recorded number, `remeasured` is the one the verdict was reached on, and each trial line says `vs N now`.
+
+A difference between two runs is noisier than one run: about 1.4 times the standard deviation `noise` reports. Under `--paired`, set `--min-delta` with that in mind.
+
+**What `--paired` does not fix.** The incumbent is measured once per trial, and that one number is the bar for both the first run and the `--confirm` run. When it comes out slow by chance, both candidate runs clear it, so the loop selects trials whose reference was unlucky. In the run that tested it, the only two keeps out of 21 trials were judged against the two slowest incumbent measurements; the ledger credited them with 7.2% and 11.3% where an interleaved check found 1.0% and 2.1%. Pairing removes drift over hours, not this. Until a confirmation also re-measures the incumbent, treat a ledger's totals as an upper bound and check the final commit against the baseline interleaved, outside the loop.
+
 ## Protecting the measurement
 
 A keep-or-revert loop rewards whatever moves the metric, and your `propose`
@@ -317,14 +331,23 @@ labloop writes the trial history to a JSON file and puts its path in
   "incumbent": 1.5,
   "protected": ["eval.py"],
   "counts": { "kept": 2, "reverted": 2, "failed": 1 },
+  "tried": [
+    { "path": "train.py", "where": "schedule", "outcomes": { "reverted": 2 }, "trials": [1, 3] }
+  ],
   "history": [
     {
       "index": 1, "outcome": "reverted", "metric": 2.0,
-      "why": "reverted: val_loss 2 tied the incumbent, and a tie is not an improvement"
+      "why": "reverted: val_loss 2 tied the incumbent, and a tie is not an improvement",
+      "change": [
+        { "path": "train.py", "status": "modified", "added": 4, "removed": 2, "where": ["schedule"] }
+      ]
     },
     {
       "index": 3, "outcome": "reverted", "metric": 3.0,
-      "why": "reverted: val_loss 3 did not beat 1.5; lower is better"
+      "why": "reverted: val_loss 3 did not beat 1.5; lower is better",
+      "change": [
+        { "path": "train.py", "status": "modified", "added": 1, "removed": 1, "where": ["schedule"] }
+      ]
     }
   ]
 }
@@ -334,6 +357,8 @@ The `why` is the part the proposer can't work out for itself. `reverted` is a
 label; *tied the incumbent, and a tie is not an improvement* is something to
 act on. Failures carry the tail of their output, so an agent can see the stack
 trace that killed its last three attempts.
+
+`change` says what each attempt touched, and `tried` adds those up by file and definition over the whole direction, not only the recent history. Without them a proposer re-derives a reverted idea from the same evidence and spends a trial rediscovering the verdict: when labloop optimized itself, two thirds of reverted trials did exactly that. Both are read from git by labloop before the measurement runs. `where` names the definitions git places in each hunk header, reduced to bare identifiers and given only for source files, so no comment, string or line of prose a proposer wrote reaches its successor.
 
 For a one-line proposal command that doesn't want to parse JSON, the same
 essentials are in `$LABLOOP_METRIC`, `$LABLOOP_GOAL`, `$LABLOOP_INCUMBENT`
@@ -345,12 +370,14 @@ their future selves, which turns persistent memory into a way around the
 harness rather than a record of it. The agent learns what happened without
 getting to decide what happened.
 
+The proposal command's own output is kept in the ledger as `proposal_tail`, for whoever reads it later, and never placed in the brief. Identifier names remain a narrow channel: a proposer can name a function after its plan. Kept code carries its names into later trials regardless, so the brief does not try to close that one.
+
 Pass `--no-brief` to turn it off. The file is written outside the working tree
 either way, so it never dirties the tree or lands in a commit.
 
 ## What gets committed
 
-A kept trial commits the paths changed by the proposal and `labloop-history.jsonl` — a sparse decision log with one compact line per trial, reverted ones included. Paths are captured before measurement, including individual files in newly created directories. Their contents are committed after measurement: an evaluator that modifies a proposed file changes what gets committed. Keep evaluator artifacts in separate paths.
+A kept trial commits the paths changed by the proposal and `labloop-history.jsonl` — a sparse decision log with one compact line per trial, reverted ones included, naming the paths each trial changed. Paths are captured before measurement, including individual files in newly created directories. Their contents are committed after measurement: an evaluator that modifies a proposed file changes what gets committed. Keep evaluator artifacts in separate paths.
 
 Nothing else. Whatever the run produced beyond the proposed change —
 checkpoints, logs, caches — is discarded after the trial is judged, exactly as
@@ -376,6 +403,8 @@ labloop log --outcome reverted --json      # only what was thrown away
 labloop log --since-trial 40 --direction wide-lr
 labloop log --compare main wide-lr         # refuses if their harnesses differ
 ```
+
+Each trial records the verdict and the numbers behind it, the change it made (`change`), the confirmation run's metric when `--confirm` asked for one (`confirmation`), why a measured trial lost (`note`), and the end of both the proposal's output (`proposal_tail`) and the experiment's (`stdout_tail`). `labloop log --json` prints all of it.
 
 ```python
 from labloop import Goal, Ledger

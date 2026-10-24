@@ -36,8 +36,9 @@ experiment on a disposable, credential-free machine for adversarial code.
 from __future__ import annotations
 
 import hashlib
+import os
 import sys
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from pathlib import Path, PurePosixPath
 
 from .types import UsageError
@@ -156,11 +157,7 @@ def _matching(root: Path, patterns: Sequence[str]) -> set[str]:
             if path.is_symlink():
                 continue
             if path.is_dir():
-                names.update(
-                    child.relative_to(root).as_posix()
-                    for child in path.rglob("*")
-                    if child.is_file() and not child.is_symlink()
-                )
+                names.update(_files_under(root, path))
             elif path.is_file():
                 names.add(path.relative_to(root).as_posix())
 
@@ -173,10 +170,33 @@ def _matching(root: Path, patterns: Sequence[str]) -> set[str]:
             continue
         shadow = root / name[:-3]
         if shadow.is_dir():
-            for child in shadow.rglob("*"):
-                if child.is_file() and not child.is_symlink():
-                    names.add(child.relative_to(root).as_posix())
+            names.update(_files_under(root, shadow))
     return names
+
+
+def _files_under(root: Path, directory: Path) -> Iterator[str]:
+    """Every regular file under `directory`, as posix paths relative to root.
+
+    Selects what `directory.rglob("*")` would, minus symlinks, without calling
+    relative_to per file: pathlib re-parses both paths on every call, which
+    dominated the walk in profiling. Like rglob, symlinked directories are not
+    descended into.
+    """
+    base = directory.relative_to(root).as_posix()
+    pending = [(str(directory), "" if base == "." else f"{base}/")]
+    while pending:
+        current, prefix = pending.pop()
+        try:
+            with os.scandir(current) as entries:
+                children = list(entries)
+        except PermissionError:
+            continue
+        for entry in children:
+            name = prefix + entry.name
+            if entry.is_dir(follow_symlinks=False):
+                pending.append((entry.path, f"{name}/"))
+            elif entry.is_file() and not entry.is_symlink():
+                yield name
 
 
 def _check_pattern(pattern: str) -> None:

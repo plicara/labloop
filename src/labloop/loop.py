@@ -9,6 +9,7 @@ import tempfile
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Any
 
 from .brief import build as _build_brief
 from .brief import dumps as _dumps_brief
@@ -19,7 +20,6 @@ from .integrity import (
     changed_files,
     combine,
     file_digest,
-    harness_digest,
     harness_files,
     import_shadow,
 )
@@ -31,13 +31,24 @@ from .sandbox import resolve_sandbox, verify_sandbox
 from .types import Experiment, Goal, Outcome, Trial, UsageError
 from .workspace import GitWorkspace, Workspace
 
-__all__ = ["Loop", "StalledError"]
+__all__ = ["Loop", "StalledError", "UnusableRunError"]
 
 Reporter = Callable[[Trial], None]
 
 
+_PROPOSAL_TAIL = 2000
+
+
+def _paths(change: list[dict[str, Any]] | None) -> list[str]:
+    return [entry["path"] for entry in change or () if entry.get("path")]
+
+
 class StalledError(RuntimeError):
     """Trial after trial produced no measurement, so the run was stopped."""
+
+
+class UnusableRunError(RuntimeError):
+    """A calibration run produced no usable metric; the message carries its output."""
 
 
 class Loop:
@@ -174,9 +185,12 @@ class Loop:
                 )
             metric = self._read_metric(completed.output)
             if metric is None or not completed.ok or not math.isfinite(metric):
-                raise RuntimeError(
+                # The output is the only clue to why, and noise records no
+                # trial that would keep it.
+                raise UnusableRunError(
                     f"the run command did not produce a usable {self.experiment.metric} "
-                    f"(exit {completed.returncode}); fix that before measuring its spread"
+                    f"(exit {completed.returncode}); fix that before measuring its spread. "
+                    f"Its output ended:\n{completed.tail}"
                 )
             values.append(metric)
         return values
@@ -233,9 +247,12 @@ class Loop:
                 # A waiting peer may have recorded another spec since our
                 # previous trial. Keep labels and resume tied to this trial.
                 self._record_manifest()
-                incumbent = self._incumbent()
+                # One digest pass serves the incumbent check and the trial's
+                # own before-snapshot: nothing writes to the tree in between.
+                files_before = harness_files(self.workdir, self.experiment.protect)
+                incumbent = self._incumbent(files_before)
                 try:
-                    trial = self._one_trial(incumbent)
+                    trial = self._one_trial(incumbent, files_before)
                 except KeyboardInterrupt:
                     # An overnight run stopped by hand is still a trial that
                     # happened. Recording it before re-raising keeps the ledger's
@@ -273,11 +290,16 @@ class Loop:
                 )
         return results
 
-    def _one_trial(self, incumbent: float | None) -> Trial:
+    def _one_trial(self, incumbent: float | None, files_before: dict[str, str] | None) -> Trial:
         index = self.ledger.next_index()
-        files_before = harness_files(self.workdir, self.experiment.protect)
         harness = combine(files_before)
         ledger_before, ledger_bytes, ledger_parent = self._snapshot_ledger()
+        # Filled in once the proposal has run; every record after that point
+        # carries them, whichever branch decides the verdict.
+        change: list[dict[str, Any]] | None = None
+        proposal_tail = ""
+        remeasured: float | None = None
+        spent = 0.0
 
         def record(outcome: Outcome, duration: float, **fields: object) -> Trial:
             """Every branch below shares these; only the verdict differs."""
@@ -289,7 +311,13 @@ class Loop:
                     duration_seconds=duration,
                     harness=harness,
                     direction=self.direction,
-                    **{"metric": None, **fields},  # type: ignore[arg-type]
+                    **{  # type: ignore[arg-type]
+                        "metric": None,
+                        "change": change,
+                        "proposal_tail": proposal_tail,
+                        "remeasured": remeasured,
+                        **fields,
+                    },
                 )
             )
 
@@ -307,7 +335,38 @@ class Loop:
                 Outcome.HARNESS_CHANGED, spent, note=tampering, stdout_tail=completed.tail
             )
 
-        with self._proposal_env(index, incumbent) as env:
+        if self.experiment.paired and incumbent is not None:
+            # The tree is the incumbent's commit until the proposal runs, so
+            # this is the incumbent measured on the machine as it is now. The
+            # candidate is judged against it, minutes apart rather than hours.
+            reference = self._measure()
+            spent += reference.duration_seconds
+            rejected = reject_tampering(reference, "incumbent run")
+            if rejected is not None:
+                return rejected
+            try:
+                remeasured = self._read_metric(reference.output)
+            except MetricAmbiguous as exc:
+                return reject(
+                    Outcome.FAILED, spent, note=f"incumbent run: {exc}", stdout_tail=reference.tail
+                )
+            if remeasured is None or not reference.ok or not math.isfinite(remeasured):
+                remeasured = None
+                return reject(
+                    Outcome.FAILED,
+                    spent,
+                    note=(
+                        f"the incumbent's own tree gave no usable {self.experiment.metric} "
+                        "when re-measured, so there was nothing to judge a proposal against"
+                    ),
+                    stdout_tail=reference.tail,
+                )
+            if self.workspace.is_dirty():
+                # Artifacts of the re-measurement, not part of any proposal.
+                self.workspace.revert()
+        bar = remeasured if remeasured is not None else incumbent
+
+        with self._proposal_env(index, bar) as env:
             propose_command = self.experiment.propose or ""
             if self.sandbox is not None:
                 propose_command = self.sandbox.wrap(
@@ -320,7 +379,8 @@ class Loop:
                 timeout=self.experiment.propose_timeout,
                 env=env,
             )
-        spent = proposal.duration_seconds
+        spent += proposal.duration_seconds
+        proposal_tail = proposal.tail[-_PROPOSAL_TAIL:]
 
         # Checked before the exit status, and before spending the budget on a
         # run whose number would mean nothing anyway. A proposal that moved
@@ -366,6 +426,7 @@ class Loop:
         # hundreds of gigabytes, and the commit stops meaning "the change
         # that improved the metric".
         proposed_paths = self.workspace.changed_paths()
+        change = self._describe(proposed_paths)
 
         completed = self._measure()
         spent += completed.duration_seconds
@@ -391,11 +452,17 @@ class Loop:
                 stdout_tail=completed.tail,
             )
 
-        if not self._beats(metric, incumbent):
+        if not self._beats(metric, bar):
             return reject(
-                Outcome.REVERTED, spent, metric=metric, stdout_tail=completed.tail
+                Outcome.REVERTED,
+                spent,
+                metric=metric,
+                note=self._shortfall(metric, bar),
+                stdout_tail=completed.tail,
             )
 
+        confirmation: float | None = None
+        confirmed_note = ""
         if self.experiment.confirm:
             again = self._measure()
             spent += again.duration_seconds
@@ -416,23 +483,30 @@ class Loop:
                 return reject(
                     Outcome.REVERTED, spent, metric=None, note=note, stdout_tail=again.tail
                 )
-            if not self._beats(second, incumbent):
+            if not self._beats(second, bar):
                 return reject(
-                    Outcome.REVERTED, spent, metric=second, note=note, stdout_tail=again.tail
+                    Outcome.REVERTED,
+                    spent,
+                    metric=second,
+                    confirmation=second,
+                    note=note,
+                    stdout_tail=again.tail,
                 )
+            confirmation = second
 
             # The incumbent advances to the weaker of the two. A lucky draw
             # would otherwise set a bar that only luck can clear, which is the
             # mechanism that walks a noisy metric downwards.
             pick = max if self.experiment.goal is Goal.MINIMIZE else min
-            metric = pick(metric, second)
+            first, metric = metric, pick(metric, second)
+            confirmed_note = f"confirmed: {first:.6g} then {second:.6g}; kept the weaker"
 
         message = f"labloop: {self.experiment.metric} {metric:.6g}"
-        if incumbent is not None:
-            message += f" (was {incumbent:.6g})"
+        if bar is not None:
+            message += f" (was {bar:.6g})"
 
         try:
-            history = self._write_history(index, metric, incumbent)
+            history = self._write_history(index, metric, bar, change, confirmed_note)
             commit = self.workspace.commit(message, [*proposed_paths, history])
         except RuntimeError as exc:
             # A pre-commit hook that rejects the change, or any other reason
@@ -459,6 +533,8 @@ class Loop:
             spent,
             metric=metric,
             commit=commit,
+            confirmation=confirmation,
+            note=confirmed_note,
             stdout_tail=completed.tail,
         )
 
@@ -522,7 +598,14 @@ class Loop:
 
     HISTORY_FILE = "labloop-history.jsonl"
 
-    def _write_history(self, index: int, metric: float, incumbent: float | None) -> str:
+    def _write_history(
+        self,
+        index: int,
+        metric: float,
+        incumbent: float | None,
+        change: list[dict[str, Any]] | None = None,
+        note: str = "",
+    ) -> str:
         """Refresh the decision log that travels with the repository.
 
         The ledger stays out of git — it carries output tails and can grow
@@ -537,8 +620,9 @@ class Loop:
                 "index": t.index,
                 "outcome": t.outcome.value,
                 "metric": t.metric,
-                "incumbent": t.incumbent,
+                "incumbent": t.bar,
                 "note": t.note,
+                "paths": _paths(t.change),
             }
             for t in self.ledger
         ]
@@ -548,7 +632,8 @@ class Loop:
                 "outcome": Outcome.KEPT.value,
                 "metric": metric,
                 "incumbent": incumbent,
-                "note": "",
+                "note": note,
+                "paths": _paths(change),
             }
         )
         path = self.workdir / self.HISTORY_FILE
@@ -557,6 +642,35 @@ class Loop:
             encoding="utf-8",
         )
         return self.HISTORY_FILE
+
+    def _describe(self, paths: list[str]) -> list[dict[str, Any]] | None:
+        """The proposal's change as git sees it, or None if that cannot be read.
+
+        A summary is evidence, not a verdict: a workspace without
+        `describe_change`, or a git that fails to diff, costs the record its
+        summary and nothing else.
+        """
+        describe = getattr(self.workspace, "describe_change", None)
+        if describe is None or not paths:
+            return None
+        try:
+            summary: list[dict[str, Any]] = describe(paths)
+        except (OSError, RuntimeError):
+            return None
+        return summary
+
+    def _shortfall(self, metric: float, incumbent: float | None) -> str:
+        """Why a measured trial lost, in the few words a ledger line can hold."""
+        if incumbent is None:
+            return ""
+        if metric == incumbent:
+            return f"tied {incumbent:.6g}"
+        if self.experiment.goal.is_better(metric, incumbent):
+            return (
+                f"beat {incumbent:.6g} by {abs(incumbent - metric):.6g}, "
+                f"inside --min-delta {self.experiment.min_delta:.6g}"
+            )
+        return f"did not beat {incumbent:.6g}"
 
     def _beats(self, candidate: float, incumbent: float | None) -> bool:
         if incumbent is None:
@@ -592,9 +706,6 @@ class Loop:
             yield {**self.experiment.env, **_brief_environment(handle.name, payload)}
         finally:
             Path(handle.name).unlink(missing_ok=True)
-
-    def _harness(self) -> str | None:
-        return harness_digest(self.workdir, self.experiment.protect)
 
     def _snapshot_ledger(self) -> tuple[str | None, bytes | None, Path]:
         path = self.ledger.path
@@ -670,7 +781,7 @@ class Loop:
             return f"{phase} modified the harness: {moved}{hint}"
         return f"{phase} modified the harness"
 
-    def _incumbent(self) -> float | None:
+    def _incumbent(self, files: dict[str, str] | None) -> float | None:
         """The metric to beat, read from the ledger rather than memory.
 
         Refuses an incumbent that a different harness produced: those two
@@ -683,7 +794,7 @@ class Loop:
         if best is None:
             return None
 
-        current = self._harness()
+        current = combine(files)
         if current is not None and best.harness is not None and best.harness != current:
             raise HarnessMismatchError(
                 f"trial {best.index} was measured by a different harness "
