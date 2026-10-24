@@ -226,6 +226,14 @@ They work on different halves of the problem, and are cheaper together than
 `--confirm` alone — `--min-delta` rejects most candidates before they earn a
 second run. Neither makes a noisy metric safe. They make it less wrong.
 
+### Drift is a different problem
+
+`noise` measures how far back-to-back runs disagree. It cannot see a machine that speeds up or slows down over an hour, and the incumbent in the ledger may have been measured an hour before the candidate it judges. A machine that gets faster then reads as progress; one that gets slower, after a reboot or a noisy neighbour, reverts every later trial because nothing can beat a number measured on a faster machine. When labloop optimized itself, the ledger credited one run with −24% where an interleaved check of the same commits found −6%, and a container restart left a direction unable to keep anything.
+
+`--paired` re-measures the incumbent's tree before each proposal and judges the candidate against that, so the two numbers being compared are minutes apart. It costs one more run per trial. The ledger keeps both: `incumbent` is the recorded number, `remeasured` is the one the verdict was reached on, and each trial line says `vs N now`.
+
+A difference between two runs is noisier than one run: about 1.4 times the standard deviation `noise` reports. Under `--paired`, set `--min-delta` with that in mind.
+
 ## Protecting the measurement
 
 A keep-or-revert loop rewards whatever moves the metric, and your `propose`
