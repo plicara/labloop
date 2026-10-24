@@ -262,6 +262,45 @@ class GitWorkspace:
         self._git("reset", "--hard")
         self._git("clean", "-fd")
 
+    def set_aside(self, paths: Sequence[str], label: str) -> None:
+        """Stash exactly `paths` under `label`, then discard the rest: the tree is HEAD.
+
+        For measuring the incumbent while a proposal exists. git's stash
+        rather than a copy kept by labloop, so a crash between the two halves
+        leaves the proposal in `git stash list` under its label instead of in
+        a temporary directory nobody knows about.
+        """
+        self._git(
+            "stash", "push", "--include-untracked", "-m", label, "--",
+            *(self._to_toplevel(p) for p in paths),
+        )
+        if not self._our_stash_on_top(label):
+            # "No local changes to save" creates no entry; carrying on would
+            # make restore() pop whatever the user had stashed.
+            raise RuntimeError(f"nothing was set aside for {label!r}")
+        self.revert()
+
+    def restore(self, label: str) -> None:
+        """Bring back what set_aside(label) stashed, onto a clean tree.
+
+        Refuses unless the newest stash is ours, so it never applies one the
+        user made. If git cannot apply it, the entry stays in the stash list.
+        """
+        if not self._our_stash_on_top(label):
+            raise RuntimeError(f"the newest stash is not {label!r}; nothing restored")
+        self.revert()
+        self._git("stash", "pop")
+
+    def _our_stash_on_top(self, label: str) -> bool:
+        result = subprocess.run(
+            ["git", "stash", "list", "-n", "1", "--format=%gs"],
+            cwd=str(self._toplevel()),
+            capture_output=True,
+            text=True,
+        )
+        # The reflog subject is "On <branch>: <message>".
+        return result.returncode == 0 and result.stdout.strip().endswith(f": {label}")
+
     def changed_paths(self) -> list[str]:
         """Every path the tree differs from HEAD on, staged or not.
 
