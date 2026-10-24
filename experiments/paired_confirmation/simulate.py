@@ -156,7 +156,7 @@ def main() -> None:
             raw[key] = [one_run(mode, scenario, rep, trials) for rep in range(reps)]
             print(f"done {key}", file=sys.stderr, flush=True)
 
-    (HERE / "raw_results.json").write_text(json.dumps(raw, indent=1, sort_keys=True))
+    (HERE / "raw_three_pair.json").write_text(json.dumps(raw, indent=1, sort_keys=True))
     print(f"{reps} runs of {trials} trials per cell; SIGMA = {SIGMA}; "
           f"true effect per proposal: null 0, real {EFFECTS['real']:g}\n")
     print("| Scenario | Confirmation | Keeps per run | Credited per keep | "

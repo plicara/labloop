@@ -1,0 +1,434 @@
+{
+ "null/fresh": [
+  {
+   "credited_per_keep": 0.0,
+   "credited_total": 0,
+   "keeps": 0,
+   "runs": 86,
+   "true_total": 0.0
+  },
+  {
+   "credited_per_keep": 9.354536000000001,
+   "credited_total": 28.063608000000002,
+   "keeps": 3,
+   "runs": 96,
+   "true_total": 0.0
+  },
+  {
+   "credited_per_keep": 0.0,
+   "credited_total": 0,
+   "keeps": 0,
+   "runs": 92,
+   "true_total": 0.0
+  },
+  {
+   "credited_per_keep": 0.0,
+   "credited_total": 0,
+   "keeps": 0,
+   "runs": 92,
+   "true_total": 0.0
+  },
+  {
+   "credited_per_keep": 12.643398000000005,
+   "credited_total": 12.643398000000005,
+   "keeps": 1,
+   "runs": 88,
+   "true_total": 0.0
+  },
+  {
+   "credited_per_keep": 0.0,
+   "credited_total": 0,
+   "keeps": 0,
+   "runs": 96,
+   "true_total": 0.0
+  },
+  {
+   "credited_per_keep": 0.0,
+   "credited_total": 0,
+   "keeps": 0,
+   "runs": 88,
+   "true_total": 0.0
+  },
+  {
+   "credited_per_keep": 9.33578,
+   "credited_total": 9.33578,
+   "keeps": 1,
+   "runs": 94,
+   "true_total": 0.0
+  },
+  {
+   "credited_per_keep": 10.81375700000001,
+   "credited_total": 10.81375700000001,
+   "keeps": 1,
+   "runs": 94,
+   "true_total": 0.0
+  },
+  {
+   "credited_per_keep": 0.0,
+   "credited_total": 0,
+   "keeps": 0,
+   "runs": 94,
+   "true_total": 0.0
+  }
+ ],
+ "null/reused": [
+  {
+   "credited_per_keep": 0.0,
+   "credited_total": 0,
+   "keeps": 0,
+   "runs": 85,
+   "true_total": 0.0
+  },
+  {
+   "credited_per_keep": 9.562483000000006,
+   "credited_total": 28.687449000000015,
+   "keeps": 3,
+   "runs": 85,
+   "true_total": 0.0
+  },
+  {
+   "credited_per_keep": 9.767080500000002,
+   "credited_total": 39.06832200000001,
+   "keeps": 4,
+   "runs": 87,
+   "true_total": 0.0
+  },
+  {
+   "credited_per_keep": 9.172467999999995,
+   "credited_total": 18.34493599999999,
+   "keeps": 2,
+   "runs": 88,
+   "true_total": 0.0
+  },
+  {
+   "credited_per_keep": 8.334836000000003,
+   "credited_total": 16.669672000000006,
+   "keeps": 2,
+   "runs": 85,
+   "true_total": 0.0
+  },
+  {
+   "credited_per_keep": 11.538931666666665,
+   "credited_total": 34.616794999999996,
+   "keeps": 3,
+   "runs": 90,
+   "true_total": 0.0
+  },
+  {
+   "credited_per_keep": 10.459225499999995,
+   "credited_total": 20.91845099999999,
+   "keeps": 2,
+   "runs": 82,
+   "true_total": 0.0
+  },
+  {
+   "credited_per_keep": 8.644583,
+   "credited_total": 43.222915,
+   "keeps": 5,
+   "runs": 89,
+   "true_total": 0.0
+  },
+  {
+   "credited_per_keep": 8.870510500000002,
+   "credited_total": 17.741021000000003,
+   "keeps": 2,
+   "runs": 88,
+   "true_total": 0.0
+  },
+  {
+   "credited_per_keep": 8.206136,
+   "credited_total": 8.206136,
+   "keeps": 1,
+   "runs": 85,
+   "true_total": 0.0
+  }
+ ],
+ "null/unpaired": [
+  {
+   "credited_per_keep": 0.0,
+   "credited_total": 0,
+   "keeps": 0,
+   "runs": 41,
+   "true_total": 0.0
+  },
+  {
+   "credited_per_keep": 0.0,
+   "credited_total": 0,
+   "keeps": 0,
+   "runs": 41,
+   "true_total": 0.0
+  },
+  {
+   "credited_per_keep": 5.979421000000002,
+   "credited_total": 11.958842000000004,
+   "keeps": 2,
+   "runs": 43,
+   "true_total": 0.0
+  },
+  {
+   "credited_per_keep": 5.421414999999996,
+   "credited_total": 5.421414999999996,
+   "keeps": 1,
+   "runs": 48,
+   "true_total": 0.0
+  },
+  {
+   "credited_per_keep": 5.9197479999999985,
+   "credited_total": 5.9197479999999985,
+   "keeps": 1,
+   "runs": 42,
+   "true_total": 0.0
+  },
+  {
+   "credited_per_keep": 0.0,
+   "credited_total": 0,
+   "keeps": 0,
+   "runs": 41,
+   "true_total": 0.0
+  },
+  {
+   "credited_per_keep": 9.161788999999999,
+   "credited_total": 18.323577999999998,
+   "keeps": 2,
+   "runs": 43,
+   "true_total": 0.0
+  },
+  {
+   "credited_per_keep": 6.638398000000009,
+   "credited_total": 6.638398000000009,
+   "keeps": 1,
+   "runs": 48,
+   "true_total": 0.0
+  },
+  {
+   "credited_per_keep": 5.696505999999999,
+   "credited_total": 5.696505999999999,
+   "keeps": 1,
+   "runs": 43,
+   "true_total": 0.0
+  },
+  {
+   "credited_per_keep": 0.0,
+   "credited_total": 0,
+   "keeps": 0,
+   "runs": 43,
+   "true_total": 0.0
+  }
+ ],
+ "real/fresh": [
+  {
+   "credited_per_keep": 10.197473499999997,
+   "credited_total": 40.78989399999999,
+   "keeps": 4,
+   "runs": 112,
+   "true_total": 20.0
+  },
+  {
+   "credited_per_keep": 12.76597742857143,
+   "credited_total": 89.36184200000001,
+   "keeps": 7,
+   "runs": 108,
+   "true_total": 35.0
+  },
+  {
+   "credited_per_keep": 11.123158124999996,
+   "credited_total": 88.98526499999997,
+   "keeps": 8,
+   "runs": 108,
+   "true_total": 40.0
+  },
+  {
+   "credited_per_keep": 12.362447624999998,
+   "credited_total": 98.89958099999998,
+   "keeps": 8,
+   "runs": 116,
+   "true_total": 40.0
+  },
+  {
+   "credited_per_keep": 11.354707000000001,
+   "credited_total": 45.418828000000005,
+   "keeps": 4,
+   "runs": 102,
+   "true_total": 20.0
+  },
+  {
+   "credited_per_keep": 11.5558498,
+   "credited_total": 57.77924900000001,
+   "keeps": 5,
+   "runs": 116,
+   "true_total": 25.0
+  },
+  {
+   "credited_per_keep": 13.387669,
+   "credited_total": 93.713683,
+   "keeps": 7,
+   "runs": 108,
+   "true_total": 35.0
+  },
+  {
+   "credited_per_keep": 10.9488985,
+   "credited_total": 87.591188,
+   "keeps": 8,
+   "runs": 112,
+   "true_total": 40.0
+  },
+  {
+   "credited_per_keep": 13.198862285714286,
+   "credited_total": 92.39203599999999,
+   "keeps": 7,
+   "runs": 114,
+   "true_total": 35.0
+  },
+  {
+   "credited_per_keep": 12.071236000000003,
+   "credited_total": 84.49865200000002,
+   "keeps": 7,
+   "runs": 124,
+   "true_total": 35.0
+  }
+ ],
+ "real/reused": [
+  {
+   "credited_per_keep": 10.937748571428568,
+   "credited_total": 76.56423999999997,
+   "keeps": 7,
+   "runs": 94,
+   "true_total": 35.0
+  },
+  {
+   "credited_per_keep": 10.076918181818183,
+   "credited_total": 110.8461,
+   "keeps": 11,
+   "runs": 98,
+   "true_total": 55.0
+  },
+  {
+   "credited_per_keep": 9.198203333333334,
+   "credited_total": 110.37844,
+   "keeps": 12,
+   "runs": 97,
+   "true_total": 60.0
+  },
+  {
+   "credited_per_keep": 10.072226874999998,
+   "credited_total": 80.57781499999999,
+   "keeps": 8,
+   "runs": 94,
+   "true_total": 40.0
+  },
+  {
+   "credited_per_keep": 11.318729333333334,
+   "credited_total": 101.868564,
+   "keeps": 9,
+   "runs": 96,
+   "true_total": 45.0
+  },
+  {
+   "credited_per_keep": 10.040142833333329,
+   "credited_total": 60.24085699999998,
+   "keeps": 6,
+   "runs": 95,
+   "true_total": 30.0
+  },
+  {
+   "credited_per_keep": 10.199569999999998,
+   "credited_total": 91.79612999999998,
+   "keeps": 9,
+   "runs": 97,
+   "true_total": 45.0
+  },
+  {
+   "credited_per_keep": 12.759255727272725,
+   "credited_total": 140.351813,
+   "keeps": 11,
+   "runs": 97,
+   "true_total": 55.0
+  },
+  {
+   "credited_per_keep": 9.210180999999995,
+   "credited_total": 36.84072399999998,
+   "keeps": 4,
+   "runs": 95,
+   "true_total": 20.0
+  },
+  {
+   "credited_per_keep": 11.098006727272725,
+   "credited_total": 122.07807399999999,
+   "keeps": 11,
+   "runs": 98,
+   "true_total": 55.0
+  }
+ ],
+ "real/unpaired": [
+  {
+   "credited_per_keep": 0.0,
+   "credited_total": 0,
+   "keeps": 0,
+   "runs": 42,
+   "true_total": 0.0
+  },
+  {
+   "credited_per_keep": 8.35699975,
+   "credited_total": 33.427999,
+   "keeps": 4,
+   "runs": 51,
+   "true_total": 20.0
+  },
+  {
+   "credited_per_keep": 0.0,
+   "credited_total": 0,
+   "keeps": 0,
+   "runs": 45,
+   "true_total": 0.0
+  },
+  {
+   "credited_per_keep": 6.8506002,
+   "credited_total": 34.253001,
+   "keeps": 5,
+   "runs": 54,
+   "true_total": 25.0
+  },
+  {
+   "credited_per_keep": 8.405267000000002,
+   "credited_total": 16.810534000000004,
+   "keeps": 2,
+   "runs": 46,
+   "true_total": 10.0
+  },
+  {
+   "credited_per_keep": 0.0,
+   "credited_total": 0,
+   "keeps": 0,
+   "runs": 43,
+   "true_total": 0.0
+  },
+  {
+   "credited_per_keep": 7.680686600000001,
+   "credited_total": 38.40343300000001,
+   "keeps": 5,
+   "runs": 55,
+   "true_total": 25.0
+  },
+  {
+   "credited_per_keep": 6.783950000000004,
+   "credited_total": 13.567900000000009,
+   "keeps": 2,
+   "runs": 47,
+   "true_total": 10.0
+  },
+  {
+   "credited_per_keep": 7.829285999999996,
+   "credited_total": 15.658571999999992,
+   "keeps": 2,
+   "runs": 50,
+   "true_total": 10.0
+  },
+  {
+   "credited_per_keep": 14.55336100000001,
+   "credited_total": 14.55336100000001,
+   "keeps": 1,
+   "runs": 44,
+   "true_total": 5.0
+  }
+ ]
+}
