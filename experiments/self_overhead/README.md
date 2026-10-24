@@ -129,6 +129,8 @@ Pairing did what it was built to do about drift. The incumbent re-measured betwe
 
 What holds across all three: keep-or-revert, the git bookkeeping and the tamper checks behaved correctly in every run, and each run's final commit was faster than its baseline when checked outside the loop; individual keeps were sometimes too small to tell from noise. What does not hold: the size the ledger credits a keep with. Every run overstated it, and the two changes meant to help, recording the change and pairing the measurement, did not fix that. Until a confirmation measures the incumbent independently, a run's total is an upper bound to verify, not a result.
 
+After run 3, `--paired --confirm` was changed to confirm on a fresh incumbent-candidate pair and record the gain from a third pair measured after the verdict; [the simulation](../paired_confirmation/RESULTS.md) shows its credited gains unbiased within one standard error. It has not yet been through a dogfood run.
+
 ## Reproducing
 
 The bench needs bubblewrap and runs in about 70 s:
