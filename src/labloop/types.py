@@ -94,6 +94,14 @@ class Trial:
     """The end of the proposal command's own output, for the human reading the
     ledger. Never put in the brief: it is the proposer's free text, and the
     brief is labloop's account, not a channel between attempts."""
+    remeasured: float | None = None
+    """The incumbent's tree measured again just before this trial's proposal,
+    under `paired`. `incumbent` stays the number the ledger holds."""
+
+    @property
+    def bar(self) -> float | None:
+        """The number this trial had to beat: re-measured when paired."""
+        return self.remeasured if self.remeasured is not None else self.incumbent
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
@@ -173,6 +181,16 @@ class Experiment:
     guard off. Recorded in the manifest.
     """
     give_up_after: int = 10
+    paired: bool = False
+    """Re-measure the incumbent's tree before each proposal and judge the
+    candidate against that, not against the number in the ledger.
+
+    The ledger's number was measured earlier, sometimes hours earlier, and a
+    machine that speeds up or slows down in between turns drift into progress
+    or regression. Dogfooding labloop on itself, the ledger credited one run
+    with four times the gain an interleaved check found. Paired, the two
+    numbers being compared are minutes apart. Costs one run per trial.
+    """
     propose_budget: float | None = None
     label: str | None = None
     """Who or what proposed these trials, e.g. a model name.
@@ -237,6 +255,7 @@ class Experiment:
             "strict_metric": self.strict_metric,
             "guard_imports": self.guard_imports,
             "give_up_after": self.give_up_after,
+            "paired": self.paired,
             "propose_budget": self.propose_budget,
             "label": self.label,
             "sandbox": self.sandbox,
