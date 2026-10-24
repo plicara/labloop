@@ -127,7 +127,7 @@ Pairing did what it was built to do about drift. The incumbent re-measured betwe
 | Haiku, non-kept repeating a failed location | 11 of 13 | 1 of 7 (contaminated) | 3 of 7 |
 | Proposer cost | $1.91 | $1.34 | $1.47 |
 
-What holds across all three: keep-or-revert, the git bookkeeping and the tamper checks behaved correctly in every run, and every keep that was checked outside the loop was a real speedup. What does not hold: the size the ledger credits a keep with. Every run overstated it, and the two changes meant to help, recording the change and pairing the measurement, did not fix that. Until a confirmation measures the incumbent independently, a run's total is an upper bound to verify, not a result.
+What holds across all three: keep-or-revert, the git bookkeeping and the tamper checks behaved correctly in every run, and each run's final commit was faster than its baseline when checked outside the loop; individual keeps were sometimes too small to tell from noise. What does not hold: the size the ledger credits a keep with. Every run overstated it, and the two changes meant to help, recording the change and pairing the measurement, did not fix that. Until a confirmation measures the incumbent independently, a run's total is an upper bound to verify, not a result.
 
 ## Reproducing
 
