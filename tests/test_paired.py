@@ -7,9 +7,11 @@ gains four times the size an interleaved check found.
 
 from __future__ import annotations
 
+import json
 import sys
 
 from labloop import Experiment, Loop, Outcome, Trial
+from labloop.brief import build
 
 from .conftest import make_loop
 from .conftest import run_git as git
@@ -159,3 +161,30 @@ def test_the_remeasurements_artifacts_never_reach_the_proposal(project):
     assert [entry["path"] for entry in trial.change] == ["train.py"]
     committed = git("show", "--name-only", "--format=", "HEAD", cwd=project).split()
     assert "cache.bin" not in committed
+
+
+# --- what people and proposers are told ------------------------------------
+
+
+def test_the_brief_explains_a_verdict_against_the_number_it_was_reached_on():
+    trial = Trial(index=3, outcome=Outcome.REVERTED, metric=1.5, incumbent=2.0,
+                  duration_seconds=1.0, remeasured=1.0)
+    (entry,) = build(Experiment(run="x", metric="val", propose="a"), [trial],
+                     index=4, incumbent=1.0)["history"]
+    assert entry["why"] == "reverted: val 1.5 did not beat 1; lower is better"
+
+
+def test_a_paired_proposer_is_told_the_remeasured_number_to_beat(tmp_path):
+    seen = tmp_path / "brief.json"
+    loop, _, _ = paired_loop(tmp_path, 1.0, 2.0, 1.8,
+                             propose=f"cp \"$LABLOOP_BRIEF\" {seen}")
+    loop.baseline()
+    loop.run(trials=1)
+    assert json.loads(seen.read_text())["incumbent"] == 2.0
+
+
+def test_the_commit_names_the_number_it_beat(tmp_path):
+    loop, ws, _ = paired_loop(tmp_path, 1.0, 2.0, 1.8)
+    loop.baseline()
+    loop.run(trials=1)
+    assert ws.commits[-1] == "labloop: val 1.8 (was 2)"

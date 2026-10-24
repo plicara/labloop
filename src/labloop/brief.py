@@ -149,19 +149,23 @@ def _why(trial: Trial, experiment: Experiment) -> str:
 
 
 def _why_verdict(trial: Trial, experiment: Experiment) -> str:
-    """The trial was judged on its merits; explain the judgement."""
+    """The trial was judged on its merits; explain the judgement.
+
+    Against `trial.bar`: under `paired` that is the incumbent re-measured
+    before the proposal, the number the verdict was actually reached on.
+    """
     metric, goal = experiment.metric, experiment.goal
     if trial.outcome is Outcome.KEPT:
-        if trial.incumbent is None:
+        if trial.bar is None:
             return f"kept: first measurement of {metric}, nothing to beat yet"
-        return f"kept: {metric} {trial.metric:.6g} beat {trial.incumbent:.6g}"
+        return f"kept: {metric} {trial.metric:.6g} beat {trial.bar:.6g}"
 
     if trial.confirmation is not None or trial.metric is None:
         # Won the first measurement and lost the second; the note holds both
         # numbers. Phrasing it as "did not beat" would hide that it won once.
         return f"reverted: {trial.note or 'no usable confirmation'}; a single win is not trusted"
 
-    if trial.metric == trial.incumbent:
+    if trial.metric == trial.bar:
         return (
             f"reverted: {metric} {trial.metric:.6g} tied the incumbent, and a "
             "tie is not an improvement"
@@ -174,12 +178,12 @@ def _why_verdict(trial: Trial, experiment: Experiment) -> str:
     if (
         experiment.min_delta
         and trial.metric is not None
-        and trial.incumbent is not None
-        and goal.is_better(trial.metric, trial.incumbent)
+        and trial.bar is not None
+        and goal.is_better(trial.metric, trial.bar)
     ):
-        gain = abs(trial.incumbent - trial.metric)
+        gain = abs(trial.bar - trial.metric)
         return (
-            f"reverted: {metric} {trial.metric:.6g} beat {trial.incumbent:.6g} "
+            f"reverted: {metric} {trial.metric:.6g} beat {trial.bar:.6g} "
             f"by {gain:.6g}, but --min-delta needs more than "
             f"{experiment.min_delta:.6g}; the direction worked, the margin was "
             "too small to trust"
@@ -188,7 +192,7 @@ def _why_verdict(trial: Trial, experiment: Experiment) -> str:
     direction = "lower" if goal is Goal.MINIMIZE else "higher"
     return (
         f"reverted: {metric} {trial.metric:.6g} did not beat "
-        f"{trial.incumbent:.6g}; {direction} is better"
+        f"{trial.bar:.6g}; {direction} is better"
     )
 
 

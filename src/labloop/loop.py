@@ -366,7 +366,7 @@ class Loop:
                 self.workspace.revert()
         bar = remeasured if remeasured is not None else incumbent
 
-        with self._proposal_env(index, incumbent) as env:
+        with self._proposal_env(index, bar) as env:
             propose_command = self.experiment.propose or ""
             if self.sandbox is not None:
                 propose_command = self.sandbox.wrap(
@@ -502,11 +502,11 @@ class Loop:
             confirmed_note = f"confirmed: {first:.6g} then {second:.6g}; kept the weaker"
 
         message = f"labloop: {self.experiment.metric} {metric:.6g}"
-        if incumbent is not None:
-            message += f" (was {incumbent:.6g})"
+        if bar is not None:
+            message += f" (was {bar:.6g})"
 
         try:
-            history = self._write_history(index, metric, incumbent, change, confirmed_note)
+            history = self._write_history(index, metric, bar, change, confirmed_note)
             commit = self.workspace.commit(message, [*proposed_paths, history])
         except RuntimeError as exc:
             # A pre-commit hook that rejects the change, or any other reason
@@ -620,7 +620,7 @@ class Loop:
                 "index": t.index,
                 "outcome": t.outcome.value,
                 "metric": t.metric,
-                "incumbent": t.incumbent,
+                "incumbent": t.bar,
                 "note": t.note,
                 "paths": _paths(t.change),
             }
