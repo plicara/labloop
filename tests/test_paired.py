@@ -12,6 +12,7 @@ import sys
 
 from labloop import Experiment, Loop, Outcome, Trial
 from labloop.brief import build
+from labloop.cli import main
 
 from .conftest import make_loop
 from .conftest import run_git as git
@@ -188,3 +189,19 @@ def test_the_commit_names_the_number_it_beat(tmp_path):
     loop.baseline()
     loop.run(trials=1)
     assert ws.commits[-1] == "labloop: val 1.8 (was 2)"
+
+
+# --- the command line --------------------------------------------------------
+
+
+def test_paired_from_the_command_line_survives_resume(project, capsys):
+    main(["baseline", "--run", "python train.py", "--metric", "val_loss"])
+    main(["run", "--run", "python train.py", "--metric", "val_loss", "--paired",
+          "--propose", "sed -i 's/2.0/1.5/' train.py", "--trials", "1"])
+    out = capsys.readouterr().out
+    assert "vs 2 now" in out, "the line shows what the trial was judged against"
+
+    main(["resume", "--trials", "1"])
+    trials = [json.loads(line) for line in (project / "labloop.jsonl").read_text().splitlines()
+              if '"outcome"' in line]
+    assert trials[-1]["remeasured"] == 1.5, "resume kept pairing: the incumbent was re-measured"

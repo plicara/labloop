@@ -62,6 +62,8 @@ def _report(trial: Trial) -> None:
     )
     if trial.direction != "main":
         line += f"  [{trial.direction}]"
+    if trial.remeasured is not None:
+        line += f"  vs {trial.remeasured:.6g} now"
     if trial.commit:
         line += f"  {trial.commit}"
     if trial.note:
@@ -188,6 +190,12 @@ def _build_parser() -> argparse.ArgumentParser:
         "--confirm",
         action="store_true",
         help="re-run before keeping a change, and keep it only if it wins twice",
+    )
+    run.add_argument(
+        "--paired",
+        action="store_true",
+        help="re-measure the incumbent before each proposal and judge against that, "
+        "so drift on the machine is not read as progress (one more run per trial)",
     )
     run.add_argument(
         "--no-brief",
@@ -498,6 +506,7 @@ def _experiment_command(args: argparse.Namespace) -> int:
         protect=tuple(args.protect or ()),
         brief=getattr(args, "brief", True),
         confirm=getattr(args, "confirm", False),
+        paired=getattr(args, "paired", False),
         min_delta=args.min_delta,
         strict_metric=getattr(args, "strict_metric", False),
         guard_imports=getattr(args, "guard_imports", False),
