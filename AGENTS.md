@@ -18,6 +18,6 @@ Project procedures belong in `.agents/skills/<name>/SKILL.md`. Add skills when a
 
 Run the checks relevant to the change. Report failures, skipped checks, and remaining local changes accurately; a dirty working tree is not synchronized work. Preserve pre-existing edits. Update metadata only when its facts change, and never copy versions, test counts, or CI state into it.
 
-Commit author: Adrian Tame <31286933+AdrianTJ@users.noreply.github.com>. Never add a co-author trailer or override the committer identity. Use conventional branch prefixes and short kebab-case names. Inspect staged changes for secrets before committing. Ask before destructive operations, publishing, or deployment.
+Commit identity: author Adrian Tame <31286933+AdrianTJ@users.noreply.github.com>, committer Claude <noreply@anthropic.com>. End every commit message that Claude wrote or helped write with a `Co-Authored-By: Claude <noreply@anthropic.com>` trailer (a model version may follow the name), and omit it only for commits Claude had no part in. This applies from this change on; existing history is not rewritten. Use conventional branch prefixes and short kebab-case names. Inspect staged changes for secrets before committing. Ask before destructive operations, publishing, or deployment.
 
 Write Markdown with one paragraph or list item per source line and blank lines between blocks.
